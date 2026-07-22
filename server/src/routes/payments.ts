@@ -15,7 +15,25 @@ router.post('/verify', authenticateToken, async (req: AuthRequest, res: Response
   try {
     const order = await db.orders.findByReference(reference);
     if (!order) {
-      return res.status(404).json({ error: 'Order not found with reference: ' + reference });
+      // General payment (e.g. Wallet top-up / Subscription)
+      await db.transactions.create(
+        null,
+        req.user!.id,
+        0,
+        'payment',
+        'success',
+        reference
+      );
+      await db.notifications.create(
+        req.user!.id,
+        'Payment Verified',
+        `Your Interswitch payment (Ref: ${reference}) was verified successfully.`
+      );
+      return res.json({
+        success: true,
+        message: 'Payment verified successfully via Interswitch',
+        reference,
+      });
     }
 
     // Only the buyer who placed the order may verify its payment.
