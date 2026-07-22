@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useCart } from '../hooks/useCart';
 import { Sprout, Mail, Lock, ArrowRight } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const { login, loading } = useAuth();
+  const { cart } = useCart();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -15,9 +17,18 @@ export const Login: React.FC = () => {
     e.preventDefault();
     setErr('');
     try {
-      await login({ email, password });
-      // Redirect dynamically based on role after profile is loaded
-      navigate('/');
+      const loggedInUser = await login({ email, password });
+      if (cart.length > 0) {
+        navigate('/dashboard/buyer?tab=cart');
+      } else if (loggedInUser?.role === 'farmer') {
+        navigate('/dashboard/farmer');
+      } else if (loggedInUser?.role === 'delivery_partner') {
+        navigate('/dashboard/delivery');
+      } else if (loggedInUser?.role === 'admin') {
+        navigate('/dashboard/admin');
+      } else {
+        navigate('/dashboard/buyer?tab=cart');
+      }
     } catch (error: any) {
       setErr(error.response?.data?.error || 'Failed to authenticate');
     }

@@ -391,7 +391,7 @@ export const BuyerDashboard: React.FC = () => {
                       <p className="text-slate-400 mt-0.5">Purchased on: {new Date(ord.created_at).toLocaleString()}</p>
                     </div>
 
-                    <div className="flex gap-2 items-center">
+                    <div className="flex gap-2 items-center flex-wrap">
                       <span className={`px-2 py-0.5 rounded-full font-bold uppercase text-[9px] ${
                         ord.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                       }`}>
@@ -402,6 +402,21 @@ export const BuyerDashboard: React.FC = () => {
                       }`}>
                         Shipping: {ord.status}
                       </span>
+                      
+                      {ord.payment_status === 'unpaid' && (
+                        <button
+                          onClick={() => {
+                            setCheckoutRef(ord.payment_reference);
+                            setCheckoutAmount(Number(ord.total_amount));
+                            setIsPaying(true);
+                          }}
+                          className="flex items-center gap-1 text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-full shadow transition-colors"
+                        >
+                          <CreditCard className="w-3 h-3" />
+                          <span>Pay Now (₦{Number(ord.total_amount).toLocaleString()})</span>
+                        </button>
+                      )}
+
                       <button
                         onClick={() => setSelectedInvoiceOrder(ord)}
                         className="flex items-center gap-1 text-[10px] font-bold bg-slate-100 dark:bg-forest-800 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-full hover:bg-emerald-50 hover:text-emerald-700 transition-colors"

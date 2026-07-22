@@ -18,8 +18,8 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   darkMode: boolean;
-  login: (credentials: any) => Promise<void>;
-  register: (data: any) => Promise<void>;
+  login: (credentials: any) => Promise<User>;
+  register: (data: any) => Promise<User>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   toggleDarkMode: () => void;
@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, [token]);
 
-  const login = async (credentials: any) => {
+  const login = async (credentials: any): Promise<User> => {
     setLoading(true);
     try {
       const data = await authService.login(credentials);
@@ -69,6 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(data.token);
       setUser(data.user);
       toast.success(`Welcome back, ${data.user.fullName}!`);
+      return data.user;
     } catch (error: any) {
       const msg = error.response?.data?.error || 'Login failed. Please check credentials.';
       toast.error(msg);
@@ -78,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (regData: any) => {
+  const register = async (regData: any): Promise<User> => {
     setLoading(true);
     try {
       const data = await authService.register(regData);
@@ -86,6 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(data.token);
       setUser(data.user);
       toast.success(`Account registered successfully!`);
+      return data.user;
     } catch (error: any) {
       const msg = error.response?.data?.error || 'Registration failed.';
       toast.error(msg);
