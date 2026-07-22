@@ -92,7 +92,8 @@ export async function initiatePayment({
 
       const merchantCode = import.meta.env.VITE_INTERSWITCH_MERCHANT_CODE || 'MX2609';
       const payItemId = import.meta.env.VITE_INTERSWITCH_PAY_ITEM_ID || '10101';
-      const envMode = (import.meta.env.VITE_INTERSWITCH_ENV || 'TEST').toUpperCase();
+      // Default LIVE for production QuickTeller; set VITE_INTERSWITCH_ENV=TEST only for local dev
+      const envMode = (import.meta.env.VITE_INTERSWITCH_ENV || 'LIVE').toUpperCase();
 
       const paymentParams = {
         merchant_code: merchantCode,
@@ -101,7 +102,7 @@ export async function initiatePayment({
         txn_ref: paymentRef,
         amount: amountInKobo,
         currency: 566, // 566 = NGN (Nigerian Naira)
-        mode: envMode === 'LIVE' ? 'LIVE' : 'TEST',
+        mode: envMode === 'TEST' ? 'TEST' : 'LIVE',
         customer_email: email,
         customer_name: email.split('@')[0],
         onComplete: async function (response: any) {
