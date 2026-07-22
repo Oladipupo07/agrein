@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { subscriptionService } from '../services/api';
+import { initiateSubscriptionPayment, generatePaymentReference } from '../services/interswitchService';
+import { useAuth } from '../hooks/useAuth';
 import { Crown, CheckCircle2, Zap, Star, ChevronRight, Shield, TrendingUp, Globe, Users, MessageSquare, BookOpen, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -83,6 +85,7 @@ const FEATURE_COMPARE = [
 ];
 
 export const SubscriptionPage: React.FC = () => {
+  const { user } = useAuth();
   const [currentPlan, setCurrentPlan] = useState<string>('free');
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState(true);
@@ -101,12 +104,35 @@ export const SubscriptionPage: React.FC = () => {
     load();
   }, []);
 
-  const handleUpgrade = (planId: string, planName: string) => {
-    toast.success(`Redirecting to Interswitch payment for ${planName}...`);
-    setTimeout(() => {
-      setCurrentPlan(planId);
-      toast.success(`Successfully upgraded to ${planName}! 🎉`);
-    }, 2000);
+  const handleUpgrade = async (planId: string, planName: string, price: number) => {
+    if (planId === 'free') {
+      setCurrentPlan('free');
+      toast.success('Switched to Starter Free Plan');
+      return;
+    }
+
+    const calculatedAmount = billing === 'annual' ? price * 10 : price;
+    toast.loading(`Launching Interswitch payment for ${planName}...`, { id: 'sub-toast' });
+
+    try {
+      const res = await initiateSubscriptionPayment({
+        amount: calculatedAmount,
+        email: user?.email || 'subscriber@agrein.com',
+        paymentRef: generatePaymentReference(),
+        subscriptionType: planId,
+      });
+
+      toast.dismiss('sub-toast');
+      if (res.status === 'successful') {
+        setCurrentPlan(planId);
+        toast.success(`Successfully upgraded to ${planName}! 🎉`);
+      } else {
+        toast.error(res.message || 'Subscription payment was not completed.');
+      }
+    } catch (err: any) {
+      toast.dismiss('sub-toast');
+      toast.error('Subscription payment initiation failed');
+    }
   };
 
   const getPrice = (price: number) => {
@@ -202,7 +228,7 @@ export const SubscriptionPage: React.FC = () => {
 
               <button
                 disabled={plan.disabled || currentPlan === plan.id}
-                onClick={() => handleUpgrade(plan.id, plan.name)}
+                onClick={() => handleUpgrade(plan.id, plan.name, plan.price)}
                 className={`mt-6 w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all
                   ${plan.disabled || currentPlan === plan.id
                     ? 'bg-slate-700 text-slate-500 cursor-not-allowed'

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { walletService } from '../services/api';
+import { initiatePayment, generatePaymentReference } from '../services/interswitchService';
+import { useAuth } from '../hooks/useAuth';
 import { Wallet, ArrowDownLeft, ArrowUpRight, CreditCard, ShieldCheck, History, Plus, Minus, TrendingUp, RefreshCw, DollarSign, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -13,6 +15,7 @@ const MOCK_TRANSACTIONS = [
 ];
 
 export const WalletPage: React.FC = () => {
+  const { user } = useAuth();
   const [balance, setBalance] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState('');
@@ -39,11 +42,29 @@ export const WalletPage: React.FC = () => {
       return;
     }
     setProcessing(true);
-    await new Promise(r => setTimeout(r, 1500));
+
     if (action === 'deposit') {
-      toast.success(`₦${Number(amount).toLocaleString()} deposited successfully!`);
-      setBalance((prev: any) => ({ ...prev, balance: (prev?.balance || 0) + Number(amount) }));
+      toast.loading('Launching Interswitch gateway...', { id: 'wallet-topup' });
+      try {
+        const res = await initiatePayment({
+          amount: Number(amount),
+          email: user?.email || 'wallet@agrein.com',
+          paymentRef: generatePaymentReference(),
+        });
+
+        toast.dismiss('wallet-topup');
+        if (res.status === 'successful') {
+          toast.success(`₦${Number(amount).toLocaleString()} deposited successfully via Interswitch!`);
+          setBalance((prev: any) => ({ ...prev, balance: (prev?.balance || 0) + Number(amount) }));
+        } else {
+          toast.error(res.message || 'Deposit payment was not completed.');
+        }
+      } catch (err: any) {
+        toast.dismiss('wallet-topup');
+        toast.error('Failed to process deposit via Interswitch');
+      }
     } else {
+      await new Promise(r => setTimeout(r, 1200));
       if (Number(amount) > (balance?.balance || 0)) {
         toast.error('Insufficient wallet balance');
         setProcessing(false);
