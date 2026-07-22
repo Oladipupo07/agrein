@@ -23,6 +23,14 @@ export function loadInterswitchScript(): Promise<void> {
       return;
     }
 
+    const env = (import.meta.env.VITE_INTERSWITCH_ENV || 'LIVE').toLowerCase();
+    const isSandbox = env === 'sandbox' || env === 'test' || env === 'qa';
+
+    // Choose script target based on environment
+    const scriptSrc = isSandbox
+      ? 'https://qa.interswitchng.com/inline-checkout.js'
+      : 'https://newwebpay.interswitchng.com/inline-checkout.js';
+
     // Clean up any old script tag
     const existing = document.getElementById('interswitch-inline-script');
     if (existing) {
@@ -31,8 +39,7 @@ export function loadInterswitchScript(): Promise<void> {
 
     const script = document.createElement('script');
     script.id = 'interswitch-inline-script';
-    // Production / Live Inline Checkout URL
-    script.src = 'https://newwebpay.interswitchng.com/inline-checkout.js';
+    script.src = scriptSrc;
     script.async = true;
 
     script.onload = () => {
@@ -46,7 +53,7 @@ export function loadInterswitchScript(): Promise<void> {
     };
 
     script.onerror = () => {
-      reject(new Error('Failed to load Interswitch SDK script. Check your network connection.'));
+      reject(new Error(`Failed to load Interswitch SDK script (${scriptSrc}). Check your network connection.`));
     };
 
     document.body.appendChild(script);
@@ -58,6 +65,8 @@ export interface InitiatePaymentParams {
   email: string;
   paymentRef: string;
   title?: string;
+  merchantCode?: string;
+  payItemId?: string;
 }
 
 export interface SubscriptionPaymentParams {
@@ -83,25 +92,33 @@ export async function initiatePayment({
   amount,
   email,
   paymentRef,
+  merchantCode: customMerchant,
+  payItemId: customPayItem,
 }: InitiatePaymentParams): Promise<PaymentResult> {
   try {
     await loadInterswitchScript();
 
     return new Promise((resolve) => {
       // Interswitch expects amount in kobo (minor denomination)
-      const amountInKobo = Math.round(amount * 100);
+      const amountInKobo = Math.round(Number(amount) * 100);
 
-      // Official Interswitch WebPAY / Quickteller Credentials
-      const merchantCode = import.meta.env.VITE_INTERSWITCH_MERCHANT_CODE || 'MX179463';
-      const payItemId = import.meta.env.VITE_INTERSWITCH_PAY_ITEM_ID || '9646887';
+      // Default or custom merchant credentials
+      const merchantCode = customMerchant || import.meta.env.VITE_INTERSWITCH_MERCHANT_CODE || 'MX179463';
+      const payItemId = customPayItem || import.meta.env.VITE_INTERSWITCH_PAY_ITEM_ID || '9646887';
 
-      const paymentParams = {
-        merchant_code: merchantCode,
-        pay_item_id: payItemId,
+      const env = (import.meta.env.VITE_INTERSWITCH_ENV || 'LIVE').toUpperCase();
+      const isTestMode = env === 'SANDBOX' || env === 'TEST' || env === 'QA';
+
+      const paymentParams: any = {
+        merchant_code: String(merchantCode).trim(),
+        pay_item_id: String(payItemId).trim(),
         site_redirect_url: window.location.origin,
-        txn_ref: paymentRef,
+        txn_ref: String(paymentRef).trim(),
         amount: amountInKobo,
         currency: 566, // 566 = NGN (Nigerian Naira)
+        mode: isTestMode ? 'TEST' : 'LIVE',
+        customer_email: String(email).trim(),
+        customer_name: (email || 'customer@agrein.com').split('@')[0],
         onComplete: async function (response: any) {
           console.log('Interswitch payment response:', response);
 
@@ -143,9 +160,6 @@ export async function initiatePayment({
             });
           }
         },
-        mode: 'LIVE',
-        customer_email: email,
-        customer_name: email.split('@')[0],
       };
 
       // Execute Interswitch inline checkout modal
@@ -154,7 +168,7 @@ export async function initiatePayment({
       } else {
         resolve({
           status: 'failed',
-          message: 'Interswitch SDK function is not available.',
+          message: 'Interswitch SDK function is not available on window.',
         });
       }
     });
@@ -163,6 +177,30 @@ export async function initiatePayment({
     return {
       status: 'failed',
       message: error.message || 'Payment initiation failed',
+    };
+  }
+}
+
+/**
+ * Direct Manual Verification helper (for simulated or sandbox confirmation)
+ */
+export async function verifyManualPayment(paymentRef: string): Promise<PaymentResult> {
+  try {
+    const verifyRes = await paymentService.verifyPayment(paymentRef);
+    if (verifyRes.success) {
+      return {
+        status: 'successful',
+        transaction_id: paymentRef,
+      };
+    }
+    return {
+      status: 'failed',
+      message: verifyRes.message || 'Manual payment verification failed',
+    };
+  } catch (err: any) {
+    return {
+      status: 'failed',
+      message: err.response?.data?.error || 'Payment verification error',
     };
   }
 }
