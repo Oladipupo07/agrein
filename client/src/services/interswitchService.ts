@@ -77,6 +77,7 @@ export interface PaymentResult {
 
 /**
  * Initiates an inline payment via Interswitch WebPAY SDK
+ * Reference implementation: e:\Project\bluewave\src\services\interswitchService.js
  */
 export async function initiatePayment({
   amount,
@@ -90,10 +91,9 @@ export async function initiatePayment({
       // Interswitch expects amount in kobo (minor denomination)
       const amountInKobo = Math.round(amount * 100);
 
-      const merchantCode = import.meta.env.VITE_INTERSWITCH_MERCHANT_CODE || 'MX2609';
-      const payItemId = import.meta.env.VITE_INTERSWITCH_PAY_ITEM_ID || '10101';
-      // Default LIVE for production QuickTeller; set VITE_INTERSWITCH_ENV=TEST only for local dev
-      const envMode = (import.meta.env.VITE_INTERSWITCH_ENV || 'LIVE').toUpperCase();
+      // Official Interswitch WebPAY / Quickteller Credentials
+      const merchantCode = import.meta.env.VITE_INTERSWITCH_MERCHANT_CODE || 'MX179463';
+      const payItemId = import.meta.env.VITE_INTERSWITCH_PAY_ITEM_ID || '9646887';
 
       const paymentParams = {
         merchant_code: merchantCode,
@@ -102,9 +102,6 @@ export async function initiatePayment({
         txn_ref: paymentRef,
         amount: amountInKobo,
         currency: 566, // 566 = NGN (Nigerian Naira)
-        mode: envMode === 'TEST' ? 'TEST' : 'LIVE',
-        customer_email: email,
-        customer_name: email.split('@')[0],
         onComplete: async function (response: any) {
           console.log('Interswitch payment response:', response);
 
@@ -112,7 +109,8 @@ export async function initiatePayment({
           if (
             response?.resp === '00' ||
             response?.desc?.toLowerCase().includes('approved') ||
-            response?.desc === 'Approved by Financial Institution'
+            response?.desc === 'Approved by Financial Institution' ||
+            response?.desc === 'Approved'
           ) {
             try {
               // Verify server-side & update database
@@ -145,6 +143,9 @@ export async function initiatePayment({
             });
           }
         },
+        mode: 'LIVE',
+        customer_email: email,
+        customer_name: email.split('@')[0],
       };
 
       // Execute Interswitch inline checkout modal
