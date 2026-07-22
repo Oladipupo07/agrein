@@ -108,6 +108,7 @@ export const ProductDetail: React.FC = () => {
       image_url: product.image_urls?.[0],
       farmer_id: product.farmer_id
     });
+    navigate('/dashboard/buyer?tab=cart');
   };
 
   const handleReviewSubmit = async (e: React.FormEvent) => {

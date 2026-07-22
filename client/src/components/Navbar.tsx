@@ -185,8 +185,9 @@ export const Navbar: React.FC = () => {
             {/* Cart Icon (Buyer/Guest only or if not admin/delivery) */}
             {(!user || user.role === 'buyer') && (
               <Link
-                to="/dashboard/buyer"
+                to="/dashboard/buyer?tab=cart"
                 className="relative p-2 text-slate-500 dark:text-slate-400 hover:bg-forest-100/50 dark:hover:bg-forest-900/50 rounded-full transition-colors"
+                title="View Shopping Cart"
               >
                 <ShoppingCart className="h-5 w-5" />
                 {cartCount > 0 && (

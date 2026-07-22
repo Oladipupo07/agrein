@@ -119,7 +119,7 @@ let buyers: any[] = [
 
 let products: any[] = [
   {
-    id: 'p1eebc99-9c0b-4ef8-bb6d-6bb9bd380f11',
+    id: 'f01ebc99-9c0b-4ef8-bb6d-6bb9bd380f11',
     farmer_id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
     name: 'Local Stone-Free Rice (Ofada)',
     description: 'Premium quality local Ofada rice. Grown and processed in Ikorodu. Hand-sorted, 100% stone-free, rich in nutrients, and delicious.',
@@ -134,7 +134,7 @@ let products: any[] = [
     created_at: new Date()
   },
   {
-    id: 'p2eebc99-9c0b-4ef8-bb6d-6bb9bd380f22',
+    id: 'f02ebc99-9c0b-4ef8-bb6d-6bb9bd380f22',
     farmer_id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
     name: 'Fresh Roma Tomatoes (Crate)',
     description: 'A basket/crate of fresh, firm, and fully ripe red Roma tomatoes. Excellent for stews, sauces, and salads. Directly harvested on order day.',
@@ -149,7 +149,7 @@ let products: any[] = [
     created_at: new Date()
   },
   {
-    id: 'p3eebc99-9c0b-4ef8-bb6d-6bb9bd380f33',
+    id: 'f03ebc99-9c0b-4ef8-bb6d-6bb9bd380f33',
     farmer_id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
     name: 'Sweet Seedless Oranges (Bag)',
     description: 'Bag of naturally sweetened seedless oranges. Juicy and loaded with Vitamin C. Cleaned and packed.',
@@ -164,7 +164,7 @@ let products: any[] = [
     created_at: new Date()
   },
   {
-    id: 'p4eebc99-9c0b-4ef8-bb6d-6bb9bd380f44',
+    id: 'f04ebc99-9c0b-4ef8-bb6d-6bb9bd380f44',
     farmer_id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
     name: 'Healthy Male Goat (Medium)',
     description: 'Medium-sized healthy male goat. Vaccinated and pasture-fed. Weight approx. 20kg. Suitable for ceremonies or direct meat processing.',
@@ -184,7 +184,7 @@ let orders: any[] = [];
 let orderItems: any[] = [];
 let transactions: any[] = [
   {
-    id: 't1eebc99-9c0b-4ef8-bb6d-6bb9bd380t11',
+    id: 'a01ebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
     order_id: null,
     user_id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
     amount: 150000.00,
@@ -197,16 +197,16 @@ let transactions: any[] = [
 
 let reviews: any[] = [
   {
-    id: 'r1eebc99-9c0b-4ef8-bb6d-6bb9bd380e11',
-    product_id: 'p2eebc99-9c0b-4ef8-bb6d-6bb9bd380f22',
+    id: 'e01ebc99-9c0b-4ef8-bb6d-6bb9bd380e11',
+    product_id: 'f02ebc99-9c0b-4ef8-bb6d-6bb9bd380f22',
     reviewer_id: 'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a44',
     rating: 5,
     comment: 'Super fresh tomatoes! Will definitely buy again.',
     created_at: new Date()
   },
   {
-    id: 'r2eebc99-9c0b-4ef8-bb6d-6bb9bd380e22',
-    product_id: 'p1eebc99-9c0b-4ef8-bb6d-6bb9bd380f11',
+    id: 'e02ebc99-9c0b-4ef8-bb6d-6bb9bd380e22',
+    product_id: 'f01ebc99-9c0b-4ef8-bb6d-6bb9bd380f11',
     reviewer_id: 'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a44',
     rating: 4,
     comment: 'Very clean rice. Found no stones at all. Good texture when cooked.',
@@ -216,7 +216,7 @@ let reviews: any[] = [
 
 let notifications: any[] = [
   {
-    id: 'n1eebc99-9c0b-4ef8-bb6d-6bb9bd380d11',
+    id: 'de1ebc99-9c0b-4ef8-bb6d-6bb9bd380d11',
     user_id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
     title: 'Welcome to Agrein!',
     message: 'Your farmer account has been approved. You can now start listing products and earning.',

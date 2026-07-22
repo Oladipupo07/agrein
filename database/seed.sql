@@ -54,34 +54,34 @@ ON CONFLICT (id) DO NOTHING;
 -- Insert Mock Products for Farmer Kole (Approved)
 -- Product 1: Grains (Rice)
 INSERT INTO products (id, farmer_id, name, description, category_id, price, quantity, quantity_unit, availability_status, delivery_estimate, rating, image_urls) VALUES
-('p1eebc99-9c0b-4ef8-bb6d-6bb9bd380f11', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'Local Stone-Free Rice (Ofada)', 'Premium quality local Ofada rice. Grown and processed in Ikorodu. Hand-sorted, 100% stone-free, rich in nutrients, and delicious.', 3, 25000.00, 50.00, 'bags', 'in_stock', '1-2 days', 4.7, ARRAY['https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=600'])
+('f01ebc99-9c0b-4ef8-bb6d-6bb9bd380f11', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'Local Stone-Free Rice (Ofada)', 'Premium quality local Ofada rice. Grown and processed in Ikorodu. Hand-sorted, 100% stone-free, rich in nutrients, and delicious.', 3, 25000.00, 50.00, 'bags', 'in_stock', '1-2 days', 4.7, ARRAY['https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=600'])
 ON CONFLICT (id) DO NOTHING;
 
 -- Product 2: Vegetables (Tomatoes)
 INSERT INTO products (id, farmer_id, name, description, category_id, price, quantity, quantity_unit, availability_status, delivery_estimate, rating, image_urls) VALUES
-('p2eebc99-9c0b-4ef8-bb6d-6bb9bd380f22', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'Fresh Roma Tomatoes (Crate)', 'A basket/crate of fresh, firm, and fully ripe red Roma tomatoes. Excellent for stews, sauces, and salads. Directly harvested on order day.', 2, 12000.00, 20.00, 'crates', 'in_stock', 'Same day', 4.9, ARRAY['https://images.unsplash.com/photo-1595855759920-86582396756a?auto=format&fit=crop&q=80&w=600'])
+('f02ebc99-9c0b-4ef8-bb6d-6bb9bd380f22', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'Fresh Roma Tomatoes (Crate)', 'A basket/crate of fresh, firm, and fully ripe red Roma tomatoes. Excellent for stews, sauces, and salads. Directly harvested on order day.', 2, 12000.00, 20.00, 'crates', 'in_stock', 'Same day', 4.9, ARRAY['https://images.unsplash.com/photo-1595855759920-86582396756a?auto=format&fit=crop&q=80&w=600'])
 ON CONFLICT (id) DO NOTHING;
 
 -- Product 3: Fruits (Sweet Oranges)
 INSERT INTO products (id, farmer_id, name, description, category_id, price, quantity, quantity_unit, availability_status, delivery_estimate, rating, image_urls) VALUES
-('p3eebc99-9c0b-4ef8-bb6d-6bb9bd380f33', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'Sweet Seedless Oranges (Bag)', 'Bag of naturally sweetened seedless oranges. Juicy and loaded with Vitamin C. Cleaned and packed.', 1, 8000.00, 35.00, 'bags', 'in_stock', '1-2 days', 4.5, ARRAY['https://images.unsplash.com/photo-1611080626919-7cf5a9dbab5b?auto=format&fit=crop&q=80&w=600'])
+('f03ebc99-9c0b-4ef8-bb6d-6bb9bd380f33', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'Sweet Seedless Oranges (Bag)', 'Bag of naturally sweetened seedless oranges. Juicy and loaded with Vitamin C. Cleaned and packed.', 1, 8000.00, 35.00, 'bags', 'in_stock', '1-2 days', 4.5, ARRAY['https://images.unsplash.com/photo-1611080626919-7cf5a9dbab5b?auto=format&fit=crop&q=80&w=600'])
 ON CONFLICT (id) DO NOTHING;
 
 -- Product 4: Livestock (Goat)
 INSERT INTO products (id, farmer_id, name, description, category_id, price, quantity, quantity_unit, availability_status, delivery_estimate, rating, image_urls) VALUES
-('p4eebc99-9c0b-4ef8-bb6d-6bb9bd380f44', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'Healthy Male Goat (Medium)', 'Medium-sized healthy male goat. Vaccinated and pasture-fed. Weight approx. 20kg. Suitable for ceremonies or direct meat processing.', 4, 35000.00, 10.00, 'pieces', 'in_stock', '2-3 days', 4.8, ARRAY['https://images.unsplash.com/photo-1524413840807-0c3cb6fa808d?auto=format&fit=crop&q=80&w=600'])
+('f04ebc99-9c0b-4ef8-bb6d-6bb9bd380f44', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'Healthy Male Goat (Medium)', 'Medium-sized healthy male goat. Vaccinated and pasture-fed. Weight approx. 20kg. Suitable for ceremonies or direct meat processing.', 4, 35000.00, 10.00, 'pieces', 'in_stock', '2-3 days', 4.8, ARRAY['https://images.unsplash.com/photo-1524413840807-0c3cb6fa808d?auto=format&fit=crop&q=80&w=600'])
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert Mock Reviews
 INSERT INTO reviews (id, product_id, reviewer_id, rating, comment) VALUES
-('r1eebc99-9c0b-4ef8-bb6d-6bb9bd380e11', 'p2eebc99-9c0b-4ef8-bb6d-6bb9bd380f22', 'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 5, 'Super fresh tomatoes! Will definitely buy again.')
+('e01ebc99-9c0b-4ef8-bb6d-6bb9bd380e11', 'f02ebc99-9c0b-4ef8-bb6d-6bb9bd380f22', 'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 5, 'Super fresh tomatoes! Will definitely buy again.')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO reviews (id, product_id, reviewer_id, rating, comment) VALUES
-('r2eebc99-9c0b-4ef8-bb6d-6bb9bd380e22', 'p1eebc99-9c0b-4ef8-bb6d-6bb9bd380f11', 'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 4, 'Very clean rice. Found no stones at all. Good texture when cooked.')
+('e02ebc99-9c0b-4ef8-bb6d-6bb9bd380e22', 'f01ebc99-9c0b-4ef8-bb6d-6bb9bd380f11', 'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 4, 'Very clean rice. Found no stones at all. Good texture when cooked.')
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert Mock Notifications
 INSERT INTO notifications (id, user_id, title, message, is_read) VALUES
-('n1eebc99-9c0b-4ef8-bb6d-6bb9bd380d11', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'Welcome to Agrein!', 'Your farmer account has been approved. You can now start listing products and earning.', false)
+('de1ebc99-9c0b-4ef8-bb6d-6bb9bd380d11', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'Welcome to Agrein!', 'Your farmer account has been approved. You can now start listing products and earning.', false)
 ON CONFLICT (id) DO NOTHING;

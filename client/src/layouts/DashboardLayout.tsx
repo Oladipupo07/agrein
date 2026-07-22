@@ -112,6 +112,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
       case 'buyer':
         return [
           { name: 'Buyer Dashboard', tab: 'overview', icon: LayoutDashboard },
+          { name: 'My Shopping Cart', tab: 'cart', icon: ShoppingCart },
           { name: 'My Orders', tab: 'orders', icon: Package },
           { name: 'My Wishlist', tab: 'wishlist', icon: ShoppingBag },
           { name: 'Write Reviews', tab: 'reviews', icon: Award },
