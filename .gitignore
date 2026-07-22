@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+client/dist/
+server/dist/
+build/
+
+# Environment files — real secrets only. `.env.example` files MUST be committed.
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Server-side secrets (real only — example files are tracked)
+server/.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test coverage
+coverage/
+
+# TypeScript build info
+*.tsbuildinfo
