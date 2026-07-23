@@ -3,7 +3,7 @@ import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
 import { orderService, analyticsService, authService } from '../services/api';
-import { InterswitchMock } from '../components/InterswitchMock';
+import { InterswitchCheckout } from '../components/InterswitchCheckout';
 import { InvoiceModal } from '../components/InvoiceModal';
 import { 
   ShoppingBag, Package, Trash2, CreditCard, MapPin, Truck, 
@@ -523,7 +523,7 @@ export const BuyerDashboard: React.FC = () => {
 
       {/* INTERSWITCH POPUP MODAL OVERLAY */}
       {isPaying && (
-        <InterswitchMock
+        <InterswitchCheckout
           reference={checkoutRef}
           amount={checkoutAmount}
           email={user?.email || 'buyer@agrein.com'}
