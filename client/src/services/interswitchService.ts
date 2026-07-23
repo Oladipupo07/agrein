@@ -28,11 +28,9 @@ declare global {
 
 import { paymentService } from './api';
 
-// ─── Inline Checkout SDK URLs ────────────────────────────────────────────────
-const INLINE_CHECKOUT_URLS = {
-  sandbox: 'https://newwebpay-sandbox.interswitchng.com/inline-checkout.js',
-  live: 'https://newwebpay.interswitchng.com/inline-checkout.js',
-} as const;
+// ─── Inline Checkout SDK URL ──────────────────────────────────────────────────
+// Interswitch WebPAY Inline Checkout universal script URL
+const INTERSWITCH_SDK_URL = 'https://newwebpay.interswitchng.com/inline-checkout.js';
 
 // ─── Interswitch Inline Checkout Parameter Types ──────────────────────────────
 export interface InterswitchCheckoutParams {
@@ -117,12 +115,6 @@ export function loadInterswitchScript(): Promise<void> {
       return;
     }
 
-    const mode = getEnvironmentMode();
-    const scriptSrc =
-      mode === 'TEST'
-        ? INLINE_CHECKOUT_URLS.sandbox
-        : INLINE_CHECKOUT_URLS.live;
-
     // Clean up any previously injected script tag so we can try a fresh load
     const existing = document.getElementById('interswitch-inline-script');
     if (existing) {
@@ -131,7 +123,7 @@ export function loadInterswitchScript(): Promise<void> {
 
     const script = document.createElement('script');
     script.id = 'interswitch-inline-script';
-    script.src = scriptSrc;
+    script.src = INTERSWITCH_SDK_URL;
     script.async = true;
 
     script.onload = () => {
@@ -152,7 +144,7 @@ export function loadInterswitchScript(): Promise<void> {
     script.onerror = () => {
       reject(
         new Error(
-          `Failed to load Interswitch SDK script from ${scriptSrc}. Check your network connection.`
+          `Failed to load Interswitch SDK script from ${INTERSWITCH_SDK_URL}. Check your network connection.`
         )
       );
     };
@@ -207,16 +199,19 @@ export async function initiatePayment(
       // Interswitch expects amount in kobo/minor denomination (amount * 100)
       const amountInKobo = Math.round(Number(amount) * 100);
 
+      const mode = getEnvironmentMode();
+
+      const defaultMerchant = mode === 'TEST' ? 'MX2609' : 'MX179463';
+      const defaultPayItem = mode === 'TEST' ? 'Default_Payable_MX2609' : '7974853';
+
       const merchantCode =
         customMerchant ||
         import.meta.env.VITE_INTERSWITCH_MERCHANT_CODE ||
-        'MX179463';
+        defaultMerchant;
       const payItemId =
         customPayItem ||
         import.meta.env.VITE_INTERSWITCH_PAY_ITEM_ID ||
-        '9646887';
-
-      const mode = getEnvironmentMode();
+        defaultPayItem;
 
       const paymentParams: InterswitchCheckoutParams = {
         merchant_code: String(merchantCode).trim(),
