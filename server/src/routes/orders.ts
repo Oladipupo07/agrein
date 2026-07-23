@@ -1,7 +1,17 @@
 import { Router, Response } from 'express';
-import { randomUUID } from 'crypto';
 import { db } from '../services/db';
 import { authenticateToken, AuthRequest, requireRole } from '../middleware/auth';
+
+/**
+ * Generate a unique Interswitch-compatible transaction reference.
+ * Interswitch txn_ref has a strict 25-character maximum.
+ * Format: AGR + 10-digit timestamp-based + 6-char random hex = 19 chars (safe)
+ */
+function generateTxnRef(): string {
+  const ts = Date.now().toString(36).toUpperCase().slice(-8); // 8 chars
+  const rand = Math.random().toString(36).substring(2, 8).toUpperCase(); // 6 chars
+  return `AGR${ts}${rand}`; // = 3 + 8 + 6 = 17 chars max — well within 25
+}
 
 const router = Router();
 
@@ -40,8 +50,8 @@ router.post('/', authenticateToken, requireRole(['buyer']), async (req: AuthRequ
       });
     }
 
-    // Generate unique Interswitch transaction reference
-    const reference = 'AGR-TX-' + randomUUID();
+    // Generate unique Interswitch-compatible transaction reference (max 25 chars)
+    const reference = generateTxnRef();
 
     // Create the order in the database
     const order = await db.orders.create(

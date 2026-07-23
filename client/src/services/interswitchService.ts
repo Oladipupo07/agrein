@@ -347,10 +347,9 @@ export async function initiateSubscriptionPayment(
  * @returns {string} Payment reference
  */
 export function generatePaymentReference(): string {
-  const prefix = 'AGR';
-  const timestamp = Date.now().toString(36).toUpperCase();
-  const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `${prefix}-${timestamp}-${randomStr}`;
+  const ts = Date.now().toString(36).toUpperCase().slice(-8); // 8 chars
+  const rand = Math.random().toString(36).substring(2, 8).toUpperCase(); // 6 chars
+  return `AGR${ts}${rand}`; // 17 chars total — well within Interswitch's 25-char limit
 }
 
 /**
