@@ -47,9 +47,11 @@ export interface InterswitchCheckoutParams {
   site_redirect_url: string;
   tokenise_card?: string;
   access_token?: string;
+  hash?: string;         // SHA512 hash required for LIVE mode
   mode: 'TEST' | 'LIVE';
   onComplete: (response: InterswitchCallbackResponse) => void;
 }
+
 
 // ─── Response from the onComplete callback ───────────────────────────────────
 export interface InterswitchCallbackResponse {
@@ -195,37 +197,64 @@ export async function initiatePayment(
   try {
     await loadInterswitchScript();
 
+    // Interswitch expects amount in kobo/minor denomination (amount * 100)
+    const amountInKobo = Math.round(Number(amount) * 100);
+    const mode = getEnvironmentMode();
+
+    const defaultMerchant = mode === 'TEST' ? 'MX2609' : 'MX179463';
+    const defaultPayItem = mode === 'TEST' ? 'Default_Payable_MX2609' : '7974853';
+
+    const merchantCode = String(
+      customMerchant ||
+      import.meta.env.VITE_INTERSWITCH_MERCHANT_CODE ||
+      defaultMerchant
+    ).trim();
+
+    const payItemId = String(
+      customPayItem ||
+      import.meta.env.VITE_INTERSWITCH_PAY_ITEM_ID ||
+      defaultPayItem
+    ).trim();
+
+    const txnRef = String(paymentRef).trim();
+
+    // ── Fetch server-generated hash (required for LIVE mode) ──────────────
+    // Interswitch LIVE mode requires SHA512(merchantCode+payItemId+txnRef+amount+currency+secretKey)
+    // We generate this server-side to keep the secret key off the browser.
+    let checkoutHash: string | undefined;
+    try {
+      const hashRes = await paymentService.generateHash({
+        merchantCode,
+        payItemId,
+        txnRef,
+        amount: amountInKobo,
+        currency: 566,
+      });
+      checkoutHash = hashRes.hash;
+      console.log('✅ Interswitch hash fetched from server.');
+    } catch (hashErr: any) {
+      console.warn('⚠️ Could not fetch Interswitch hash from server:', hashErr?.message);
+      // Proceed without hash — may still work in TEST mode
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
+    const redirectUrl = window.location.origin;
+
     return new Promise((resolve) => {
-      // Interswitch expects amount in kobo/minor denomination (amount * 100)
-      const amountInKobo = Math.round(Number(amount) * 100);
-
-      const mode = getEnvironmentMode();
-
-      const defaultMerchant = mode === 'TEST' ? 'MX2609' : 'MX179463';
-      const defaultPayItem = mode === 'TEST' ? 'Default_Payable_MX2609' : '7974853';
-
-      const merchantCode =
-        customMerchant ||
-        import.meta.env.VITE_INTERSWITCH_MERCHANT_CODE ||
-        defaultMerchant;
-      const payItemId =
-        customPayItem ||
-        import.meta.env.VITE_INTERSWITCH_PAY_ITEM_ID ||
-        defaultPayItem;
-
       const paymentParams: InterswitchCheckoutParams = {
-        merchant_code: String(merchantCode).trim(),
-        pay_item_id: String(payItemId).trim(),
+        merchant_code: merchantCode,
+        pay_item_id: payItemId,
         pay_item_name: itemName || 'Agrein Payment',
-        txn_ref: String(paymentRef).trim(),
+        txn_ref: txnRef,
         amount: amountInKobo,
         currency: 566, // 566 = NGN (Nigerian Naira)
         cust_email: String(email).trim(),
         cust_name: customerName || email.split('@')[0],
         cust_id: customerId || undefined,
         cust_mobile_no: customerMobile || undefined,
-        site_redirect_url: window.location.origin,
+        site_redirect_url: redirectUrl,
         mode,
+        ...(checkoutHash ? { hash: checkoutHash } : {}),
         onComplete: async function (response: InterswitchCallbackResponse) {
           console.log('Interswitch payment response:', response);
 
@@ -274,6 +303,19 @@ export async function initiatePayment(
       };
 
       if (typeof window.webpayCheckout === 'function') {
+        // ── DEBUG: Log exact parameters sent to Interswitch ─────────────
+        console.group('🔵 Interswitch webpayCheckout — Parameters Sent');
+        console.log('merchant_code :', paymentParams.merchant_code);
+        console.log('pay_item_id   :', paymentParams.pay_item_id);
+        console.log('txn_ref       :', paymentParams.txn_ref, '(length:', paymentParams.txn_ref.length, ')');
+        console.log('amount (kobo) :', paymentParams.amount);
+        console.log('currency      :', paymentParams.currency);
+        console.log('mode          :', paymentParams.mode);
+        console.log('hash          :', checkoutHash ? checkoutHash.substring(0, 20) + '...' : 'NOT SET ⚠️');
+        console.log('cust_email    :', paymentParams.cust_email);
+        console.log('redirect_url  :', paymentParams.site_redirect_url);
+        console.groupEnd();
+        // ────────────────────────────────────────────────────────────────
         window.webpayCheckout(paymentParams);
       } else {
         resolve({

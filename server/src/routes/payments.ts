@@ -66,6 +66,31 @@ async function verifyInterswitchTransaction(
   };
 }
 
+// ─── NEW: Generate Interswitch Checkout Hash (server-side, protects secret key) ───
+// Interswitch LIVE mode requires a SHA512 hash passed to webpayCheckout.
+// Formula: SHA512(merchantCode + payItemId + txnRef + amount + currency + secretKey)
+// The amount here must be in KOBO (minor denomination), as an integer string.
+router.post('/hash', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const { merchantCode, payItemId, txnRef, amount, currency } = req.body;
+
+  if (!merchantCode || !payItemId || !txnRef || amount === undefined || !currency) {
+    return res.status(400).json({ error: 'Missing required fields: merchantCode, payItemId, txnRef, amount, currency' });
+  }
+
+  const secretKey = process.env.INTERSWITCH_SECRET_KEY || '';
+  if (!secretKey) {
+    return res.status(500).json({ error: 'Interswitch secret key is not configured on the server.' });
+  }
+
+  // Hash string: all values concatenated as strings, amount must be kobo integer string
+  const rawString = `${merchantCode}${payItemId}${txnRef}${amount}${currency}${secretKey}`;
+  const hash = crypto.createHash('sha512').update(rawString).digest('hex');
+
+  console.log(`[Interswitch Hash] txnRef=${txnRef} amount=${amount} hash=${hash.substring(0, 16)}...`);
+
+  return res.json({ hash });
+});
+
 // 1. Interswitch Requery / Verify Payment Endpoint
 router.post('/verify', authenticateToken, async (req: AuthRequest, res: Response) => {
   const { reference } = req.body;

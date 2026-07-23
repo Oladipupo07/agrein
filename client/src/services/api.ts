@@ -118,8 +118,23 @@ export const paymentService = {
   async requestWithdrawal(amount: number) {
     const res = await api.post('/payments/withdraw', { amount });
     return res.data;
+  },
+  /**
+   * Generate the SHA512 hash required by Interswitch LIVE mode.
+   * Done server-side to protect the secret key from browser exposure.
+   */
+  async generateHash(params: {
+    merchantCode: string;
+    payItemId: string;
+    txnRef: string;
+    amount: number;   // in KOBO (minor denomination)
+    currency: number; // 566 for NGN
+  }): Promise<{ hash: string }> {
+    const res = await api.post('/payments/hash', params);
+    return res.data;
   }
 };
+
 
 export const deliveryService = {
   async getMyDeliveries() {
