@@ -1,131 +1,104 @@
-import { Router, Response } from 'express';
-import { db } from '../services/db';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { Router, Request, Response } from 'express';
 
-const router = Router();
+export const rfqRouter = Router();
 
-// In-memory mock storage for RFQs if DB tables are pending
-let rfqs: any[] = [
+// Reverse Marketplace (Purchase Requests & Farmer Bids)
+const mockRfqs = [
   {
-    id: 'rfq-101',
-    buyer_id: 'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a44',
-    buyer_name: 'Nestlé Agro-Procurement Nigeria',
-    title: '50 Tonnes Cleaned Yellow Maize (Grade A)',
-    category: 'Grains',
-    target_state: 'Kano / Kaduna',
-    quantity_required: '50 Tonnes',
-    budget_per_unit: '₦480,000 / Tonne',
-    deadline: '2026-08-15',
-    description: 'Looking for high-grade yellow maize with moisture content strictly under 12%. Direct delivery to storage silo in Kaduna.',
+    id: 'rfq-201',
+    buyerName: 'Eko Hotels & Suites Procurement',
+    buyerType: 'Hotel & Hospitality',
+    cropName: 'Fresh Plum Tomatoes',
+    quantityRequired: 5,
+    unit: 'tons',
+    targetPricePerUnit: 1200000, // NGN per ton
+    deliveryLocation: 'Victoria Island, Lagos',
+    deadlineDate: '2026-08-10',
     status: 'open',
-    bids_count: 4,
-    created_at: new Date()
+    description: 'Weekly supply contract for fresh, firm red tomatoes. Must be cold-chain delivered to our main central kitchen.',
+    bidsCount: 4,
+    bids: [
+      {
+        bidId: 'bid-01',
+        farmerName: 'SunRays Agro Cooperative (Jos)',
+        offeredPrice: 1150000,
+        offeredQuantity: 5,
+        fulfillmentDate: '2026-08-08',
+        status: 'submitted',
+        notes: 'We can guarantee temperature-monitored refrigerated transport directly to VI Lagos.'
+      },
+      {
+        bidId: 'bid-02',
+        farmerName: 'Dan-Batatta Farms (Kano)',
+        offeredPrice: 1100000,
+        offeredQuantity: 5,
+        fulfillmentDate: '2026-08-09',
+        status: 'submitted',
+        notes: 'Bulk price discount applied for 5 tons.'
+      }
+    ]
   },
   {
-    id: 'rfq-102',
-    buyer_id: 'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a44',
-    buyer_name: 'Grand Cereals Exporters Ltd',
-    title: '30 Tonnes Premium White Sesame Seeds',
-    category: 'Grains',
-    target_state: 'Jigawa / Benue',
-    quantity_required: '30 Tonnes',
-    budget_per_unit: '₦950,000 / Tonne',
-    deadline: '2026-08-20',
-    description: 'High oil content white sesame seeds required for export processing. Purity level 99%.',
+    id: 'rfq-202',
+    buyerName: 'Crown Flour Mills Nigeria',
+    buyerType: 'Food Processor',
+    cropName: 'Yellow Maize (Moisture < 12%)',
+    quantityRequired: 100,
+    unit: 'tons',
+    targetPricePerUnit: 920000,
+    deliveryLocation: 'Ikeja Industrial Estate, Lagos',
+    deadlineDate: '2026-08-25',
     status: 'open',
-    bids_count: 2,
-    created_at: new Date()
+    description: 'Required for poultry feed production. Strict lab testing on arrival for aflatoxin levels.',
+    bidsCount: 7,
+    bids: []
   }
 ];
 
-let rfqBids: any[] = [
-  {
-    id: 'bid-1',
-    rfq_id: 'rfq-101',
-    farmer_id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
-    farmer_name: 'Kole Adebayo (Kano Grain Cooperative)',
-    price_per_unit: 470000,
-    delivery_timeline: '7 days after contract award',
-    notes: 'Can supply up to 35 tonnes from our current harvest in Dawanau silos.',
-    created_at: new Date()
-  }
-];
-
-// 1. List all active RFQs
-router.get('/', async (req, res) => {
-  try {
-    res.json(rfqs);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch RFQs' });
-  }
+rfqRouter.get('/', (req: Request, res: Response) => {
+  res.json({ success: true, data: mockRfqs });
 });
 
-// 2. Post a new RFQ (Institutional Buyers)
-router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
-  if (!req.user || (req.user.role !== 'buyer' && req.user.role !== 'admin')) {
-    return res.status(403).json({ error: 'Only buyers can submit RFQs' });
-  }
-
-  const { title, category, target_state, quantity_required, budget_per_unit, deadline, description } = req.body;
-
-  if (!title || !quantity_required) {
-    return res.status(400).json({ error: 'Title and required quantity are required' });
-  }
-
+rfqRouter.post('/', (req: Request, res: Response) => {
+  const { buyerName, cropName, quantityRequired, unit, targetPricePerUnit, deliveryLocation, deadlineDate, description } = req.body;
   const newRfq = {
-    id: 'rfq-' + Date.now(),
-    buyer_id: req.user.id,
-    buyer_name: req.user.email.split('@')[0].toUpperCase() + ' Institutional Buyer',
-    title,
-    category: category || 'General Produce',
-    target_state: target_state || 'Any State',
-    quantity_required,
-    budget_per_unit: budget_per_unit || 'Negotiable',
-    deadline: deadline || '2026-09-01',
-    description: description || '',
+    id: `rfq-${Date.now()}`,
+    buyerName: buyerName || 'Bulk Buyer Corp',
+    buyerType: 'Agribusiness',
+    cropName,
+    quantityRequired: Number(quantityRequired),
+    unit: unit || 'tons',
+    targetPricePerUnit: Number(targetPricePerUnit),
+    deliveryLocation,
+    deadlineDate,
     status: 'open',
-    bids_count: 0,
-    created_at: new Date()
+    description,
+    bidsCount: 0,
+    bids: []
   };
-
-  rfqs.unshift(newRfq);
-  res.status(201).json({ message: 'RFQ published successfully', rfq: newRfq });
+  mockRfqs.unshift(newRfq);
+  res.json({ success: true, message: 'RFQ Purchase Request posted successfully to Reverse Marketplace', data: newRfq });
 });
 
-// 3. Submit a Bid on an RFQ (Farmers)
-router.post('/:id/bids', authenticateToken, async (req: AuthRequest, res: Response) => {
-  if (!req.user || req.user.role !== 'farmer') {
-    return res.status(403).json({ error: 'Only farmers can submit bids on RFQs' });
-  }
+rfqRouter.post('/:id/bids', (req: Request, res: Response) => {
+  const { rfqId } = req.params;
+  const { farmerName, offeredPrice, offeredQuantity, fulfillmentDate, notes } = req.body;
 
-  const rfq = rfqs.find((r) => r.id === req.params.id);
-  if (!rfq) {
-    return res.status(404).json({ error: 'RFQ not found' });
-  }
-
-  const { price_per_unit, delivery_timeline, notes } = req.body;
+  const rfq = mockRfqs.find(r => r.id === rfqId || r.id === req.params.id);
+  if (!rfq) return res.status(404).json({ error: 'RFQ not found' });
 
   const newBid = {
-    id: 'bid-' + Date.now(),
-    rfq_id: req.params.id,
-    farmer_id: req.user.id,
-    farmer_name: req.user.email.split('@')[0],
-    price_per_unit: Number(price_per_unit),
-    delivery_timeline,
-    notes: notes || '',
-    created_at: new Date()
+    bidId: `bid-${Date.now()}`,
+    farmerName: farmerName || 'Verified Farmer',
+    offeredPrice: Number(offeredPrice),
+    offeredQuantity: Number(offeredQuantity),
+    fulfillmentDate,
+    status: 'submitted',
+    notes
   };
 
-  rfqBids.push(newBid);
-  rfq.bids_count += 1;
+  rfq.bids.push(newBid);
+  rfq.bidsCount = rfq.bids.length;
 
-  res.status(201).json({ message: 'Bid submitted successfully', bid: newBid });
+  res.json({ success: true, message: 'Bid submitted successfully to buyer', data: newBid });
 });
-
-// 4. Get bids for an RFQ
-router.get('/:id/bids', authenticateToken, async (req: AuthRequest, res: Response) => {
-  const bids = rfqBids.filter((b) => b.rfq_id === req.params.id);
-  res.json(bids);
-});
-
-export default router;

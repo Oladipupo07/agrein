@@ -1,181 +1,136 @@
-import { Router, Response } from 'express';
-import { db } from '../services/db';
-import { authenticateToken, AuthRequest, requireRole } from '../middleware/auth';
+import { Router, Request, Response } from 'express';
 
-const router = Router();
+export const productsRouter = Router();
 
-// 1. Get All Categories
-router.get('/categories', async (req, res) => {
-  try {
-    const list = await db.categories.listAll();
-    res.json(list);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch categories' });
+// Mock high-quality agricultural products catalog
+const mockProducts = [
+  {
+    id: 'prod-001',
+    title: 'Grade-A Premium White Maize (Dry Grain)',
+    category: 'Grains & Cereals',
+    pricePerUnit: 48000,
+    unit: 'bag (50kg)',
+    availableStock: 250,
+    minOrderQuantity: 5,
+    farmer: {
+      id: 'farm-101',
+      farmName: 'GreenPastures Farms Ltd',
+      location: 'Kano, Kano State',
+      trustScore: 4.9,
+      isVerified: true,
+    },
+    isOrganic: true,
+    isBulkAvailable: true,
+    harvestDate: '2026-06-15',
+    imageUrl: 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&q=80&w=800',
+    qrCode: 'AGREIN-TRACE-MAIZE-KN2026-9912',
+    traceability: [
+      { stage: 'Harvesting', location: 'Funtua Cluster, Kano', date: '2026-06-15', status: 'Passed Moisture Check (12%)' },
+      { stage: 'Quality & Grading', location: 'Agrein Processing Depot, Kano', date: '2026-06-18', status: 'Certified Grade-A Aflatoxin Free' },
+      { stage: 'Packaging & QR Sealed', location: 'Kano Logistics Hub', date: '2026-06-20', status: 'Stored in Temperature Controlled Silo' }
+    ]
+  },
+  {
+    id: 'prod-002',
+    title: 'Fresh Farm Tomatoes (Rutu Grade)',
+    category: 'Vegetables',
+    pricePerUnit: 32000,
+    unit: 'basket (25kg)',
+    availableStock: 120,
+    minOrderQuantity: 2,
+    farmer: {
+      id: 'farm-102',
+      farmName: 'SunRays Agro Cooperative',
+      location: 'Jos, Plateau State',
+      trustScore: 4.8,
+      isVerified: true,
+    },
+    isOrganic: false,
+    isBulkAvailable: true,
+    harvestDate: '2026-07-20',
+    imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=800',
+    qrCode: 'AGREIN-TRACE-TOMATO-JS2026-4421',
+    traceability: [
+      { stage: 'Harvesting', location: 'Barkin Ladi, Jos', date: '2026-07-20', status: 'Handpicked Early Morning' },
+      { stage: 'Cold-Chain Dispatch', location: 'Jos Central Aggregation Point', date: '2026-07-21', status: 'Loaded in Cold-Trailer (8°C)' }
+    ]
+  },
+  {
+    id: 'prod-003',
+    title: 'Export Quality Raw Cashew Nuts (Nut Count: 190)',
+    category: 'Cash Crops',
+    pricePerUnit: 1250000,
+    unit: 'ton',
+    availableStock: 45,
+    minOrderQuantity: 1,
+    farmer: {
+      id: 'farm-103',
+      farmName: 'Ogbomoso Export Farmers Association',
+      location: 'Ogbomoso, Oyo State',
+      trustScore: 5.0,
+      isVerified: true,
+    },
+    isOrganic: true,
+    isBulkAvailable: true,
+    harvestDate: '2026-05-10',
+    imageUrl: 'https://images.unsplash.com/photo-1509358271058-acd22cc93898?auto=format&fit=crop&q=80&w=800',
+    qrCode: 'AGREIN-TRACE-CASHEW-OY2026-0081',
+    traceability: [
+      { stage: 'Harvest & Sun Drying', location: 'Ogbomoso Farms', date: '2026-05-10', status: 'KOR 48 lbs / Outturn Tested' },
+      { stage: 'Export Packaging', location: 'Lagos Port Terminal Warehouse', date: '2026-06-01', status: 'Jute Bags Stenciled & Phytosanitary Cleared' }
+    ]
+  },
+  {
+    id: 'prod-004',
+    title: 'Processed Yellow Cassava Flour (HQCF)',
+    category: 'Tubers & Processed',
+    pricePerUnit: 380000,
+    unit: 'ton',
+    availableStock: 80,
+    minOrderQuantity: 1,
+    farmer: {
+      id: 'farm-104',
+      farmName: 'Benue Agro Processors Alliance',
+      location: 'Makurdi, Benue State',
+      trustScore: 4.7,
+      isVerified: true,
+    },
+    isOrganic: true,
+    isBulkAvailable: true,
+    harvestDate: '2026-07-01',
+    imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=800',
+    qrCode: 'AGREIN-TRACE-CASSAVA-BN2026-1192',
+    traceability: [
+      { stage: 'Harvesting', location: 'Gboko, Benue State', date: '2026-07-01', status: 'Starch Content Verified' },
+      { stage: 'Flash Drying Processing', location: 'Makurdi Factory', date: '2026-07-03', status: 'Food Grade Micro-Milled' }
+    ]
   }
+];
+
+productsRouter.get('/', (req: Request, res: Response) => {
+  const { category, search, minPrice, maxPrice, organicOnly } = req.query;
+  let filtered = [...mockProducts];
+
+  if (category && category !== 'All') {
+    filtered = filtered.filter(p => p.category.toLowerCase() === String(category).toLowerCase());
+  }
+
+  if (search) {
+    const q = String(search).toLowerCase();
+    filtered = filtered.filter(p => p.title.toLowerCase().includes(q) || p.farmer.farmName.toLowerCase().includes(q));
+  }
+
+  res.json({
+    success: true,
+    count: filtered.length,
+    data: filtered,
+  });
 });
 
-// 2. Search / List Products
-router.get('/', async (req, res) => {
-  const { category, search, state } = req.query;
-
-  try {
-    const list = await db.products.listAll({
-      category: category as string,
-      search: search as string,
-      state: state as string
-    });
-    res.json(list);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to search products' });
+productsRouter.get('/:id', (req: Request, res: Response) => {
+  const product = mockProducts.find(p => p.id === req.params.id);
+  if (!product) {
+    return res.status(404).json({ error: 'Product not found' });
   }
+  res.json({ success: true, data: product });
 });
-
-// 3. Get Products by Farmer (For Dashboard)
-router.get('/farmer/my-products', authenticateToken, requireRole(['farmer']), async (req: AuthRequest, res: Response) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-
-  try {
-    const list = await db.products.listByFarmer(req.user.id);
-    res.json(list);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch farmer products' });
-  }
-});
-
-// 4. Get Product Details by ID
-router.get('/:id', async (req, res) => {
-  try {
-    const product = await db.products.findById(req.params.id);
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-    res.json(product);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch product details' });
-  }
-});
-
-// 5. Create a Product (Farmer only)
-router.post('/', authenticateToken, requireRole(['farmer']), async (req: AuthRequest, res: Response) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-
-  const { name, description, categoryId, price, quantity, quantityUnit, deliveryEstimate, imagePaths } = req.body;
-
-  if (!name || !description || !categoryId || !price || !quantity) {
-    return res.status(400).json({ error: 'Missing required product fields' });
-  }
-
-  try {
-    // Check if farmer is approved
-    const farmer = await db.farmers.findById(req.user.id);
-    if (!farmer || farmer.verification_status !== 'approved') {
-      return res.status(403).json({ error: 'Your farmer profile must be approved by an Admin to list products.' });
-    }
-
-    const newProduct = await db.products.create(
-      req.user.id,
-      name,
-      description,
-      Number(categoryId),
-      Number(price),
-      Number(quantity),
-      quantityUnit,
-      deliveryEstimate,
-      imagePaths || []
-    );
-
-    res.status(201).json(newProduct);
-  } catch (error) {
-    console.error('Create product error:', error);
-    res.status(500).json({ error: 'Failed to create product' });
-  }
-});
-
-// 6. Update Product (Farmer only)
-router.put('/:id', authenticateToken, requireRole(['farmer']), async (req: AuthRequest, res: Response) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-
-  try {
-    const product = await db.products.findById(req.params.id);
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-
-    if (product.farmer_id !== req.user.id) {
-      return res.status(403).json({ error: 'Forbidden: You do not own this product' });
-    }
-
-    const { name, description, categoryId, price, quantity, quantityUnit, deliveryEstimate, availabilityStatus } = req.body;
-    
-    const updates: any = {};
-    if (name) updates.name = name;
-    if (description) updates.description = description;
-    if (categoryId) updates.category_id = Number(categoryId);
-    if (price !== undefined) updates.price = Number(price);
-    if (quantity !== undefined) updates.quantity = Number(quantity);
-    if (quantityUnit) updates.quantity_unit = quantityUnit;
-    if (deliveryEstimate) updates.delivery_estimate = deliveryEstimate;
-    if (availabilityStatus) updates.availability_status = availabilityStatus;
-
-    const updated = await db.products.update(req.params.id, updates);
-    res.json(updated);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update product' });
-  }
-});
-
-// 7. Delete Product (Farmer only)
-router.delete('/:id', authenticateToken, requireRole(['farmer']), async (req: AuthRequest, res: Response) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-
-  try {
-    const product = await db.products.findById(req.params.id);
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-
-    if (product.farmer_id !== req.user.id) {
-      return res.status(403).json({ error: 'Forbidden: You do not own this product' });
-    }
-
-    await db.products.delete(req.params.id);
-    res.json({ success: true, message: 'Product deleted' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete product' });
-  }
-});
-
-// 8. Add Review for Product (Buyer only)
-router.post('/:id/reviews', authenticateToken, requireRole(['buyer']), async (req: AuthRequest, res: Response) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  const { rating, comment } = req.body;
-
-  if (!rating || rating < 1 || rating > 5) {
-    return res.status(400).json({ error: 'Rating must be between 1 and 5' });
-  }
-
-  try {
-    const product = await db.products.findById(req.params.id);
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-
-    const review = await db.reviews.create(req.params.id, req.user.id, Number(rating), comment || '');
-    res.status(201).json(review);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create review' });
-  }
-});
-
-// 9. Get Reviews for Product
-router.get('/:id/reviews', async (req, res) => {
-  try {
-    const list = await db.reviews.listByProduct(req.params.id);
-    res.json(list);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve reviews' });
-  }
-});
-
-export default router;

@@ -8,51 +8,38 @@ export default {
   theme: {
     extend: {
       colors: {
-        forest: {
-          50: '#f2f8f5',
-          100: '#e1efe8',
-          200: '#c5dfd3',
-          300: '#9bcaab',
-          400: '#68ad7f',
-          500: '#469160',
-          600: '#34754a',
-          700: '#2a5d3c',
-          800: '#234b32',
-          900: '#1b3b27',
-          950: '#0c1a11', // Forest deep black-green
+        agrein: {
+          50: '#f0fdf4',
+          100: '#dcfce7',
+          200: '#bbf7d0',
+          300: '#86efac',
+          400: '#4ade80',
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d',
+          800: '#166534',
+          900: '#14532d',
+          950: '#052e16',
         },
-        mint: {
-          50: '#f3fbf6',
-          100: '#e3f7eb',
-          200: '#cbf1db',
-          300: '#a3e4c0',
-          400: '#72cf9d',
-          500: '#48b47e',
-          600: '#379465',
-          700: '#2f7653',
-          800: '#295e43',
-          900: '#234e39',
-          950: '#0f2a1e',
+        earth: {
+          100: '#fdf6e7',
+          200: '#f7e3ba',
+          500: '#d97706',
+          800: '#78350f',
+          900: '#451a03',
         },
-        agriBg: {
-          light: '#f7faf8',
-          dark: '#080f0c',
-        },
-        agriCard: {
-          light: 'rgba(255, 255, 255, 0.75)',
-          dark: 'rgba(12, 26, 17, 0.75)',
+        dark: {
+          bg: '#0a0f0d',
+          card: '#121a16',
+          border: '#1f2d26',
         }
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-      },
-      backdropBlur: {
-        xs: '2px',
+        sans: ['Outfit', 'Inter', 'sans-serif'],
       },
       boxShadow: {
-        'glass-light': '0 8px 32px 0 rgba(16, 185, 129, 0.08)',
-        'glass-dark': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
-        'glow': '0 0 15px rgba(72, 180, 126, 0.4)',
+        'glow': '0 0 25px -5px rgba(34, 197, 94, 0.35)',
+        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
       }
     },
   },
