@@ -39,6 +39,31 @@ function renderNavbar(state, actions) {
           <button onclick="actions.setView('marketplace')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'marketplace' ? 'bg-white dark:bg-emerald-700 text-emerald-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-white'}">
             Marketplace
           </button>
+
+          ${activeRole === 'farmer' ? `
+            <button onclick="actions.setView('farmer-dashboard')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'farmer-dashboard' ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold' : 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'}">
+              <i class="fa-solid fa-tractor mr-1"></i> Farmer Dashboard
+            </button>
+            <button onclick="actions.setView('farmer-verification')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'farmer-verification' ? 'bg-emerald-700 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-emerald-700'}">
+              <i class="fa-solid fa-shield-halved text-emerald-500 mr-1"></i> Farm Verification
+            </button>
+          ` : ''}
+
+          ${activeRole === 'buyer' ? `
+            <button onclick="actions.setView('buyer-dashboard')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'buyer-dashboard' ? 'bg-blue-600 text-white shadow-md font-extrabold' : 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30'}">
+              <i class="fa-solid fa-basket-shopping mr-1"></i> Buyer Dashboard
+            </button>
+          ` : ''}
+
+          ${activeRole === 'admin' ? `
+            <button onclick="actions.setView('admin-dashboard')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'admin-dashboard' ? 'bg-purple-600 text-white shadow-md font-extrabold' : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30'}">
+              <i class="fa-solid fa-shield-halved mr-1"></i> Admin Dashboard
+            </button>
+            <button onclick="actions.setView('admin-verification')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'admin-verification' ? 'bg-purple-700 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-purple-600'}">
+              <i class="fa-solid fa-user-check mr-1"></i> Verify Queue
+            </button>
+          ` : ''}
+
           <button onclick="actions.setView('ai-insights')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'ai-insights' ? 'bg-white dark:bg-emerald-700 text-emerald-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-white'}">
             <i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> AI Forecast
           </button>

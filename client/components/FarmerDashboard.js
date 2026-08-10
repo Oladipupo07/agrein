@@ -17,7 +17,7 @@ function renderFarmerDashboard(state, actions) {
               ${isApproved ? renderVerifiedBadge(true) : `
                 <span class="px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center space-x-1">
                   <i class="fa-solid fa-clock text-amber-500"></i>
-                  <span>Verification ${verificationStatus.replaceAll('_', ' ').toLowerCase()}</span>
+                  <span>Status: ${verificationStatus.replaceAll('_', ' ')}</span>
                 </span>
               `}
               <span class="text-xs text-gray-500 font-semibold">${farmerProfile.location}</span>
@@ -41,6 +41,25 @@ function renderFarmerDashboard(state, actions) {
             </button>
           </div>
         </div>
+
+        ${!isApproved ? `
+          <!-- Unverified Farmer Action Card -->
+          <div class="p-6 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center space-x-2 text-amber-700 dark:text-amber-300 font-extrabold text-xs">
+                <i class="fa-solid fa-shield-halved text-amber-500 text-base"></i>
+                <span>Farm Verification Required Before Selling</span>
+              </div>
+              <p class="text-xs text-gray-600 dark:text-gray-300">
+                To protect buyers and ensure marketplace trust, all farmers must submit identity documents, farm photos, and land coordinates for Agrein approval.
+              </p>
+            </div>
+            <button onclick="actions.setView('farmer-verification')" class="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs shadow-lg transition-all flex-shrink-0 flex items-center space-x-2">
+              <i class="fa-solid fa-file-signature"></i>
+              <span>Complete Farm Verification</span>
+            </button>
+          </div>
+        ` : ''}
 
         <!-- Metric KPI Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
