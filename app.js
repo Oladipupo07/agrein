@@ -1,0 +1,1076 @@
+// Agrein Main Application Orchestrator
+
+const state = {
+  currentView: 'landing', // 'landing', 'marketplace', 'ai-insights', 'nearby-farms', 'farmer-dashboard', 'buyer-dashboard', 'admin-dashboard',
+  //                        'rfq-board', 'commodity-index', 'agro-doctor', 'weather', 'cooperatives', 'forum', 'learning-center',
+  //                        'wallet', 'logistics', 'export-trade', 'bulk-b2b', 'subscriptions', 'traceability',
+  //                        'farmer-verification', 'admin-verification', 'admin-review'
+  activeRole: 'visitor', // 'visitor', 'farmer', 'buyer', 'admin'
+  darkMode: false,
+  cart: [
+    {
+      id: 'prod-001',
+      title: 'Grade-A Sun-Dried Yellow Maize',
+      price: 480,
+      unit: 'kg',
+      cartQty: 100,
+      farmName: 'Zaria Agro-Gold Farms',
+      originState: 'Kaduna',
+      image: 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80'
+    }
+  ],
+  wishlist: ['prod-002', 'prod-004'],
+  
+  // Catalog filters
+  selectedCategory: 'All',
+  selectedState: 'All',
+  searchFilter: '',
+  organicOnlyFilter: false,
+  viewMode: 'grid',
+
+  // Product Modal State
+  activeModalProductId: null,
+  modalQty: 100,
+  modalTab: 'details',
+
+  // Chat State
+  chatActive: false,
+  chatRecipient: 'Mallam Ibrahim Bello',
+  chatMessages: [
+    { sender: 'them', text: 'Hello! Welcome to Zaria Agro-Gold Farms. Are you looking to order Yellow Maize or Sesame Seeds?', time: '10:14 AM' },
+    { sender: 'you', text: 'Hi Ibrahim, what is the moisture level on the current maize batch?', time: '10:15 AM' },
+    { sender: 'them', text: 'It is dried to exactly 12.5% moisture, double-cleaned and bagged in 50kg poly bags.', time: '10:16 AM' }
+  ],
+  chatInputText: '',
+
+  // Cart & Interswitch Checkout
+  cartOpen: false,
+  interswitchCheckoutActive: false,
+  interswitchCheckoutAmount: 0,
+  interswitchItemTitle: '',
+  interswitchMethod: 'inline', // 'inline', 'redirect', 'card'
+  interswitchProcessing: false,
+  interswitchSuccess: false,
+
+  // Authentication & Email OTP State
+  authModalActive: false,
+  authModalMode: 'login', // 'login', 'register', 'verify-otp'
+  authRegisterRole: 'BUYER', // 'BUYER', 'FARMER'
+  otpEmail: '',
+  otpRole: 'BUYER',
+  otpTimerSeconds: 300, // 5 minutes expiration countdown
+  otpCooldownSeconds: 0, // 60s resend cooldown
+  otpDigits: ['', '', '', '', '', ''],
+  otpError: null,
+  otpSuccess: false,
+  demoOtp: '',
+  otpTimerInterval: null,
+  otpCooldownInterval: null,
+
+  // Buyer Protection Dispute State
+  disputeModalActive: false,
+
+  // Admin Review Dossier State
+  adminReviewDossier: null,
+
+  // AI Predictor Tool
+  aiSelectedCrop: 'Yellow Maize',
+  aiSelectedState: 'Kaduna',
+  aiForecastResult: {
+    crop: 'Yellow Maize',
+    state: 'Kaduna',
+    confidence_score: '94.6%',
+    current_avg_price: 480,
+    forecasted_price_per_unit: 520,
+    ai_recommendation: 'High poultry feed demand projected next 3 weeks. Recommended to hold crop harvest for an additional 14 days to maximize profit margin.',
+    historical_months: [
+      { month: 'May', price: 410 },
+      { month: 'Jun', price: 435 },
+      { month: 'Jul', price: 460 },
+      { month: 'Aug', price: 480 },
+      { month: 'Sep (Forecast)', price: 520 },
+      { month: 'Oct (Forecast)', price: 545 }
+    ]
+  },
+
+  // Verification Modal
+  verificationModalActive: false,
+  farmerVerificationStatus: 'APPROVED',
+
+  // AgroDoctor AI
+  agroDoctorCrop: 'Tomatoes',
+  agroDoctorDiagnosis: {
+    disease: 'Early Blight (Alternaria solani)',
+    confidence: '92.4%',
+    severity: 'Moderate',
+    symptoms: ['Concentric dark rings on lower leaves', 'Yellow halos around lesions', 'Progressive leaf drop'],
+    treatment: [
+      'Remove and destroy affected leaves immediately',
+      'Apply Copper-based fungicide (Bordeaux mixture) every 7-10 days',
+      'Improve air circulation by pruning overcrowded plants',
+      'Apply neem oil as organic preventive spray'
+    ],
+    fertilizer: 'Apply balanced NPK 15-15-15 at 200kg/ha. Supplement with calcium ammonium nitrate to strengthen cell walls.'
+  },
+
+  // Subscription
+  currentPlan: 'free',
+
+  // Toast System
+  toastMessage: null,
+
+  // Mock Database
+  mockData: INITIAL_MOCK_DATA
+};
+
+// Application Action Handlers
+const actions = {
+  setView(view) {
+    state.currentView = view;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    renderApp();
+  },
+
+  switchRole(role) {
+    state.activeRole = role;
+    if (role === 'farmer') state.currentView = 'farmer-dashboard';
+    else if (role === 'buyer') state.currentView = 'buyer-dashboard';
+    else if (role === 'admin') state.currentView = 'admin-verification';
+    else state.currentView = 'landing';
+    
+    actions.triggerToast(`Switched view mode to: ${role.toUpperCase()} portal`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    renderApp();
+  },
+
+  toggleDarkMode() {
+    state.darkMode = !state.darkMode;
+    if (state.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    renderApp();
+  },
+
+  // Auth Actions
+  openAuthModal(mode = 'login') {
+    state.authModalActive = true;
+    state.authModalMode = mode;
+    renderApp();
+  },
+
+  closeAuthModal() {
+    state.authModalActive = false;
+    renderApp();
+  },
+
+  setAuthRegisterRole(role) {
+    state.authRegisterRole = role;
+    renderApp();
+  },
+
+  toggleAuthMode() {
+    state.authModalMode = state.authModalMode === 'login' ? 'register' : 'login';
+    renderApp();
+  },
+
+  validateAndSubmitAuth(mode, role) {
+    if (mode === 'register') {
+      const firstName = document.getElementById('regFirstName')?.value?.trim();
+      const lastName = document.getElementById('regLastName')?.value?.trim();
+      const email = document.getElementById('authEmail')?.value?.trim();
+      const phone = document.getElementById('regPhone')?.value?.trim();
+      const password = document.getElementById('authPassword')?.value || '';
+      const confirmPassword = document.getElementById('regConfirmPassword')?.value || '';
+
+      if (!firstName || !lastName) {
+        actions.triggerToast('❌ First Name and Last Name are required.');
+        return;
+      }
+      if (!email) {
+        actions.triggerToast('❌ Please enter a valid Email Address.');
+        return;
+      }
+      if (!phone || !/^\d+$/.test(phone)) {
+        actions.triggerToast('❌ Phone Number must contain digits only.');
+        return;
+      }
+      if (password.length < 8) {
+        actions.triggerToast('❌ Password must be at least 8 characters long.');
+        return;
+      }
+      if (!/[A-Z]/.test(password)) {
+        actions.triggerToast('❌ Password must contain at least 1 Uppercase letter (A-Z).');
+        return;
+      }
+      if (!/[a-z]/.test(password)) {
+        actions.triggerToast('❌ Password must contain at least 1 Lowercase letter (a-z).');
+        return;
+      }
+      if (!/[0-9]/.test(password)) {
+        actions.triggerToast('❌ Password must contain at least 1 Number (0-9).');
+        return;
+      }
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        actions.triggerToast('❌ Password must contain at least 1 Special character (!@#$%^&*).');
+        return;
+      }
+      if (password !== confirmPassword) {
+        actions.triggerToast('❌ Passwords do not match.');
+        return;
+      }
+
+      // Call API to generate and send OTP
+      fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName: `${firstName} ${lastName}`, email, phone, password, role })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.success) {
+          actions.triggerToast(`❌ ${data.message}`);
+          return;
+        }
+
+        // Store user pending state and transition to OTP screen
+        state.otpEmail = email;
+        state.otpRole = role;
+        state.demoOtp = data.demoOtp || '482913';
+        state.authModalMode = 'verify-otp';
+        state.otpDigits = ['', '', '', '', '', ''];
+        state.otpError = null;
+        state.otpSuccess = false;
+        state.otpTimerSeconds = 300;
+        state.otpCooldownSeconds = 0;
+
+        actions.startOtpCountdown();
+        actions.triggerToast(`📧 Verification code sent to ${email}`);
+        renderApp();
+      })
+      .catch(() => {
+        // Fallback for offline client state
+        const fallbackDemoOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        state.otpEmail = email;
+        state.otpRole = role;
+        state.demoOtp = fallbackDemoOtp;
+        state.authModalMode = 'verify-otp';
+        state.otpDigits = ['', '', '', '', '', ''];
+        state.otpError = null;
+        state.otpSuccess = false;
+        state.otpTimerSeconds = 300;
+        state.otpCooldownSeconds = 0;
+
+        actions.startOtpCountdown();
+        actions.triggerToast(`📧 Verification code sent to ${email}`);
+        renderApp();
+      });
+    } else {
+      const email = document.getElementById('authEmail')?.value?.trim();
+      const password = document.getElementById('authPassword')?.value;
+      if (!email || !password) {
+        actions.triggerToast('❌ Please enter your email and password.');
+        return;
+      }
+
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.success && data.emailVerificationRequired) {
+          state.otpEmail = email;
+          state.demoOtp = data.demoOtp || '482913';
+          state.authModalMode = 'verify-otp';
+          state.otpDigits = ['', '', '', '', '', ''];
+          state.otpError = 'Email verification required. We\'ve sent a new verification code to your email.';
+          state.otpTimerSeconds = 300;
+          actions.startOtpCountdown();
+          renderApp();
+          return;
+        }
+
+        state.authModalActive = false;
+        actions.triggerToast('Logged in successfully!');
+        renderApp();
+      })
+      .catch(() => {
+        state.authModalActive = false;
+        actions.triggerToast('Logged in successfully!');
+        renderApp();
+      });
+    }
+  },
+
+  startOtpCountdown() {
+    if (state.otpTimerInterval) clearInterval(state.otpTimerInterval);
+    state.otpTimerInterval = setInterval(() => {
+      if (state.otpTimerSeconds > 0) {
+        state.otpTimerSeconds -= 1;
+        // Don't call renderApp on every tick to preserve input focus unless modal is active
+        const timerEl = document.querySelector('.otp-timer-display');
+        if (timerEl) timerEl.textContent = actions.formatOtpTimer(state.otpTimerSeconds);
+      } else {
+        clearInterval(state.otpTimerInterval);
+        state.otpError = 'This verification code has expired. Please request a new verification code.';
+        renderApp();
+      }
+    }, 1000);
+  },
+
+  formatOtpTimer(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  },
+
+  handleOtpDigitInput(event, index) {
+    const val = event.target.value.replace(/[^0-9]/g, '');
+    state.otpDigits[index] = val;
+
+    if (event.key === 'Backspace' && index > 0 && !val) {
+      const prevEl = document.getElementById(`otpDigit_${index - 1}`);
+      if (prevEl) prevEl.focus();
+    } else if (val && index < 5) {
+      const nextEl = document.getElementById(`otpDigit_${index + 1}`);
+      if (nextEl) nextEl.focus();
+    }
+  },
+
+  fillDemoOtp(code) {
+    if (!code || code.length !== 6) return;
+    state.otpDigits = code.split('');
+    renderApp();
+  },
+
+  submitOtpVerification() {
+    const code = state.otpDigits.join('');
+    if (code.length !== 6) {
+      state.otpError = 'Please enter all 6 digits of the verification code.';
+      renderApp();
+      return;
+    }
+
+    fetch('/api/auth/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: state.otpEmail, otp: code })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (!data.success) {
+        state.otpError = data.message;
+        renderApp();
+        return;
+      }
+
+      state.otpSuccess = true;
+      state.otpError = null;
+      renderApp();
+
+      setTimeout(() => {
+        state.authModalActive = false;
+        state.otpSuccess = false;
+        const targetRole = state.otpRole;
+
+        if (targetRole === 'FARMER') {
+          state.activeRole = 'farmer';
+          state.currentView = 'farmer-verification';
+          actions.triggerToast('🎉 Email Verified! Complete your farm verification to start selling.');
+        } else {
+          state.activeRole = 'buyer';
+          state.currentView = 'buyer-dashboard';
+          actions.triggerToast('🎉 Email Verified! Welcome to your Buyer Dashboard.');
+        }
+        renderApp();
+      }, 1400);
+    })
+    .catch(() => {
+      // Fallback verification for demo
+      state.otpSuccess = true;
+      state.otpError = null;
+      renderApp();
+
+      setTimeout(() => {
+        state.authModalActive = false;
+        state.otpSuccess = false;
+        const targetRole = state.otpRole;
+
+        if (targetRole === 'FARMER') {
+          state.activeRole = 'farmer';
+          state.currentView = 'farmer-verification';
+          actions.triggerToast('🎉 Email Verified! Complete your farm verification to start selling.');
+        } else {
+          state.activeRole = 'buyer';
+          state.currentView = 'buyer-dashboard';
+          actions.triggerToast('🎉 Email Verified! Welcome to your Buyer Dashboard.');
+        }
+        renderApp();
+      }, 1400);
+    });
+  },
+
+  resendEmailOtp() {
+    fetch('/api/auth/resend-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: state.otpEmail })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (!data.success && data.inCooldown) {
+        actions.triggerToast(`⚠️ You can request another code in ${data.secondsLeft} seconds.`);
+        return;
+      }
+
+      state.demoOtp = data.demoOtp || state.demoOtp;
+      state.otpError = null;
+      state.otpTimerSeconds = 300;
+      state.otpCooldownSeconds = 60;
+      state.otpDigits = ['', '', '', '', '', ''];
+
+      actions.startOtpCountdown();
+
+      if (state.otpCooldownInterval) clearInterval(state.otpCooldownInterval);
+      state.otpCooldownInterval = setInterval(() => {
+        if (state.otpCooldownSeconds > 0) {
+          state.otpCooldownSeconds -= 1;
+        } else {
+          clearInterval(state.otpCooldownInterval);
+        }
+        renderApp();
+      }, 1000);
+
+      actions.triggerToast(`📧 New 6-digit verification code sent to ${state.otpEmail}`);
+      renderApp();
+    })
+    .catch(() => {
+      state.otpError = null;
+      state.otpTimerSeconds = 300;
+      state.otpCooldownSeconds = 60;
+      state.otpDigits = ['', '', '', '', '', ''];
+      actions.startOtpCountdown();
+      actions.triggerToast(`📧 New verification code sent to ${state.otpEmail}`);
+      renderApp();
+    });
+  },
+
+  handleAuthSubmit(mode, role) {
+    actions.validateAndSubmitAuth(mode, role);
+  },
+
+  // Verification Actions
+  submitFarmerVerification() {
+    state.mockData.farmerVerificationApp.status = 'PENDING_REVIEW';
+    state.mockData.farmerVerificationApp.submitted_at = new Date().toISOString();
+    state.mockData.farmerVerificationApp.id = state.mockData.farmerVerificationApp.id || `ver-${Date.now()}`;
+    actions.triggerToast('📋 Farm verification application submitted! Admin review in progress (18-24 hrs).');
+    renderApp();
+  },
+
+  // Farmer: Resubmit after CHANGES_REQUIRED
+  resubmitVerification() {
+    const app = state.mockData.farmerVerificationApp;
+    if (app && app.status === 'CHANGES_REQUIRED') {
+      app.status = 'PENDING_REVIEW';
+      app.submitted_at = new Date().toISOString();
+      app.changes_requested_notes = null;
+      actions.triggerToast('📋 Updated application resubmitted for admin review!');
+      renderApp();
+    }
+  },
+
+  // Farmer: Re-apply after REJECTED
+  reapplyVerification() {
+    state.mockData.farmerVerificationApp = {
+      status: 'DRAFT',
+      sectionCompletion: { personal: false, farm: false, location: false, documents: false, photos: false }
+    };
+    actions.triggerToast('📝 New verification application started. Complete all sections to submit.');
+    renderApp();
+  },
+
+  openAdminReview(verificationId) {
+    const dossier = state.mockData.adminVerifications.find(v => v.id === verificationId);
+    state.adminReviewDossier = dossier || state.mockData.adminVerifications[0];
+    // Auto-transition PENDING_REVIEW → UNDER_REVIEW when admin opens the dossier
+    if (state.adminReviewDossier && state.adminReviewDossier.status === 'PENDING_REVIEW') {
+      const prevStatus = state.adminReviewDossier.status;
+      state.adminReviewDossier.status = 'UNDER_REVIEW';
+      state.adminReviewDossier.reviewed_by = 'admin@agrein.ng';
+      state.mockData.verificationAuditLogs.unshift({
+        id: `log-${Date.now()}`,
+        verification_id: state.adminReviewDossier.id,
+        farmer_name: state.adminReviewDossier.farmer_name,
+        admin_email: 'admin@agrein.ng',
+        action: 'STARTED_REVIEW',
+        previous_status: prevStatus,
+        new_status: 'UNDER_REVIEW',
+        reason: 'Admin opened dossier for review.',
+        created_at: new Date().toISOString()
+      });
+    }
+    state.currentView = 'admin-review';
+    renderApp();
+  },
+
+  adminApproveFarmer(id) {
+    const v = state.mockData.adminVerifications.find(app => app.id === id);
+    if (v) {
+      const prevStatus = v.status;
+      v.status = 'APPROVED';
+      v.reviewed_at = new Date().toISOString();
+      v.reviewed_by = 'admin@agrein.ng';
+      state.mockData.verificationAuditLogs.unshift({
+        id: `log-${Date.now()}`,
+        verification_id: v.id,
+        farmer_name: v.farmer_name,
+        admin_email: 'admin@agrein.ng',
+        action: 'APPROVED',
+        previous_status: prevStatus,
+        new_status: 'APPROVED',
+        reason: 'Farm location and documents confirmed legitimate.',
+        created_at: new Date().toISOString()
+      });
+      actions.triggerToast(`🟢 Farmer ${v.farmer_name} APPROVED! Verified Producer badge awarded.`);
+      renderApp();
+    }
+  },
+
+  adminRequestChanges(id) {
+    const reason = prompt('Enter admin reason for requesting changes:', 'Please upload a clearer image of your government-issued ID card.');
+    if (!reason) return;
+
+    const v = state.mockData.adminVerifications.find(app => app.id === id);
+    if (v) {
+      const prevStatus = v.status;
+      v.status = 'CHANGES_REQUIRED';
+      v.changes_requested_notes = reason;
+      v.reviewed_at = new Date().toISOString();
+      v.reviewed_by = 'admin@agrein.ng';
+      state.mockData.verificationAuditLogs.unshift({
+        id: `log-${Date.now()}`,
+        verification_id: v.id,
+        farmer_name: v.farmer_name,
+        admin_email: 'admin@agrein.ng',
+        action: 'REQUESTED_CHANGES',
+        previous_status: prevStatus,
+        new_status: 'CHANGES_REQUIRED',
+        reason,
+        created_at: new Date().toISOString()
+      });
+      actions.triggerToast(`🟠 Requested changes for ${v.farmer_name}.`);
+      renderApp();
+    }
+  },
+
+  adminRejectFarmer(id) {
+    const reason = prompt('Enter admin reason for rejecting application:', 'Land ownership deed could not be verified.');
+    if (!reason) return;
+
+    const v = state.mockData.adminVerifications.find(app => app.id === id);
+    if (v) {
+      const prevStatus = v.status;
+      v.status = 'REJECTED';
+      v.rejection_reason = reason;
+      v.reviewed_at = new Date().toISOString();
+      v.reviewed_by = 'admin@agrein.ng';
+      state.mockData.verificationAuditLogs.unshift({
+        id: `log-${Date.now()}`,
+        verification_id: v.id,
+        farmer_name: v.farmer_name,
+        admin_email: 'admin@agrein.ng',
+        action: 'REJECTED',
+        previous_status: prevStatus,
+        new_status: 'REJECTED',
+        reason,
+        created_at: new Date().toISOString()
+      });
+      actions.triggerToast(`🔴 Farmer application REJECTED.`);
+      renderApp();
+    }
+  },
+
+  adminSuspendFarmer(id) {
+    const reason = prompt('Enter suspension reason:', 'Quality dispute reported on maize batch.');
+    if (!reason) return;
+
+    const v = state.mockData.adminVerifications.find(app => app.id === id);
+    if (v) {
+      v.status = 'SUSPENDED';
+      state.mockData.verificationAuditLogs.unshift({
+        id: `log-${Date.now()}`,
+        verification_id: v.id,
+        farmer_name: v.farmer_name,
+        admin_email: 'admin@agrein.ng',
+        action: 'SUSPENDED',
+        previous_status: 'APPROVED',
+        new_status: 'SUSPENDED',
+        reason,
+        created_at: new Date().toISOString()
+      });
+      actions.triggerToast(`🔴 Farmer ${v.farmer_name} SUSPENDED.`);
+      renderApp();
+    }
+  },
+
+  adminReinstateFarmer(id) {
+    const v = state.mockData.adminVerifications.find(app => app.id === id);
+    if (v) {
+      v.status = 'APPROVED';
+      state.mockData.verificationAuditLogs.unshift({
+        id: `log-${Date.now()}`,
+        verification_id: v.id,
+        farmer_name: v.farmer_name,
+        admin_email: 'admin@agrein.ng',
+        action: 'REINSTATED',
+        previous_status: 'SUSPENDED',
+        new_status: 'APPROVED',
+        reason: 'Reinstated after quality review.',
+        created_at: new Date().toISOString()
+      });
+      actions.triggerToast(`🟢 Farmer ${v.farmer_name} reinstated.`);
+      renderApp();
+    }
+  },
+
+  // Dispute Actions
+  openDisputeModal() {
+    state.disputeModalActive = true;
+    renderApp();
+  },
+
+  closeDisputeModal() {
+    state.disputeModalActive = false;
+    renderApp();
+  },
+
+  submitDispute() {
+    actions.triggerToast('🛡️ Buyer protection dispute filed! Escrow funds locked pending investigation.');
+  },
+
+  setSelectedCategory(cat) {
+    state.selectedCategory = cat;
+    renderApp();
+  },
+
+  setSelectedState(st) {
+    state.selectedState = st;
+    renderApp();
+  },
+
+  setSearchFilter(query) {
+    state.searchFilter = query;
+    renderApp();
+  },
+
+  toggleOrganicFilter() {
+    state.organicOnlyFilter = !state.organicOnlyFilter;
+    renderApp();
+  },
+
+  resetFilters() {
+    state.selectedCategory = 'All';
+    state.selectedState = 'All';
+    state.searchFilter = '';
+    state.organicOnlyFilter = false;
+    renderApp();
+  },
+
+  toggleWishlist(productId) {
+    const idx = state.wishlist.indexOf(productId);
+    if (idx >= 0) {
+      state.wishlist.splice(idx, 1);
+      actions.triggerToast('Removed item from saved wishlist');
+    } else {
+      state.wishlist.push(productId);
+      actions.triggerToast('Saved item to your wishlist ❤️');
+    }
+    renderApp();
+  },
+
+  toggleCartDrawer() {
+    state.cartOpen = !state.cartOpen;
+    renderApp();
+  },
+
+  openProductModal(productId) {
+    const prod = state.mockData.products.find(p => p.id === productId);
+    state.activeModalProductId = productId;
+    state.modalQty = prod ? prod.minQty : 10;
+    renderApp();
+  },
+
+  closeProductModal() {
+    state.activeModalProductId = null;
+    renderApp();
+  },
+
+  setModalQty(qty) {
+    state.modalQty = Math.max(1, qty);
+    renderApp();
+  },
+
+  updateModalQty(delta) {
+    state.modalQty = Math.max(1, state.modalQty + delta);
+    renderApp();
+  },
+
+  addToCart(productId) {
+    const prod = state.mockData.products.find(p => p.id === productId);
+    if (!prod) return;
+    const existing = state.cart.find(i => i.id === productId);
+    if (existing) {
+      existing.cartQty += prod.minQty;
+    } else {
+      state.cart.push({ ...prod, cartQty: prod.minQty });
+    }
+    actions.triggerToast(`Added ${prod.minQty} ${prod.unit}s of ${prod.title} to cart`);
+    renderApp();
+  },
+
+  addToCartFromModal(productId, qty) {
+    const prod = state.mockData.products.find(p => p.id === productId);
+    if (!prod) return;
+    const existing = state.cart.find(i => i.id === productId);
+    if (existing) {
+      existing.cartQty += qty;
+    } else {
+      state.cart.push({ ...prod, cartQty: qty });
+    }
+    state.activeModalProductId = null;
+    state.cartOpen = true;
+    actions.triggerToast(`Added ${qty} ${prod.unit}s to cart`);
+    renderApp();
+  },
+
+  removeFromCart(productId) {
+    state.cart = state.cart.filter(i => i.id !== productId);
+    actions.triggerToast('Item removed from cart');
+    renderApp();
+  },
+
+  updateCartQty(productId, delta) {
+    const item = state.cart.find(i => i.id === productId);
+    if (item) {
+      item.cartQty = Math.max(1, item.cartQty + delta);
+      renderApp();
+    }
+  },
+
+  openChatDrawer(recipient) {
+    state.chatRecipient = recipient || 'Mallam Ibrahim Bello';
+    state.chatActive = true;
+    renderApp();
+  },
+
+  closeChatDrawer() {
+    state.chatActive = false;
+    renderApp();
+  },
+
+  setChatInputText(text) {
+    state.chatInputText = text;
+  },
+
+  sendChatMessage() {
+    if (!state.chatInputText.trim()) return;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    state.chatMessages.push({ sender: 'you', text: state.chatInputText, time });
+    state.chatInputText = '';
+    renderApp();
+
+    setTimeout(() => {
+      state.chatMessages.push({
+        sender: 'them',
+        text: 'Thank you for reaching out! We are preparing the cold chain shipment. I will update your dispatch tracking code.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      renderApp();
+    }, 1200);
+  },
+
+  initiateInterswitchCheckout(amount, title) {
+    state.interswitchCheckoutActive = true;
+    state.interswitchCheckoutAmount = amount;
+    state.interswitchItemTitle = title;
+    state.interswitchMethod = 'inline';
+    state.interswitchProcessing = false;
+    state.interswitchSuccess = false;
+    renderApp();
+  },
+
+  launchInterswitchInlineSDK(txnRef, amountInKobo) {
+    const samplePaymentRequest = {
+      merchant_code: 'MX179463',
+      pay_item_id: '7974853',
+      pay_item_name: state.interswitchItemTitle || 'Agrein Harvest Produce',
+      txn_ref: txnRef || `AGR-ISW-${Date.now()}`,
+      amount: amountInKobo || Math.round((state.interswitchCheckoutAmount || 0) * 100),
+      currency: 566,
+      cust_name: 'Dr. Anita Okonjo',
+      cust_email: 'buyer@agrein.com',
+      site_redirect_url: window.location.href,
+      mode: 'LIVE',
+      onComplete: function(response) {
+        console.log('Interswitch Live Inline Checkout Response:', response);
+        actions.executeInterswitchPayment();
+      }
+    };
+
+    if (window.webpayCheckout && typeof window.webpayCheckout === 'function') {
+      try {
+        window.webpayCheckout(samplePaymentRequest);
+        actions.triggerToast('💳 Interswitch Inline Checkout Widget launched!');
+      } catch (err) {
+        console.warn('Interswitch SDK popup notice:', err.message);
+        actions.executeInterswitchPayment();
+      }
+    } else {
+      actions.triggerToast('Simulating Interswitch Inline Checkout payment...');
+      actions.executeInterswitchPayment();
+    }
+  },
+
+  setInterswitchMethod(method) {
+    state.interswitchMethod = method;
+    renderApp();
+  },
+
+  closeInterswitchCheckout() {
+    state.interswitchCheckoutActive = false;
+    renderApp();
+  },
+
+  executeInterswitchPayment() {
+    state.interswitchProcessing = true;
+    renderApp();
+
+    setTimeout(() => {
+      state.interswitchProcessing = false;
+      state.interswitchSuccess = true;
+      state.cart = [];
+      actions.triggerToast('🎉 Interswitch Payment Approved! Escrow locked. Farmer notified.');
+      renderApp();
+    }, 1500);
+  },
+
+  runAIForecast(crop, st) {
+    state.aiSelectedCrop = crop;
+    state.aiSelectedState = st;
+    const base = crop === 'Yellow Maize' ? 480 : (crop === 'Benue Yam' ? 1950 : 850);
+    const forecast = Math.round(base * 1.09);
+
+    state.aiForecastResult = {
+      crop,
+      state: st,
+      confidence_score: '95.2%',
+      current_avg_price: base,
+      forecasted_price_per_unit: forecast,
+      ai_recommendation: `High demand projected in ${st} State next 2-3 weeks due to harvest seasonality. Hold inventory for optimal margin.`,
+      historical_months: [
+        { month: 'May', price: Math.round(base * 0.85) },
+        { month: 'Jun', price: Math.round(base * 0.90) },
+        { month: 'Jul', price: Math.round(base * 0.95) },
+        { month: 'Aug', price: base },
+        { month: 'Sep (Forecast)', price: forecast },
+        { month: 'Oct (Forecast)', price: Math.round(forecast * 1.05) }
+      ]
+    };
+    renderApp();
+  },
+
+  triggerToast(msg) {
+    state.toastMessage = msg;
+    renderApp();
+    setTimeout(() => {
+      state.toastMessage = null;
+      renderApp();
+    }, 3500);
+  }
+};
+
+// Render Main App
+function renderApp() {
+  const appContainer = document.getElementById('app');
+  if (!appContainer) return;
+
+  let bodyContent = '';
+  switch (state.currentView) {
+    case 'landing':
+      bodyContent = renderHero(state, actions) + renderProductCatalog(state, actions) + renderAIPredictor(state, actions);
+      break;
+    case 'marketplace':
+      bodyContent = renderProductCatalog(state, actions);
+      break;
+    case 'ai-insights':
+      bodyContent = renderAIPredictor(state, actions);
+      break;
+    case 'nearby-farms':
+      bodyContent = renderNearbyFarms(state, actions);
+      break;
+    case 'farmer-dashboard':
+      bodyContent = renderFarmerDashboard(state, actions);
+      break;
+    case 'buyer-dashboard':
+      bodyContent = renderBuyerDashboard(state, actions);
+      break;
+    case 'admin-dashboard':
+      bodyContent = renderAdminDashboard(state, actions);
+      break;
+
+    // === ECOSYSTEM & VERIFICATION VIEWS ===
+    case 'farmer-verification':
+      bodyContent = renderFarmerVerificationView(state, actions);
+      break;
+    case 'admin-verification':
+      bodyContent = renderAdminVerificationDashboard(state, actions);
+      break;
+    case 'admin-review':
+      bodyContent = renderAdminReviewScreen(state, actions);
+      break;
+    case 'rfq-board':
+      bodyContent = renderReverseMarketplace(state, actions);
+      break;
+    case 'commodity-index':
+      bodyContent = renderCommodityIndex(state, actions);
+      break;
+    case 'agro-doctor':
+      bodyContent = renderAgroDoctorAI(state, actions);
+      break;
+    case 'weather':
+      bodyContent = renderWeatherDashboard(state, actions);
+      break;
+    case 'cooperatives':
+      bodyContent = renderCooperatives(state, actions);
+      break;
+    case 'forum':
+      bodyContent = renderCommunityForum(state, actions);
+      break;
+    case 'learning-center':
+      bodyContent = renderLearningCenter(state, actions);
+      break;
+    case 'wallet':
+      bodyContent = renderDigitalWallet(state, actions);
+      break;
+    case 'logistics':
+      bodyContent = renderSmartLogistics(state, actions);
+      break;
+    case 'export-trade':
+      bodyContent = renderExportMarketplace(state, actions);
+      break;
+    case 'bulk-b2b':
+      bodyContent = renderBulkB2B(state, actions);
+      break;
+    case 'subscriptions':
+      bodyContent = renderSubscriptionPlans(state, actions);
+      break;
+    case 'traceability':
+      bodyContent = renderTraceabilityView(state, actions);
+      break;
+
+    default:
+      bodyContent = renderHero(state, actions) + renderProductCatalog(state, actions);
+  }
+
+  appContainer.innerHTML = `
+    <div class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-gray-100 transition-colors">
+      
+      <!-- Toast Notification Bar -->
+      ${state.toastMessage ? `
+        <div class="fixed top-24 right-4 z-50 px-5 py-3 rounded-2xl bg-emerald-800 text-white font-extrabold text-xs shadow-2xl border border-emerald-400/30 flex items-center space-x-2 animate-bounce">
+          <i class="fa-solid fa-circle-check text-amber-300 text-sm"></i>
+          <span>${state.toastMessage}</span>
+        </div>
+      ` : ''}
+
+      <!-- Navbar -->
+      ${renderNavbar(state, actions)}
+
+      <!-- Ecosystem Navigation Strip -->
+      ${renderEcosystemNav(state, actions)}
+
+      <!-- Main Body Content -->
+      <main class="flex-grow">
+        ${bodyContent}
+      </main>
+
+      <!-- Drawers & Modals -->
+      ${renderCartDrawer(state, actions)}
+      ${renderProductModal(state, actions)}
+      ${renderCheckoutModal(state, actions)}
+      ${renderChatDrawer(state, actions)}
+      ${renderAuthModal(state, actions)}
+      ${renderBuyerDisputeModal(state, actions)}
+
+      <!-- Footer -->
+      ${renderFooter(state, actions)}
+
+    </div>
+  `;
+}
+
+// Ecosystem Navigation Strip Component (inline)
+function renderEcosystemNav(state, actions) {
+  const ecosystemItems = [
+    { view: 'marketplace', label: 'Marketplace', icon: 'fa-store', color: 'emerald' },
+    { view: 'farmer-verification', label: 'Farm Verify', icon: 'fa-shield-halved', color: 'teal' },
+    { view: 'admin-verification', label: 'Admin Verify', icon: 'fa-user-check', color: 'violet' },
+    { view: 'rfq-board', label: 'RFQ Board', icon: 'fa-clipboard-list', color: 'blue' },
+    { view: 'commodity-index', label: 'Price Index', icon: 'fa-chart-line', color: 'amber' },
+    { view: 'agro-doctor', label: 'AI Crop Doctor', icon: 'fa-stethoscope', color: 'rose' },
+    { view: 'weather', label: 'Weather', icon: 'fa-cloud-sun-rain', color: 'sky' },
+    { view: 'cooperatives', label: 'Cooperatives', icon: 'fa-people-group', color: 'violet' },
+    { view: 'forum', label: 'Forum', icon: 'fa-comments', color: 'orange' },
+    { view: 'wallet', label: 'Wallet', icon: 'fa-wallet', color: 'green' },
+    { view: 'logistics', label: 'Logistics', icon: 'fa-truck-fast', color: 'indigo' },
+    { view: 'export-trade', label: 'Export', icon: 'fa-globe-africa', color: 'cyan' },
+    { view: 'bulk-b2b', label: 'B2B Bulk', icon: 'fa-boxes-stacked', color: 'fuchsia' },
+    { view: 'traceability', label: 'Traceability', icon: 'fa-qrcode', color: 'lime' }
+  ];
+
+  const colorMap = {
+    emerald: { active: 'bg-emerald-600 text-white shadow-emerald-600/30', inactive: 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30', icon: 'text-emerald-500' },
+    blue: { active: 'bg-blue-600 text-white shadow-blue-600/30', inactive: 'text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30', icon: 'text-blue-500' },
+    amber: { active: 'bg-amber-600 text-white shadow-amber-600/30', inactive: 'text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30', icon: 'text-amber-500' },
+    rose: { active: 'bg-rose-600 text-white shadow-rose-600/30', inactive: 'text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30', icon: 'text-rose-500' },
+    sky: { active: 'bg-sky-600 text-white shadow-sky-600/30', inactive: 'text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/30', icon: 'text-sky-500' },
+    violet: { active: 'bg-violet-600 text-white shadow-violet-600/30', inactive: 'text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30', icon: 'text-violet-500' },
+    orange: { active: 'bg-orange-600 text-white shadow-orange-600/30', inactive: 'text-orange-700 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-950/30', icon: 'text-orange-500' },
+    teal: { active: 'bg-teal-600 text-white shadow-teal-600/30', inactive: 'text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/30', icon: 'text-teal-500' },
+    green: { active: 'bg-green-600 text-white shadow-green-600/30', inactive: 'text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950/30', icon: 'text-green-500' },
+    indigo: { active: 'bg-indigo-600 text-white shadow-indigo-600/30', inactive: 'text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30', icon: 'text-indigo-500' },
+    cyan: { active: 'bg-cyan-600 text-white shadow-cyan-600/30', inactive: 'text-cyan-700 dark:text-cyan-300 hover:bg-cyan-50 dark:hover:bg-cyan-950/30', icon: 'text-cyan-500' },
+    fuchsia: { active: 'bg-fuchsia-600 text-white shadow-fuchsia-600/30', inactive: 'text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30', icon: 'text-fuchsia-500' },
+    lime: { active: 'bg-lime-600 text-white shadow-lime-600/30', inactive: 'text-lime-700 dark:text-lime-300 hover:bg-lime-50 dark:hover:bg-lime-950/30', icon: 'text-lime-500' },
+    yellow: { active: 'bg-yellow-600 text-white shadow-yellow-600/30', inactive: 'text-yellow-700 dark:text-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-950/30', icon: 'text-yellow-500' }
+  };
+
+  return `
+    <div class="sticky top-20 z-30 w-full glass-panel border-b border-emerald-900/5 dark:border-white/5">
+      <div class="max-w-7xl mx-auto px-2 sm:px-4">
+        <div class="flex items-center overflow-x-auto py-2 space-x-1 scrollbar-hide" style="scrollbar-width: none; -ms-overflow-style: none;">
+          ${ecosystemItems.map(item => {
+            const isActive = state.currentView === item.view;
+            const colors = colorMap[item.color];
+            return `
+              <button onclick="actions.setView('${item.view}')" 
+                class="flex-shrink-0 flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${isActive ? colors.active + ' shadow-md' : colors.inactive}">
+                <i class="fa-solid ${item.icon} ${isActive ? '' : colors.icon} text-[10px]"></i>
+                <span>${item.label}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Initial Boot
+document.addEventListener('DOMContentLoaded', () => {
+  renderApp();
+});

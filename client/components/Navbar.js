@@ -1,0 +1,120 @@
+// Modern & Sleek Navbar Component for Agrein
+
+function renderNavbar(state, actions) {
+  const { currentView, activeRole, cart, wishlist, darkMode } = state;
+  const cartCount = cart.reduce((acc, item) => acc + item.cartQty, 0);
+
+  const roleLabels = {
+    visitor: { label: 'Visitor', icon: 'fa-eye', color: 'text-emerald-500' },
+    buyer: { label: 'Buyer', icon: 'fa-basket-shopping', color: 'text-blue-500' },
+    farmer: { label: 'Farmer', icon: 'fa-tractor', color: 'text-amber-500' },
+    admin: { label: 'Admin', icon: 'fa-shield-halved', color: 'text-purple-500' }
+  };
+
+  const currentRoleInfo = roleLabels[activeRole] || roleLabels.visitor;
+
+  return `
+    <header class="sticky top-0 z-40 w-full glass-panel shadow-sm border-b border-emerald-900/10 dark:border-white/10 transition-all duration-300">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+        
+        <!-- 1. Brand Logo -->
+        <div class="flex items-center space-x-3 cursor-pointer flex-shrink-0" onclick="actions.setView('landing')">
+          <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-emerald-700/30 transform hover:scale-105 transition-transform">
+            <i class="fa-solid fa-wheat-awn text-xl"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-1.5">
+              <span class="font-heading font-extrabold text-2xl tracking-tight text-emerald-950 dark:text-emerald-400">Agrein</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-extrabold uppercase tracking-wider">Market</span>
+            </div>
+            <p class="text-[10px] text-gray-500 dark:text-gray-400 font-medium tracking-wide">Direct Farm Trade</p>
+          </div>
+        </div>
+
+        <!-- 2. Centered Navigation Links -->
+        <nav class="hidden lg:flex items-center space-x-1 bg-slate-100/80 dark:bg-slate-900/60 p-1.5 rounded-2xl border border-gray-200/60 dark:border-slate-800">
+          <button onclick="actions.setView('landing')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'landing' ? 'bg-white dark:bg-emerald-700 text-emerald-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-white'}">
+            Home
+          </button>
+          <button onclick="actions.setView('marketplace')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'marketplace' ? 'bg-white dark:bg-emerald-700 text-emerald-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-white'}">
+            Marketplace
+          </button>
+          <button onclick="actions.setView('ai-insights')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'ai-insights' ? 'bg-white dark:bg-emerald-700 text-emerald-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-white'}">
+            <i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> AI Forecast
+          </button>
+          <button onclick="actions.setView('nearby-farms')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'nearby-farms' ? 'bg-white dark:bg-emerald-700 text-emerald-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-white'}">
+            <i class="fa-solid fa-location-dot text-emerald-500 mr-1"></i> Farm Finder
+          </button>
+        </nav>
+
+        <!-- 3. Right Action Cluster -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+
+          <!-- Cart Drawer Button -->
+          <button onclick="actions.toggleCartDrawer()" class="relative p-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-700/20 transition-all flex items-center space-x-2">
+            <i class="fa-solid fa-cart-shopping text-sm"></i>
+            <span class="text-xs font-bold hidden sm:inline">Cart</span>
+            ${cartCount > 0 ? `<span class="w-5 h-5 bg-amber-400 text-emerald-950 rounded-full text-[10px] font-extrabold flex items-center justify-center">${cartCount}</span>` : ''}
+          </button>
+
+          <!-- Wishlist Badge -->
+          <button onclick="actions.triggerToast('Saved items wishlist opened')" class="relative p-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all" title="Wishlist">
+            <i class="fa-regular fa-heart text-base"></i>
+            ${wishlist.length > 0 ? `<span class="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center shadow">${wishlist.length}</span>` : ''}
+          </button>
+
+          <!-- Dark Mode Toggle -->
+          <button onclick="actions.toggleDarkMode()" class="p-2.5 rounded-xl text-gray-600 dark:text-amber-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all" title="Toggle Theme">
+            <i class="fa-solid ${darkMode ? 'fa-sun text-amber-400' : 'fa-moon text-slate-700'} text-base"></i>
+          </button>
+
+          <!-- Divider -->
+          <div class="h-6 w-px bg-gray-200 dark:bg-slate-800 hidden sm:block"></div>
+
+          <!-- Auth Action Buttons (Log In & Sign Up) -->
+          <div class="flex items-center space-x-1.5">
+            <button onclick="actions.openAuthModal('login')" class="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex items-center space-x-1">
+              <i class="fa-solid fa-right-to-bracket text-emerald-600 text-xs"></i>
+              <span>Log In</span>
+            </button>
+            
+            <button onclick="actions.openAuthModal('register')" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white font-extrabold text-xs shadow-md shadow-emerald-700/20 transition-all flex items-center space-x-1.5 transform hover:-translate-y-0.5">
+              <i class="fa-solid fa-user-plus text-amber-300 text-xs"></i>
+              <span>Sign Up</span>
+            </button>
+          </div>
+
+          <!-- Role Portal Dropdown -->
+          <div class="relative group">
+            <button class="flex items-center space-x-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-emerald-300 text-xs font-bold hover:bg-gray-100 transition-all">
+              <i class="fa-solid ${currentRoleInfo.icon} ${currentRoleInfo.color}"></i>
+              <span class="hidden xl:inline capitalize">${currentRoleInfo.label}</span>
+              <i class="fa-solid fa-chevron-down text-[9px] opacity-60"></i>
+            </button>
+            <div class="absolute right-0 mt-2 w-48 py-2 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-800 hidden group-hover:block z-50 animate-modal">
+              <div class="px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-gray-400">Portal View Mode</div>
+              <button onclick="actions.switchRole('visitor')" class="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-store text-emerald-600"></i>
+                <span>Visitor Marketplace</span>
+              </button>
+              <button onclick="actions.switchRole('buyer')" class="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-basket-shopping text-blue-500"></i>
+                <span>Buyer Portal</span>
+              </button>
+              <button onclick="actions.switchRole('farmer')" class="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-tractor text-amber-500"></i>
+                <span>Farmer Portal</span>
+              </button>
+              <button onclick="actions.switchRole('admin')" class="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-shield-halved text-purple-500"></i>
+                <span>Admin Verification</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </header>
+  `;
+}

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agrein — Connecting Farmers to Buyers, One Harvest at a Time</title>
+  <meta name="description" content="Agrein is the modern agricultural marketplace platform connecting smallholder farmers directly to buyers across 36 states with escrow protection, Paystack payments, and AI price forecasting.">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            },
+            harvest: {
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+            }
+          },
+          fontFamily: {
+            heading: ['Outfit', 'sans-serif'],
+            body: ['Plus Jakarta Sans', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="./styles.css">
+
+  <!-- Interswitch Web Checkout SDK (Live Production) -->
+  <script src="https://newwebpay.interswitchng.com/inline-checkout.js"></script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-gray-100 antialiased selection:bg-emerald-500 selection:text-white">
+  
+  <!-- Root App Container -->
+  <div id="app"></div>
+
+  <!-- Client Data Script -->
+  <script src="./client/data/mockData.js"></script>
+
+  <!-- Modular Components -->
+  <script src="./client/components/Navbar.js"></script>
+  <script src="./client/components/Hero.js"></script>
+  <script src="./client/components/ProductCatalog.js"></script>
+  <script src="./client/components/ProductModal.js"></script>
+  <script src="./client/components/FarmerDashboard.js"></script>
+  <script src="./client/components/BuyerDashboard.js"></script>
+  <script src="./client/components/AdminDashboard.js"></script>
+  <script src="./client/components/AIPredictor.js"></script>
+  <script src="./client/components/NearbyFarms.js"></script>
+  <script src="./client/components/CheckoutModal.js"></script>
+  <script src="./client/components/ChatDrawer.js"></script>
+  <script src="./client/components/CartDrawer.js"></script>
+  <script src="./client/components/Footer.js"></script>
+
+  <!-- Ecosystem Expansion Components -->
+  <script src="./client/components/VerifiedBadge.js"></script>
+  <script src="./client/components/FarmerTrustScoreCard.js"></script>
+  <script src="./client/components/AuthModal.js"></script>
+  <script src="./client/components/FarmerVerificationView.js"></script>
+  <script src="./client/components/AdminVerificationDashboard.js"></script>
+  <script src="./client/components/AdminReviewScreen.js"></script>
+  <script src="./client/components/BuyerDisputeModal.js"></script>
+  <script src="./client/components/VerificationModal.js"></script>
+  <script src="./client/components/ReverseMarketplace.js"></script>
+  <script src="./client/components/SmartLogistics.js"></script>
+  <script src="./client/components/Cooperatives.js"></script>
+  <script src="./client/components/CommodityIndex.js"></script>
+  <script src="./client/components/BulkB2B.js"></script>
+  <script src="./client/components/DigitalWallet.js"></script>
+  <script src="./client/components/SubscriptionPlans.js"></script>
+  <script src="./client/components/WeatherDashboard.js"></script>
+  <script src="./client/components/LearningCenter.js"></script>
+  <script src="./client/components/ExportMarketplace.js"></script>
+  <script src="./client/components/CommunityForum.js"></script>
+  <script src="./client/components/AgroDoctorAI.js"></script>
+  <script src="./client/components/TraceabilityModal.js"></script>
+
+  <!-- App Orchestrator -->
+  <script src="./app.js"></script>
+
+</body>
+</html>
