@@ -45,16 +45,11 @@ function renderAuthModal(state, actions) {
                 <p class="text-xs text-gray-500">Your email address has been confirmed. Redirecting to your account portal...</p>
               </div>
             ` : `
-              <!-- Developer Preview Toast Banner for Easy Local Testing -->
-              ${state.demoOtp ? `
-                <div class="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/50 flex items-center justify-between text-xs">
-                  <div class="flex items-center space-x-2 text-amber-800 dark:text-amber-300">
-                    <i class="fa-solid fa-key text-amber-500"></i>
-                    <span>Demo OTP Code: <strong class="font-mono text-sm font-extrabold text-amber-900 dark:text-amber-200">${state.demoOtp}</strong></span>
-                  </div>
-                  <button onclick="actions.fillDemoOtp('${state.demoOtp}')" class="px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-extrabold hover:bg-amber-400">Fill Code</button>
-                </div>
-              ` : ''}
+              <!-- Security Notice -->
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 flex items-center space-x-2.5 text-xs text-gray-600 dark:text-gray-300">
+                <i class="fa-solid fa-lock text-emerald-600"></i>
+                <span>Please check your inbox or spam folder for your 6-digit security code.</span>
+              </div>
 
               <!-- Error Banner -->
               ${state.otpError ? `

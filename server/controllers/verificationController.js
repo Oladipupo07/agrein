@@ -1,4 +1,5 @@
 // Comprehensive 7-Stage Farmer Verification & Admin Audit Controller for Agrein Backend
+const supabase = require('../utils/supabaseClient');
 
 let mockVerifications = [
   {

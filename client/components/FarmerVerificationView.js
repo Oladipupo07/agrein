@@ -330,8 +330,8 @@ function renderFarmerVerificationView(state, actions) {
                 <span>Interactive Map Location Selector</span>
               </div>
               <p class="text-[10px] text-gray-500">Click to pin exact GPS land boundary coordinates for admin satellite verification.</p>
-              <button onclick="actions.triggerToast('📍 GPS Pin set at 11.1500°N, 7.6500°E (Zaria Samaru Zone)');" class="px-4 py-2 rounded-xl bg-emerald-700 text-white font-bold text-xs shadow hover:bg-emerald-800 transition-all inline-flex items-center space-x-1.5">
-                <i class="fa-solid fa-map-pin"></i>
+              <button onclick="actions.detectGpsLocation()" class="px-4 py-2 rounded-xl bg-emerald-700 text-white font-bold text-xs shadow hover:bg-emerald-800 transition-all inline-flex items-center space-x-1.5">
+                <i class="fa-solid fa-location-crosshairs"></i>
                 <span>Detect / Pin Farm Location</span>
               </button>
             </div>
@@ -341,36 +341,47 @@ function renderFarmerVerificationView(state, actions) {
           <div class="space-y-3">
             <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1"><i class="fa-solid fa-file-arrow-up"></i><span>Verification Documents Upload</span></div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all">
+              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
+                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('government_id', event)" class="hidden">
                 <i class="fa-solid fa-id-card text-xl text-emerald-600 mb-1"></i>
                 <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Government ID</div>
                 <div class="text-[9px] text-gray-400">NIN Slip, Voter's Card, Driver's License</div>
-              </div>
-              <div class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all">
+              </label>
+
+              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
+                <input type="file" accept="image/*" onchange="actions.handleDocumentUpload('farm_photo', event)" class="hidden">
                 <i class="fa-solid fa-image text-xl text-emerald-600 mb-1"></i>
                 <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Farm Photos</div>
                 <div class="text-[9px] text-gray-400">Overview, Crops, Infrastructure</div>
-              </div>
-              <div class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all">
+              </label>
+
+              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
+                <input type="file" accept="image/*" onchange="actions.handleDocumentUpload('profile_photo', event)" class="hidden">
                 <i class="fa-solid fa-user-gear text-xl text-emerald-600 mb-1"></i>
                 <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Profile Photo</div>
                 <div class="text-[9px] text-gray-400">Clear headshot photograph</div>
-              </div>
-              <div class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all">
+              </label>
+
+              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
+                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('farm_deed', event)" class="hidden">
                 <i class="fa-solid fa-file-contract text-xl text-emerald-600 mb-1"></i>
                 <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Proof of Ownership / Lease</div>
                 <div class="text-[9px] text-gray-400">Land Title, C-of-O, or Lease Deed</div>
-              </div>
-              <div class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all">
+              </label>
+
+              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
+                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('agricultural_cert', event)" class="hidden">
                 <i class="fa-solid fa-award text-xl text-emerald-600 mb-1"></i>
                 <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Agricultural Certification</div>
                 <div class="text-[9px] text-gray-400">Organic, GAP, or Harvest Certificate</div>
-              </div>
-              <div class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all">
+              </label>
+
+              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
+                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('coop_proof', event)" class="hidden">
                 <i class="fa-solid fa-people-group text-xl text-emerald-600 mb-1"></i>
                 <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Cooperative Proof</div>
                 <div class="text-[9px] text-gray-400">Membership ID or Letter</div>
-              </div>
+              </label>
             </div>
           </div>
 
