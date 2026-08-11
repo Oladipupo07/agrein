@@ -50,7 +50,7 @@ function renderProductCatalog(state, actions) {
 
             <!-- Search Bar -->
             <div class="relative">
-              <input type="text" value="${searchFilter}" oninput="actions.setSearchFilter(this.value)" placeholder="Search crops, farms..." class="w-48 sm:w-64 pl-9 pr-4 py-2 rounded-xl text-xs font-medium glass-panel border border-emerald-500/20 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <input type="text" value="${searchFilter}" oninput="actions.setSearchFilter(this.value)" placeholder="Search crops, farms..." class="w-full sm:w-64 pl-9 pr-4 py-2 rounded-xl text-xs font-medium glass-panel border border-emerald-500/20 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
               <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
             </div>
 
@@ -58,7 +58,7 @@ function renderProductCatalog(state, actions) {
         </div>
 
         <!-- Categories Pill Bar -->
-        <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none">
+        <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-hide">
           <button onclick="actions.setSelectedCategory('All')" class="px-4 py-2.5 rounded-2xl text-xs font-bold flex-shrink-0 transition-all flex items-center space-x-2 ${selectedCategory === 'All' ? 'bg-emerald-700 text-white shadow-lg shadow-emerald-700/20' : 'glass-panel text-gray-700 dark:text-gray-300 hover:bg-emerald-50'}">
             <span>🌿 All Harvests</span>
           </button>

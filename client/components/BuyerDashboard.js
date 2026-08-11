@@ -87,7 +87,7 @@ function renderBuyerDashboard(state, actions) {
         </div>
 
         <!-- KPI Metric Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           
           <div class="glass-card p-5 rounded-2xl space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
@@ -425,8 +425,8 @@ function renderBuyerDashboard(state, actions) {
                 <tr>
                   <th class="py-3 px-4">Order Code</th>
                   <th class="py-3 px-4">Harvest Item</th>
-                  <th class="py-3 px-4">Producer</th>
-                  <th class="py-3 px-4">Date</th>
+                  <th class="py-3 px-4 hidden sm:table-cell">Producer</th>
+                  <th class="py-3 px-4 hidden md:table-cell">Date</th>
                   <th class="py-3 px-4">Total Amount</th>
                   <th class="py-3 px-4">Status</th>
                   <th class="py-3 px-4 text-right">Action</th>
@@ -437,13 +437,13 @@ function renderBuyerDashboard(state, actions) {
                   <tr class="hover:bg-blue-50/30 dark:hover:bg-blue-950/10 transition-colors">
                     <td class="py-4 px-4 font-bold text-slate-900 dark:text-white">${order.code}</td>
                     <td class="py-4 px-4 font-semibold text-gray-800 dark:text-gray-200">${order.item}</td>
-                    <td class="py-4 px-4 text-emerald-700 dark:text-emerald-400 font-semibold">
+                    <td class="py-4 px-4 text-emerald-700 dark:text-emerald-400 font-semibold hidden sm:table-cell">
                       <span class="inline-flex items-center space-x-1">
                         <span>${order.farmer}</span>
                         ${order.farmerVerified ? renderVerifiedBadgeCompact(true) : ''}
                       </span>
                     </td>
-                    <td class="py-4 px-4 text-gray-500 font-medium">${order.date}</td>
+                    <td class="py-4 px-4 text-gray-500 font-medium hidden md:table-cell">${order.date}</td>
                     <td class="py-4 px-4 font-extrabold text-slate-900 dark:text-white">₦${order.amount.toLocaleString()}</td>
                     <td class="py-4 px-4"><span class="px-2.5 py-1 rounded-full ${order.statusColor} text-[10px] font-bold">${order.status}</span></td>
                     <td class="py-4 px-4 text-right">

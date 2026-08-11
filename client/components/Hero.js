@@ -61,18 +61,18 @@ function renderHero(state, actions) {
             </div>
 
             <!-- Trust Metrics -->
-            <div class="pt-6 grid grid-cols-3 gap-4 border-t border-gray-200/80 dark:border-gray-800">
+            <div class="pt-6 grid grid-cols-3 gap-3 sm:gap-4 border-t border-gray-200/80 dark:border-gray-800">
               <div>
-                <div class="text-2xl sm:text-3xl font-heading font-extrabold text-emerald-800 dark:text-emerald-400">14,800+</div>
-                <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">Farmers Onboarded</div>
+                <div class="text-lg sm:text-2xl md:text-3xl font-heading font-extrabold text-emerald-800 dark:text-emerald-400">14,800+</div>
+                <div class="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">Farmers Onboarded</div>
               </div>
               <div>
-                <div class="text-2xl sm:text-3xl font-heading font-extrabold text-emerald-800 dark:text-emerald-400">350k+ Tons</div>
-                <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">Produce Traded</div>
+                <div class="text-lg sm:text-2xl md:text-3xl font-heading font-extrabold text-emerald-800 dark:text-emerald-400">350k+ Tons</div>
+                <div class="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">Produce Traded</div>
               </div>
               <div>
-                <div class="text-2xl sm:text-3xl font-heading font-extrabold text-amber-600 dark:text-amber-400">36 States</div>
-                <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">Direct Logistics</div>
+                <div class="text-lg sm:text-2xl md:text-3xl font-heading font-extrabold text-amber-600 dark:text-amber-400">36 States</div>
+                <div class="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">Direct Logistics</div>
               </div>
             </div>
 
@@ -81,11 +81,11 @@ function renderHero(state, actions) {
           <!-- Right Column: Interactive Visual Banner & Feature Glass Card -->
           <div class="lg:col-span-5 relative">
             <div class="relative rounded-3xl overflow-hidden shadow-2xl border border-emerald-500/20 group">
-              <img src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1000&q=80" alt="Fresh Nigerian Agricultural Farm Harvest" class="w-full h-[440px] object-cover group-hover:scale-105 transition-transform duration-700">
+              <img src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1000&q=80" alt="Fresh Nigerian Agricultural Farm Harvest" class="hero-banner w-full h-56 sm:h-80 md:h-[440px] object-cover group-hover:scale-105 transition-transform duration-700">
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"></div>
               
               <!-- Floating Glass Badge 1: Escrow Protection -->
-              <div class="absolute top-6 left-6 glass-card p-3 rounded-2xl flex items-center space-x-3 text-slate-900 dark:text-white shadow-lg animate-bounce" style="animation-duration: 4s;">
+              <div class="hero-floating-badge absolute top-4 left-4 sm:top-6 sm:left-6 glass-card p-2.5 sm:p-3 rounded-2xl flex items-center space-x-3 text-slate-900 dark:text-white shadow-lg animate-bounce" style="animation-duration: 4s;">
                 <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg shadow-md">
                   <i class="fa-solid fa-shield-check"></i>
                 </div>
@@ -96,7 +96,7 @@ function renderHero(state, actions) {
               </div>
 
               <!-- Floating Glass Badge 2: AI Pricing -->
-              <div class="absolute bottom-6 right-6 glass-card p-4 rounded-2xl max-w-xs text-slate-900 dark:text-white shadow-xl">
+              <div class="hero-floating-badge absolute bottom-4 right-4 sm:bottom-6 sm:right-6 glass-card p-3 sm:p-4 rounded-2xl max-w-[10rem] sm:max-w-xs text-slate-900 dark:text-white shadow-xl">
                 <div class="flex items-center space-x-2 text-amber-600 dark:text-amber-400 text-xs font-extrabold uppercase mb-1">
                   <i class="fa-solid fa-wand-magic-sparkles"></i>
                   <span>Agrein AI Insights</span>

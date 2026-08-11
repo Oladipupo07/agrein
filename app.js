@@ -45,6 +45,7 @@ const state = {
 
   // Cart & Interswitch Checkout
   cartOpen: false,
+  mobileMenuOpen: false,
   interswitchCheckoutActive: false,
   interswitchCheckoutAmount: 0,
   interswitchItemTitle: '',
@@ -802,6 +803,36 @@ const actions = {
     renderApp();
   },
 
+  toggleMobileMenu() {
+    state.mobileMenuOpen = !state.mobileMenuOpen;
+    renderApp();
+  },
+
+  closeMobileMenu() {
+    state.mobileMenuOpen = false;
+    renderApp();
+  },
+
+  // Helper: navigate from mobile menu and close it in one shot
+  setViewAndCloseMobile(view) {
+    state.currentView = view;
+    state.mobileMenuOpen = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    renderApp();
+  },
+
+  switchRoleAndCloseMobile(role) {
+    state.activeRole = role;
+    if (role === 'farmer') state.currentView = 'farmer-dashboard';
+    else if (role === 'buyer') state.currentView = 'buyer-dashboard';
+    else if (role === 'admin') state.currentView = 'admin-verification';
+    else state.currentView = 'landing';
+    state.mobileMenuOpen = false;
+    actions.triggerToast(`Switched view mode to: ${role.toUpperCase()} portal`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    renderApp();
+  },
+
   openProductModal(productId) {
     const prod = state.mockData.products.find(p => p.id === productId);
     state.activeModalProductId = productId;
@@ -1222,4 +1253,38 @@ function renderEcosystemNav(state, actions) {
 // Initial Boot
 document.addEventListener('DOMContentLoaded', () => {
   renderApp();
+
+  // Close any open overlay (mobile menu, modals, drawers) on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (state.mobileMenuOpen) {
+        state.mobileMenuOpen = false;
+        renderApp();
+      }
+      if (state.cartOpen) {
+        state.cartOpen = false;
+        renderApp();
+      }
+      if (state.chatActive) {
+        state.chatActive = false;
+        renderApp();
+      }
+      if (state.authModalActive) {
+        state.authModalActive = false;
+        renderApp();
+      }
+      if (state.activeModalProductId) {
+        state.activeModalProductId = null;
+        renderApp();
+      }
+      if (state.interswitchCheckoutActive) {
+        state.interswitchCheckoutActive = false;
+        renderApp();
+      }
+      if (state.disputeModalActive) {
+        state.disputeModalActive = false;
+        renderApp();
+      }
+    }
+  });
 });

@@ -27,7 +27,7 @@ function renderCommunityForum(state, actions) {
         </div>
 
         <!-- Forum Channel Tags -->
-        <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none">
+        <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-hide">
           ${['🔥 Trending', '🌾 Maize & Cereals', '🥔 Yam & Tubers', '🐛 Pest Control', '💰 Interswitch Payouts', '🌧️ Weather Seeding', '📢 General Discussions'].map((tag, idx) => `
             <button onclick="actions.triggerToast('Filter forum channel: ${tag}')" class="px-4 py-2 rounded-2xl text-xs font-bold flex-shrink-0 transition-all ${idx === 0 ? 'bg-purple-600 text-white shadow-md' : 'glass-panel text-gray-700 dark:text-gray-300 hover:bg-purple-50'}">
               <span>${tag}</span>

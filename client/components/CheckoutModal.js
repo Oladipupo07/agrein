@@ -10,7 +10,7 @@ function renderCheckoutModal(state, actions) {
 
   return `
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-      <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/30 overflow-hidden animate-modal">
+      <div class="modal-fullscreen-mobile relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/30 overflow-hidden animate-modal max-h-[92vh] overflow-y-auto">
         
         <!-- Interswitch Header -->
         <div class="bg-gradient-to-r from-red-700 via-emerald-800 to-emerald-900 p-6 text-white text-center relative">
@@ -63,7 +63,7 @@ function renderCheckoutModal(state, actions) {
             <div class="space-y-4 text-xs">
               
               <!-- Payment Method Tabs: Inline vs Redirect vs Card/Transfer/USSD -->
-              <div class="grid grid-cols-3 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl text-[10px] font-bold text-center">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl text-[10px] font-bold text-center">
                 <button onclick="actions.setInterswitchMethod('inline')" class="py-2 rounded-xl transition-all ${activeMethod === 'inline' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-gray-500'}">Inline Widget</button>
                 <button onclick="actions.setInterswitchMethod('redirect')" class="py-2 rounded-xl transition-all ${activeMethod === 'redirect' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-gray-500'}">Web Redirect</button>
                 <button onclick="actions.setInterswitchMethod('card')" class="py-2 rounded-xl transition-all ${activeMethod === 'card' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-gray-500'}">Card / USSD</button>

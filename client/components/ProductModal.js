@@ -13,7 +13,7 @@ function renderProductModal(state, actions) {
 
   return `
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div class="relative w-full max-w-4xl glass-panel bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/20 overflow-hidden my-8 animate-modal">
+      <div class="modal-fullscreen-mobile relative w-full max-w-4xl glass-panel bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/20 overflow-hidden my-8 animate-modal">
         
         <!-- Modal Close Button -->
         <button onclick="actions.closeProductModal()" class="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-slate-900/40 text-white flex items-center justify-center hover:bg-slate-900 transition-all">
@@ -23,7 +23,7 @@ function renderProductModal(state, actions) {
         <div class="grid grid-cols-1 md:grid-cols-12">
           
           <!-- Left: Product Image & Badges -->
-          <div class="md:col-span-5 relative bg-slate-100 dark:bg-slate-800 min-h-[300px] md:min-h-full">
+          <div class="md:col-span-5 relative bg-slate-100 dark:bg-slate-800 min-h-[220px] max-h-[40vh] md:max-h-none md:min-h-full">
             <img src="${product.image}" alt="${product.title}" class="w-full h-full object-cover">
             
             <div class="absolute top-4 left-4 flex flex-col space-y-2">

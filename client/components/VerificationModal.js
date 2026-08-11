@@ -6,7 +6,7 @@ function renderVerificationModal(state, actions) {
 
   return `
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-      <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/30 overflow-hidden animate-modal">
+      <div class="modal-fullscreen-mobile relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/30 overflow-hidden animate-modal">
         
         <!-- Header -->
         <div class="bg-gradient-to-r from-emerald-800 to-emerald-600 p-6 text-white text-center relative">
