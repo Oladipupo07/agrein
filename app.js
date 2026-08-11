@@ -1147,6 +1147,7 @@ function renderApp() {
       ${renderFooter(state, actions)}
 
     </div>
+  `;
 }
 
 // Admin Decision Note Modal Component
