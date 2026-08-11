@@ -29,8 +29,8 @@ app.get('/api/status', (req, res) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`🌾 Agrein Backend running on port ${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🌾 Agrein Backend running on 0.0.0.0:${PORT}`);
   });
 }
 
