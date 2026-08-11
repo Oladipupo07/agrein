@@ -12,6 +12,9 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Serve compiled CSS from public/ first (overrides any repo-root styles.css)
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
 // Serve Static Frontend Files
 app.use(express.static(path.join(__dirname, '..')));
 
