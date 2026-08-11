@@ -64,7 +64,7 @@ function renderFarmerDashboard(state, actions) {
             </p>
           </div>
 
-          <div class="flex items-center space-x-3 flex-shrink-0">
+          <div class="flex flex-wrap items-center gap-3 flex-shrink-0">
             <button onclick="actions.openAddProductModal()" class="px-5 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-lg shadow-emerald-700/20 transition-all flex items-center space-x-2">
               <i class="fa-solid fa-plus text-amber-300"></i>
               <span>List New Crop</span>
@@ -88,7 +88,7 @@ function renderFarmerDashboard(state, actions) {
                 To protect buyers and ensure marketplace trust, all farmers must submit identity documents, farm photos, and land coordinates for Agrein approval.
               </p>
             </div>
-            <button onclick="actions.setView('farmer-verification')" class="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs shadow-lg transition-all flex-shrink-0 flex items-center space-x-2">
+            <button onclick="actions.setView('farmer-verification')" class="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs shadow-lg transition-all flex items-center justify-center space-x-2 w-full sm:w-auto">
               <i class="fa-solid fa-file-signature"></i>
               <span>Complete Farm Verification</span>
             </button>
@@ -96,14 +96,14 @@ function renderFarmerDashboard(state, actions) {
         ` : ''}
 
         <!-- Metric KPI Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          
-          <div class="glass-card p-5 rounded-2xl space-y-2">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+
+          <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
               <span>Available Balance</span>
               <i class="fa-solid fa-wallet text-emerald-600 text-base"></i>
             </div>
-            <div class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white">
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-slate-900 dark:text-white">
               ₦${farmerProfile.availableBalance.toLocaleString()}
             </div>
             <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
@@ -111,12 +111,12 @@ function renderFarmerDashboard(state, actions) {
             </div>
           </div>
 
-          <div class="glass-card p-5 rounded-2xl space-y-2">
+          <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
               <span>In Escrow</span>
               <i class="fa-solid fa-shield-halved text-amber-500 text-base"></i>
             </div>
-            <div class="text-2xl font-heading font-extrabold text-amber-600 dark:text-amber-400">
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-amber-600 dark:text-amber-400">
               ₦${farmerProfile.escrowPending.toLocaleString()}
             </div>
             <div class="text-[10px] text-amber-600 font-semibold">
@@ -124,12 +124,12 @@ function renderFarmerDashboard(state, actions) {
             </div>
           </div>
 
-          <div class="glass-card p-5 rounded-2xl space-y-2">
+          <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
               <span>Lifetime Revenue</span>
               <i class="fa-solid fa-chart-line text-emerald-700 text-base"></i>
             </div>
-            <div class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white">
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-slate-900 dark:text-white">
               ₦${(farmerProfile.totalLifetimeEarnings / 1000000).toFixed(1)}M
             </div>
             <div class="text-[10px] text-emerald-600 font-semibold">
@@ -137,12 +137,12 @@ function renderFarmerDashboard(state, actions) {
             </div>
           </div>
 
-          <div class="glass-card p-5 rounded-2xl space-y-2">
+          <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
               <span>Active Listings</span>
               <i class="fa-solid fa-wheat-awn text-emerald-600 text-base"></i>
             </div>
-            <div class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white">
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-slate-900 dark:text-white">
               ${farmerProducts.length}
             </div>
             <div class="text-[10px] text-gray-500 font-semibold">
@@ -150,12 +150,12 @@ function renderFarmerDashboard(state, actions) {
             </div>
           </div>
 
-          <div class="glass-card p-5 rounded-2xl space-y-2">
+          <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
               <span>Farmer Rating</span>
               <i class="fa-solid fa-star text-amber-500 text-base"></i>
             </div>
-            <div class="text-2xl font-heading font-extrabold text-amber-600 dark:text-amber-400">
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-amber-600 dark:text-amber-400">
               ⭐ ${farmerProfile.rating}
             </div>
             <div class="text-[10px] text-gray-500 font-semibold">
@@ -163,12 +163,12 @@ function renderFarmerDashboard(state, actions) {
             </div>
           </div>
 
-          <div class="glass-card p-5 rounded-2xl space-y-2">
+          <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
               <span>Pending Orders</span>
               <i class="fa-solid fa-box text-blue-500 text-base"></i>
             </div>
-            <div class="text-2xl font-heading font-extrabold text-blue-700 dark:text-blue-400">
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-blue-700 dark:text-blue-400">
               ${incomingOrders.filter(o => o.status !== 'Delivered').length}
             </div>
             <div class="text-[10px] text-blue-600 font-semibold">

@@ -46,12 +46,12 @@ function renderCartDrawer(state, actions) {
 
                 <div class="flex items-center justify-between pt-1">
                   <div class="flex items-center space-x-2">
-                    <button onclick="actions.updateCartQty('${item.id}', -10)" class="w-6 h-6 rounded bg-gray-200 dark:bg-slate-700 font-bold text-xs flex items-center justify-center">-</button>
-                    <span class="text-xs font-bold text-slate-900 dark:text-white">${item.cartQty} ${item.unit}s</span>
-                    <button onclick="actions.updateCartQty('${item.id}', 10)" class="w-6 h-6 rounded bg-gray-200 dark:bg-slate-700 font-bold text-xs flex items-center justify-center">+</button>
+                    <button onclick="actions.updateCartQty('${item.id}', -10)" class="w-10 h-10 rounded-lg bg-gray-200 dark:bg-slate-700 font-bold text-sm flex items-center justify-center active:scale-95" aria-label="Decrease quantity">−</button>
+                    <span class="text-xs font-bold text-slate-900 dark:text-white min-w-[3rem] text-center">${item.cartQty} ${item.unit}s</span>
+                    <button onclick="actions.updateCartQty('${item.id}', 10)" class="w-10 h-10 rounded-lg bg-gray-200 dark:bg-slate-700 font-bold text-sm flex items-center justify-center active:scale-95" aria-label="Increase quantity">+</button>
                   </div>
 
-                  <button onclick="actions.removeFromCart('${item.id}')" class="text-red-500 hover:text-red-700 text-xs font-semibold">
+                  <button onclick="actions.removeFromCart('${item.id}')" class="text-red-500 hover:text-red-700 text-xs font-semibold p-2 -m-2" aria-label="Remove item">
                     <i class="fa-solid fa-trash-can"></i>
                   </button>
                 </div>

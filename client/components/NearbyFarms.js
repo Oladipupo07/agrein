@@ -32,19 +32,19 @@ function renderNearbyFarms(state, actions) {
           <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/40"></div>
 
           <!-- Map Pin Callouts -->
-          <div class="absolute top-1/4 left-1/3 glass-card p-3 rounded-2xl flex items-center space-x-2 text-xs text-slate-900 dark:text-white shadow-xl animate-bounce" style="animation-duration: 3s;">
-            <div class="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold">🌾</div>
-            <div>
-              <div class="font-extrabold">Zaria Agro-Gold Farms</div>
-              <div class="text-[10px] text-gray-400">Kaduna • 12,000 kg Maize</div>
+          <div class="absolute top-4 left-4 sm:top-1/4 sm:left-1/3 glass-card p-2 sm:p-3 rounded-2xl flex items-center space-x-2 text-xs text-slate-900 dark:text-white shadow-xl max-w-[180px] sm:max-w-none animate-bounce" style="animation-duration: 3s;">
+            <div class="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold flex-shrink-0">🌾</div>
+            <div class="min-w-0">
+              <div class="font-extrabold truncate">Zaria Agro-Gold Farms</div>
+              <div class="text-[10px] text-gray-400 truncate">Kaduna • 12,000 kg Maize</div>
             </div>
           </div>
 
-          <div class="absolute bottom-1/3 right-1/4 glass-card p-3 rounded-2xl flex items-center space-x-2 text-xs text-slate-900 dark:text-white shadow-xl animate-bounce" style="animation-duration: 4.5s;">
-            <div class="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold">🥔</div>
-            <div>
-              <div class="font-extrabold">Gboko Giant Yam Estate</div>
-              <div class="text-[10px] text-gray-400">Benue • 1,400 Tubers</div>
+          <div class="absolute bottom-4 right-4 sm:bottom-1/3 sm:right-1/4 glass-card p-2 sm:p-3 rounded-2xl flex items-center space-x-2 text-xs text-slate-900 dark:text-white shadow-xl max-w-[180px] sm:max-w-none animate-bounce" style="animation-duration: 4.5s;">
+            <div class="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold flex-shrink-0">🥔</div>
+            <div class="min-w-0">
+              <div class="font-extrabold truncate">Gboko Giant Yam Estate</div>
+              <div class="text-[10px] text-gray-400 truncate">Benue • 1,400 Tubers</div>
             </div>
           </div>
 

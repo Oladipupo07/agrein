@@ -15,7 +15,7 @@ function renderHero(state, actions) {
               Live Price Index
             </span>
             <div class="overflow-hidden relative w-full">
-              <div class="animate-ticker space-x-8 text-xs font-semibold">
+              <div class="animate-ticker space-x-8 text-xs font-semibold whitespace-nowrap">
                 ${commodityMarketPrices.map(item => `
                   <div class="inline-flex items-center space-x-2 text-gray-800 dark:text-gray-200">
                     <span class="text-emerald-900 dark:text-emerald-300 font-bold">${item.crop} (${item.state}):</span>

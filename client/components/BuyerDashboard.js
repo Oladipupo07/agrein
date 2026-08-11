@@ -89,12 +89,12 @@ function renderBuyerDashboard(state, actions) {
         <!-- KPI Metric Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           
-          <div class="glass-card p-5 rounded-2xl space-y-2">
+          <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
               <span>Total Spent</span>
               <i class="fa-solid fa-naira-sign text-blue-600 text-base"></i>
             </div>
-            <div class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white">
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-slate-900 dark:text-white">
               ₦${(kpis.totalSpent / 1000000).toFixed(1)}M
             </div>
             <div class="text-[10px] text-blue-600 font-semibold">
@@ -102,12 +102,12 @@ function renderBuyerDashboard(state, actions) {
             </div>
           </div>
 
-          <div class="glass-card p-5 rounded-2xl space-y-2">
+          <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
               <span>Active Orders</span>
               <i class="fa-solid fa-truck-fast text-emerald-600 text-base"></i>
             </div>
-            <div class="text-2xl font-heading font-extrabold text-emerald-700 dark:text-emerald-400">
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-emerald-700 dark:text-emerald-400">
               ${kpis.activeOrders}
             </div>
             <div class="text-[10px] text-emerald-600 font-semibold">
@@ -115,12 +115,12 @@ function renderBuyerDashboard(state, actions) {
             </div>
           </div>
 
-          <div class="glass-card p-5 rounded-2xl space-y-2">
+          <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
               <span>Escrow Locked</span>
               <i class="fa-solid fa-lock text-amber-500 text-base"></i>
             </div>
-            <div class="text-2xl font-heading font-extrabold text-amber-600 dark:text-amber-400">
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-amber-600 dark:text-amber-400">
               ₦${(kpis.escrowLocked / 1000).toFixed(0)}K
             </div>
             <div class="text-[10px] text-amber-600 font-semibold">
@@ -128,12 +128,12 @@ function renderBuyerDashboard(state, actions) {
             </div>
           </div>
 
-          <div class="glass-card p-5 rounded-2xl space-y-2">
+          <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
               <span>Completed</span>
               <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
             </div>
-            <div class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white">
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-slate-900 dark:text-white">
               ${kpis.completedOrders}
             </div>
             <div class="text-[10px] text-emerald-600 font-semibold">
@@ -141,12 +141,12 @@ function renderBuyerDashboard(state, actions) {
             </div>
           </div>
 
-          <div class="glass-card p-5 rounded-2xl space-y-2">
+          <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
               <span>Saved Farmers</span>
               <i class="fa-solid fa-heart text-rose-500 text-base"></i>
             </div>
-            <div class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white">
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-slate-900 dark:text-white">
               ${kpis.savedFarmers}
             </div>
             <div class="text-[10px] text-rose-500 font-semibold">
@@ -154,12 +154,12 @@ function renderBuyerDashboard(state, actions) {
             </div>
           </div>
 
-          <div class="glass-card p-5 rounded-2xl space-y-2">
+          <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-[11px] font-bold">
               <span>Disputes Won</span>
               <i class="fa-solid fa-gavel text-purple-500 text-base"></i>
             </div>
-            <div class="text-2xl font-heading font-extrabold text-purple-700 dark:text-purple-400">
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-purple-700 dark:text-purple-400">
               ${kpis.disputesWon}
             </div>
             <div class="text-[10px] text-purple-600 font-semibold">

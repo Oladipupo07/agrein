@@ -38,28 +38,28 @@ function renderAdminDashboard(state, actions) {
           </div>
 
           <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700">
-              <div class="text-[10px] font-bold text-gray-500">Total Farmers</div>
+            <div class="p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700 min-w-0">
+              <div class="text-[10px] font-bold text-gray-500 break-words">Total Farmers</div>
               <div class="text-lg font-heading font-extrabold text-slate-900 dark:text-white mt-1">14,823</div>
             </div>
-            <div class="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/30">
-              <div class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Verified Farmers 🟢</div>
+            <div class="p-3 sm:p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/30 min-w-0">
+              <div class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 break-words">Verified 🟢</div>
               <div class="text-lg font-heading font-extrabold text-emerald-800 dark:text-emerald-300 mt-1">13,501</div>
             </div>
-            <div class="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/30">
-              <div class="text-[10px] font-bold text-amber-700 dark:text-amber-400">Pending Applications 🟡</div>
+            <div class="p-3 sm:p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/30 min-w-0">
+              <div class="text-[10px] font-bold text-amber-700 dark:text-amber-400 break-words">Pending 🟡</div>
               <div class="text-lg font-heading font-extrabold text-amber-800 dark:text-amber-300 mt-1">12</div>
             </div>
-            <div class="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/30">
-              <div class="text-[10px] font-bold text-blue-700 dark:text-blue-400">Under Review 🔵</div>
+            <div class="p-3 sm:p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/30 min-w-0">
+              <div class="text-[10px] font-bold text-blue-700 dark:text-blue-400 break-words">Under Review 🔵</div>
               <div class="text-lg font-heading font-extrabold text-blue-800 dark:text-blue-300 mt-1">4</div>
             </div>
-            <div class="p-3.5 rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/30">
-              <div class="text-[10px] font-bold text-orange-700 dark:text-orange-400">Changes Required 🟠</div>
+            <div class="p-3 sm:p-3.5 rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/30 min-w-0">
+              <div class="text-[10px] font-bold text-orange-700 dark:text-orange-400 break-words">Changes 🟠</div>
               <div class="text-lg font-heading font-extrabold text-orange-800 dark:text-orange-300 mt-1">3</div>
             </div>
-            <div class="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/30">
-              <div class="text-[10px] font-bold text-red-700 dark:text-red-400">Rejected / Suspended 🔴</div>
+            <div class="p-3 sm:p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/30 min-w-0">
+              <div class="text-[10px] font-bold text-red-700 dark:text-red-400 break-words">Rejected 🔴</div>
               <div class="text-lg font-heading font-extrabold text-red-800 dark:text-red-300 mt-1">2</div>
             </div>
           </div>

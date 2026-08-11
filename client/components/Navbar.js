@@ -32,7 +32,7 @@ function renderNavbar(state, actions) {
         </div>
 
         <!-- Mobile Hamburger Button (only < lg) -->
-        <button onclick="actions.toggleMobileMenu()" class="lg:hidden p-2.5 rounded-xl text-slate-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all" aria-label="Open menu">
+        <button onclick="actions.toggleMobileMenu()" class="lg:hidden p-2.5 rounded-xl text-slate-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex-shrink-0" aria-label="Open menu">
           <i class="fa-solid fa-bars text-lg"></i>
         </button>
 
@@ -87,14 +87,14 @@ function renderNavbar(state, actions) {
             ${cartCount > 0 ? `<span class="w-5 h-5 bg-amber-400 text-emerald-950 rounded-full text-[10px] font-extrabold flex items-center justify-center">${cartCount}</span>` : ''}
           </button>
 
-          <!-- Wishlist Badge -->
-          <button onclick="actions.triggerToast('Saved items wishlist opened')" class="relative p-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all" title="Wishlist">
+          <!-- Wishlist Badge (hidden on mobile - in drawer) -->
+          <button onclick="actions.triggerToast('Saved items wishlist opened')" class="relative p-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all hidden sm:inline-flex" title="Wishlist">
             <i class="fa-regular fa-heart text-base"></i>
             ${wishlist.length > 0 ? `<span class="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center shadow">${wishlist.length}</span>` : ''}
           </button>
 
-          <!-- Dark Mode Toggle -->
-          <button onclick="actions.toggleDarkMode()" class="p-2.5 rounded-xl text-gray-600 dark:text-amber-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all" title="Toggle Theme">
+          <!-- Dark Mode Toggle (hidden on mobile - in drawer) -->
+          <button onclick="actions.toggleDarkMode()" class="p-2.5 rounded-xl text-gray-600 dark:text-amber-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all hidden sm:inline-flex" title="Toggle Theme">
             <i class="fa-solid ${darkMode ? 'fa-sun text-amber-400' : 'fa-moon text-slate-700'} text-base"></i>
           </button>
 
@@ -103,14 +103,15 @@ function renderNavbar(state, actions) {
 
           <!-- Auth Action Buttons (Log In & Sign Up) -->
           <div class="flex items-center space-x-1.5">
-            <button onclick="actions.openAuthModal('login')" class="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex items-center space-x-1">
+            <button onclick="actions.openAuthModal('login')" class="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all hidden sm:flex items-center space-x-1">
               <i class="fa-solid fa-right-to-bracket text-emerald-600 text-xs"></i>
               <span>Log In</span>
             </button>
-            
-            <button onclick="actions.openAuthModal('register')" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white font-extrabold text-xs shadow-md shadow-emerald-700/20 transition-all flex items-center space-x-1.5 transform hover:-translate-y-0.5">
+
+            <button onclick="actions.openAuthModal('register')" class="px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white font-extrabold text-xs shadow-md shadow-emerald-700/20 transition-all flex items-center space-x-1.5 transform hover:-translate-y-0.5">
               <i class="fa-solid fa-user-plus text-amber-300 text-xs"></i>
-              <span>Sign Up</span>
+              <span class="hidden sm:inline">Sign Up</span>
+              <span class="sm:hidden">Join</span>
             </button>
           </div>
 

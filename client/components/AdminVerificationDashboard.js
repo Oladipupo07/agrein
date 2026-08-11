@@ -66,30 +66,30 @@ function renderAdminVerificationDashboard(state, actions) {
             <thead>
               <tr class="bg-slate-50 dark:bg-slate-800/50 text-left">
                 <th class="px-4 py-3 font-bold text-gray-500">Farmer</th>
-                <th class="px-4 py-3 font-bold text-gray-500">Farm</th>
-                <th class="px-4 py-3 font-bold text-gray-500">Location</th>
+                <th class="px-4 py-3 font-bold text-gray-500 hidden md:table-cell">Farm</th>
+                <th class="px-4 py-3 font-bold text-gray-500 hidden sm:table-cell">Location</th>
                 <th class="px-4 py-3 font-bold text-gray-500">Status</th>
-                <th class="px-4 py-3 font-bold text-gray-500">Submitted</th>
+                <th class="px-4 py-3 font-bold text-gray-500 hidden lg:table-cell">Submitted</th>
                 <th class="px-4 py-3 font-bold text-gray-500">Action</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
               ${verifications.map(v => `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td class="px-4 py-3">
-                    <div class="font-bold text-slate-900 dark:text-white">${v.farmer_name}</div>
-                    <div class="text-[10px] text-gray-400">${v.email}</div>
+                  <td class="px-4 py-3 min-w-0">
+                    <div class="font-bold text-slate-900 dark:text-white truncate max-w-[160px]">${v.farmer_name}</div>
+                    <div class="text-[10px] text-gray-400 truncate max-w-[160px] sm:hidden">${v.email}</div>
                   </td>
-                  <td class="px-4 py-3 font-medium text-slate-700 dark:text-gray-300">${v.farm_name}</td>
-                  <td class="px-4 py-3">
+                  <td class="px-4 py-3 font-medium text-slate-700 dark:text-gray-300 hidden md:table-cell">${v.farm_name}</td>
+                  <td class="px-4 py-3 hidden sm:table-cell">
                     <span class="text-gray-500">${v.farm_state}, ${v.farm_lga}</span>
                   </td>
                   <td class="px-4 py-3">
-                    <span class="px-2.5 py-1 rounded-lg ${statusBadge(v.status)} text-[10px] font-extrabold">${v.status.replaceAll('_', ' ')}</span>
+                    <span class="px-2.5 py-1 rounded-lg ${statusBadge(v.status)} text-[10px] font-extrabold whitespace-nowrap">${v.status.replaceAll('_', ' ')}</span>
                   </td>
-                  <td class="px-4 py-3 text-gray-500">${v.submitted_at ? new Date(v.submitted_at).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' }) : '—'}</td>
+                  <td class="px-4 py-3 text-gray-500 hidden lg:table-cell">${v.submitted_at ? new Date(v.submitted_at).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' }) : '—'}</td>
                   <td class="px-4 py-3">
-                    <button onclick="actions.openAdminReview('${v.id}')" class="px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] hover:bg-emerald-200 transition-all">
+                    <button onclick="actions.openAdminReview('${v.id}')" class="px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] hover:bg-emerald-200 transition-all whitespace-nowrap">
                       ${v.status === 'APPROVED' ? 'View' : 'Review'}
                     </button>
                   </td>

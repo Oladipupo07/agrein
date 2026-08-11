@@ -4,7 +4,7 @@
   "description": "Agrein Agricultural Marketplace Backend API",
   "main": "index.js",
   "scripts": {
-    "build:css": "tailwindcss -i ../src/tailwind.css -o ../public/styles.css --minify",
+    "build:css": "tailwindcss -c ../tailwind.config.js -i ../src/tailwind.css -o ../public/styles.css --minify",
     "build": "npm run build:css",
     "start": "node index.js",
     "dev": "nodemon index.js"

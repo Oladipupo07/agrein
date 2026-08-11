@@ -35,8 +35,8 @@ function renderProductCatalog(state, actions) {
           </div>
 
           <!-- Quick Filters Bar -->
-          <div class="flex flex-wrap items-center gap-3">
-            
+          <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+
             <!-- Organic Tag Toggle -->
             <button onclick="actions.toggleOrganicFilter()" class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 ${organicOnlyFilter ? 'bg-emerald-600 text-white shadow-md' : 'glass-panel text-gray-700 dark:text-gray-300 hover:bg-emerald-50'}">
               <i class="fa-solid fa-seedling text-amber-400"></i>
@@ -49,8 +49,8 @@ function renderProductCatalog(state, actions) {
             </select>
 
             <!-- Search Bar -->
-            <div class="relative">
-              <input type="text" value="${searchFilter}" oninput="actions.setSearchFilter(this.value)" placeholder="Search crops, farms..." class="w-full sm:w-64 pl-9 pr-4 py-2 rounded-xl text-xs font-medium glass-panel border border-emerald-500/20 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <div class="relative flex-1 min-w-0 basis-full sm:basis-auto">
+              <input type="text" value="${searchFilter}" oninput="actions.setSearchFilter(this.value)" placeholder="Search crops, farms..." class="w-full pl-9 pr-4 py-2 rounded-xl text-xs font-medium glass-panel border border-emerald-500/20 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
               <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
             </div>
 

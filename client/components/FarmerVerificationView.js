@@ -345,42 +345,42 @@ function renderFarmerVerificationView(state, actions) {
                 <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('government_id', event)" class="hidden">
                 <i class="fa-solid fa-id-card text-xl text-emerald-600 mb-1"></i>
                 <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Government ID</div>
-                <div class="text-[9px] text-gray-400">NIN Slip, Voter's Card, Driver's License</div>
+                <div class="text-[11px] text-gray-400">NIN Slip, Voter's Card, Driver's License</div>
               </label>
 
               <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
                 <input type="file" accept="image/*" onchange="actions.handleDocumentUpload('farm_photo', event)" class="hidden">
                 <i class="fa-solid fa-image text-xl text-emerald-600 mb-1"></i>
                 <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Farm Photos</div>
-                <div class="text-[9px] text-gray-400">Overview, Crops, Infrastructure</div>
+                <div class="text-[11px] text-gray-400">Overview, Crops, Infrastructure</div>
               </label>
 
               <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
                 <input type="file" accept="image/*" onchange="actions.handleDocumentUpload('profile_photo', event)" class="hidden">
                 <i class="fa-solid fa-user-gear text-xl text-emerald-600 mb-1"></i>
                 <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Profile Photo</div>
-                <div class="text-[9px] text-gray-400">Clear headshot photograph</div>
+                <div class="text-[11px] text-gray-400">Clear headshot photograph</div>
               </label>
 
               <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
                 <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('farm_deed', event)" class="hidden">
                 <i class="fa-solid fa-file-contract text-xl text-emerald-600 mb-1"></i>
                 <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Proof of Ownership / Lease</div>
-                <div class="text-[9px] text-gray-400">Land Title, C-of-O, or Lease Deed</div>
+                <div class="text-[11px] text-gray-400">Land Title, C-of-O, or Lease Deed</div>
               </label>
 
               <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
                 <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('agricultural_cert', event)" class="hidden">
                 <i class="fa-solid fa-award text-xl text-emerald-600 mb-1"></i>
                 <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Agricultural Certification</div>
-                <div class="text-[9px] text-gray-400">Organic, GAP, or Harvest Certificate</div>
+                <div class="text-[11px] text-gray-400">Organic, GAP, or Harvest Certificate</div>
               </label>
 
               <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
                 <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('coop_proof', event)" class="hidden">
                 <i class="fa-solid fa-people-group text-xl text-emerald-600 mb-1"></i>
                 <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Cooperative Proof</div>
-                <div class="text-[9px] text-gray-400">Membership ID or Letter</div>
+                <div class="text-[11px] text-gray-400">Membership ID or Letter</div>
               </label>
             </div>
           </div>

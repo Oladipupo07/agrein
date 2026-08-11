@@ -45,26 +45,26 @@ function renderCommodityIndex(state, actions) {
             <table class="w-full text-left text-xs">
               <thead class="bg-gray-50 dark:bg-slate-800 text-gray-500 font-bold border-b border-gray-200 dark:border-slate-700">
                 <tr>
-                  <th class="py-3.5 px-4">Commodity Produce</th>
-                  <th class="py-3.5 px-4">Primary Hub State</th>
-                  <th class="py-3.5 px-4">Current Average Price</th>
-                  <th class="py-3.5 px-4">24h Change</th>
-                  <th class="py-3.5 px-4">Weekly Range (Low - High)</th>
-                  <th class="py-3.5 px-4 text-right">Trend Analysis</th>
+                  <th class="py-3.5 px-4">Commodity</th>
+                  <th class="py-3.5 px-4 hidden sm:table-cell">Hub</th>
+                  <th class="py-3.5 px-4">Price</th>
+                  <th class="py-3.5 px-4">24h</th>
+                  <th class="py-3.5 px-4 hidden md:table-cell">Range</th>
+                  <th class="py-3.5 px-4 text-right">Forecast</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
                 ${allCommodities.map(item => `
                   <tr class="hover:bg-emerald-50/40 dark:hover:bg-slate-800/40 transition-colors">
                     <td class="py-4 px-4 font-bold text-slate-900 dark:text-white">${item.crop}</td>
-                    <td class="py-4 px-4 font-semibold text-emerald-700 dark:text-emerald-400">📍 ${item.state} State</td>
+                    <td class="py-4 px-4 font-semibold text-emerald-700 dark:text-emerald-400 hidden sm:table-cell">📍 ${item.state}</td>
                     <td class="py-4 px-4 font-extrabold text-slate-900 dark:text-white text-sm">${item.price}</td>
                     <td class="py-4 px-4">
                       <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold ${item.trend === 'up' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">
                         <i class="fa-solid fa-arrow-trend-${item.trend}"></i> ${item.change}
                       </span>
                     </td>
-                    <td class="py-4 px-4 font-medium text-gray-600 dark:text-gray-400">${item.low} - ${item.high}</td>
+                    <td class="py-4 px-4 font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">${item.low} - ${item.high}</td>
                     <td class="py-4 px-4 text-right">
                       <button onclick="actions.setView('ai-insights')" class="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-[11px] font-bold">AI Forecast</button>
                     </td>

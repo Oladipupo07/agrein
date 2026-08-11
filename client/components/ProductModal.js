@@ -163,12 +163,12 @@ function renderProductModal(state, actions) {
 
             <!-- Quantity Counter & Dynamic Price Calculation -->
             <div class="pt-4 border-t border-gray-200 dark:border-slate-800 space-y-4">
-              <div class="flex items-center justify-between">
-                <label class="text-xs font-extrabold text-slate-900 dark:text-white">Order Quantity (${product.unit}s):</label>
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <label class="text-xs font-extrabold text-slate-900 dark:text-white min-w-0">Order Quantity (${product.unit}s):</label>
                 <div class="flex items-center space-x-2">
-                  <button onclick="actions.updateModalQty(-10)" class="w-8 h-8 rounded-lg glass-panel font-bold text-slate-900 dark:text-white hover:bg-emerald-100 flex items-center justify-center">-</button>
-                  <input type="number" value="${modalQty}" min="${product.minQty}" onchange="actions.setModalQty(parseInt(this.value) || ${product.minQty})" class="w-20 text-center py-1 text-xs font-bold rounded-lg border border-emerald-500/20 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none">
-                  <button onclick="actions.updateModalQty(10)" class="w-8 h-8 rounded-lg glass-panel font-bold text-slate-900 dark:text-white hover:bg-emerald-100 flex items-center justify-center">+</button>
+                  <button onclick="actions.updateModalQty(-10)" class="w-10 h-10 rounded-lg glass-panel font-bold text-slate-900 dark:text-white hover:bg-emerald-100 flex items-center justify-center flex-shrink-0" aria-label="Decrease quantity">−</button>
+                  <input type="number" value="${modalQty}" min="${product.minQty}" onchange="actions.setModalQty(parseInt(this.value) || ${product.minQty})" class="w-20 text-center py-2 text-xs font-bold rounded-lg border border-emerald-500/20 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none">
+                  <button onclick="actions.updateModalQty(10)" class="w-10 h-10 rounded-lg glass-panel font-bold text-slate-900 dark:text-white hover:bg-emerald-100 flex items-center justify-center flex-shrink-0" aria-label="Increase quantity">+</button>
                 </div>
               </div>
 

@@ -14,7 +14,7 @@ function renderCheckoutModal(state, actions) {
         
         <!-- Interswitch Header -->
         <div class="bg-gradient-to-r from-red-700 via-emerald-800 to-emerald-900 p-6 text-white text-center relative">
-          <button onclick="actions.closeInterswitchCheckout()" class="absolute top-4 right-4 text-white/80 hover:text-white">
+          <button onclick="actions.closeInterswitchCheckout()" class="absolute top-2 right-2 w-10 h-10 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors" aria-label="Close checkout">
             <i class="fa-solid fa-xmark text-lg"></i>
           </button>
           
