@@ -3,9 +3,11 @@
 function renderAuthModal(state, actions) {
   if (!state.authModalActive) return '';
 
-  const mode = state.authModalMode || 'login'; // 'login', 'register', 'verify-otp'
+  const mode = state.authModalMode || 'login'; // 'login', 'register', 'verify-otp', 'forgot-password', 'forgot-password-reset'
   const isLogin = mode === 'login';
   const isOtpView = mode === 'verify-otp';
+  const isForgotEmail = mode === 'forgot-password';
+  const isForgotReset = mode === 'forgot-password-reset';
   const selectedRole = state.authRegisterRole || 'BUYER';
   const email = state.otpEmail || 'user@example.com';
 
@@ -21,21 +23,75 @@ function renderAuthModal(state, actions) {
         <!-- Header -->
         <div class="bg-gradient-to-r from-emerald-800 to-emerald-900 p-6 text-white text-center">
           <div class="w-12 h-12 rounded-2xl bg-white/20 mx-auto flex items-center justify-center mb-3">
-            <i class="fa-solid ${isOtpView ? 'fa-envelope-circle-check' : (isLogin ? 'fa-right-to-bracket' : 'fa-user-plus')} text-xl text-amber-300"></i>
+            <i class="fa-solid ${isOtpView ? 'fa-envelope-circle-check' : (isForgotEmail ? 'fa-key' : (isForgotReset ? 'fa-lock' : (isLogin ? 'fa-right-to-bracket' : 'fa-user-plus')))} text-xl text-amber-300"></i>
           </div>
           <h2 class="text-xl font-heading font-extrabold">
-            ${isOtpView ? 'Verify Your Email' : (isLogin ? 'Welcome Back to Agrein' : 'Create your Agrein Account')}
+            ${isOtpView ? 'Verify Your Email' : (isForgotEmail ? 'Reset Your Password' : (isForgotReset ? 'Set a New Password' : (isLogin ? 'Welcome Back to Agrein' : 'Create your Agrein Account')))}
           </h2>
           <p class="text-xs text-emerald-200 mt-1">
-            ${isOtpView ? `We've sent a 6-digit verification code to <strong class="text-amber-300">${email}</strong>.` : (isLogin ? 'Log in to access your marketplace' : 'Join Africa\'s trusted agricultural marketplace')}
+            ${isOtpView ? `We've sent a 6-digit verification code to <strong class="text-amber-300">${email}</strong>.` : (isForgotEmail ? 'Enter your email and we will send a 6-digit reset code' : (isForgotReset ? `Email verified. Choose a new password for <strong class="text-amber-300">${email}</strong>.` : (isLogin ? 'Log in to access your marketplace' : 'Join Africa\'s trusted agricultural marketplace')))}
           </p>
         </div>
 
         <!-- Body -->
         <div class="p-6 space-y-4">
-          
-          <!-- ═══ 6-DIGIT EMAIL OTP VERIFICATION SCREEN ═══ -->
-          ${isOtpView ? `
+
+          ${isForgotReset ? `
+            <!-- ═══ FORGOT PASSWORD — NEW PASSWORD ENTRY ═══ -->
+            <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 flex items-center space-x-2.5 text-xs text-emerald-700 dark:text-emerald-300">
+              <i class="fa-solid fa-circle-check text-emerald-600"></i>
+              <span>Email verified. Choose a new password below.</span>
+            </div>
+
+            <div>
+              <label class="text-xs font-bold text-gray-500 dark:text-gray-400">New Password *</label>
+              <input type="password" id="resetNewPassword" placeholder="••••••••" class="w-full mt-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+
+            <!-- Password Security Checklist -->
+            <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 space-y-1 text-[10px]">
+              <div class="font-bold text-gray-500 mb-1">Password Requirements:</div>
+              <div class="flex items-center space-x-1.5 text-gray-500"><i class="fa-solid fa-check text-emerald-500"></i><span>At least 8 characters long</span></div>
+              <div class="flex items-center space-x-1.5 text-gray-500"><i class="fa-solid fa-check text-emerald-500"></i><span>At least 1 Uppercase letter (A-Z)</span></div>
+              <div class="flex items-center space-x-1.5 text-gray-500"><i class="fa-solid fa-check text-emerald-500"></i><span>At least 1 Lowercase letter (a-z)</span></div>
+              <div class="flex items-center space-x-1.5 text-gray-500"><i class="fa-solid fa-check text-emerald-500"></i><span>At least 1 Number (0-9)</span></div>
+              <div class="flex items-center space-x-1.5 text-gray-500"><i class="fa-solid fa-check text-emerald-500"></i><span>At least 1 Special character (!@#$%^&*)</span></div>
+            </div>
+
+            <div>
+              <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Confirm New Password *</label>
+              <input type="password" id="resetConfirmPassword" placeholder="••••••••" class="w-full mt-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+
+            <button onclick="actions.submitPasswordReset()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-700 to-emerald-900 text-white font-extrabold text-xs shadow-xl hover:shadow-2xl transition-all flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-shield-check text-amber-300"></i>
+              <span>Reset Password</span>
+            </button>
+
+            <div class="text-center pt-2 border-t border-gray-100 dark:border-slate-800">
+              <button onclick="actions.openAuthModal('login')" class="text-xs text-gray-500 hover:text-emerald-600 font-bold">Back to Login</button>
+            </div>
+          ` : isForgotEmail ? `
+            <!-- ═══ FORGOT PASSWORD — EMAIL ENTRY ═══ -->
+            <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 flex items-center space-x-2.5 text-xs text-gray-600 dark:text-gray-300">
+              <i class="fa-solid fa-circle-info text-emerald-600"></i>
+              <span>Enter the email on your Agrein account and we'll send a 6-digit reset code.</span>
+            </div>
+
+            <div>
+              <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Email Address *</label>
+              <input type="email" id="forgotEmail" placeholder="you@example.com" class="w-full mt-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+
+            <button onclick="actions.requestPasswordReset()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-700 to-emerald-900 text-white font-extrabold text-xs shadow-xl hover:shadow-2xl transition-all flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-paper-plane text-amber-300"></i>
+              <span>Send Reset Code</span>
+            </button>
+
+            <div class="text-center pt-2 border-t border-gray-100 dark:border-slate-800">
+              <button onclick="actions.openAuthModal('login')" class="text-xs text-gray-500 hover:text-emerald-600 font-bold">Back to Login</button>
+            </div>
+          ` : (isOtpView ? `
             ${state.otpSuccess ? `
               <div class="text-center py-6 space-y-4 animate-fade-in">
                 <div class="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 text-3xl flex items-center justify-center mx-auto animate-bounce">
@@ -181,7 +237,7 @@ function renderAuthModal(state, actions) {
 
             ${isLogin ? `
               <div class="text-center">
-                <button onclick="actions.triggerToast('Password reset link sent to your email!')" class="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Forgot Password?</button>
+                <button onclick="actions.openAuthModal('forgot-password')" class="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Forgot Password?</button>
               </div>
             ` : ''}
 

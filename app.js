@@ -59,6 +59,7 @@ const state = {
   authRegisterRole: 'BUYER', // 'BUYER', 'FARMER'
   otpEmail: '',
   otpRole: 'BUYER',
+  otpFlow: 'register', // 'register' | 'reset' — controls post-OTP routing
   otpTimerSeconds: 300, // 5 minutes expiration countdown
   otpCooldownSeconds: 0, // 60s resend cooldown
   otpDigits: ['', '', '', '', '', ''],
@@ -251,6 +252,8 @@ const actions = {
   openAuthModal(mode = 'login') {
     state.authModalActive = true;
     state.authModalMode = mode;
+    // Reset the OTP flow when opening any auth view — registration is the default.
+    state.otpFlow = 'register';
     renderApp();
   },
 
@@ -331,6 +334,7 @@ const actions = {
         // Store user pending state and transition to OTP screen
         state.otpEmail = email;
         state.otpRole = role;
+        state.otpFlow = 'register';
         state.demoOtp = data.demoOtp || '482913';
         state.authModalMode = 'verify-otp';
         state.otpDigits = ['', '', '', '', '', ''];
@@ -348,6 +352,7 @@ const actions = {
         const fallbackDemoOtp = Math.floor(100000 + Math.random() * 900000).toString();
         state.otpEmail = email;
         state.otpRole = role;
+        state.otpFlow = 'register';
         state.demoOtp = fallbackDemoOtp;
         state.authModalMode = 'verify-otp';
         state.otpDigits = ['', '', '', '', '', ''];
@@ -377,6 +382,7 @@ const actions = {
       .then(data => {
         if (!data.success && data.emailVerificationRequired) {
           state.otpEmail = email;
+          state.otpFlow = 'register';
           state.demoOtp = data.demoOtp || '482913';
           state.authModalMode = 'verify-otp';
           state.otpDigits = ['', '', '', '', '', ''];
@@ -466,6 +472,99 @@ const actions = {
     renderApp();
   },
 
+  // Forgot-password: send the 6-digit reset code for the entered email.
+  // The server returns a generic message whether or not the email is
+  // registered (anti-enumeration), so we just transition to the OTP screen.
+  requestPasswordReset() {
+    const email = (document.getElementById('forgotEmail')?.value || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      actions.triggerToast('❌ Please enter a valid email address.');
+      return;
+    }
+
+    fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (!data.success) {
+        actions.triggerToast(`❌ ${data.message || 'Could not send reset code.'}`);
+        return;
+      }
+      state.otpFlow = 'reset';
+      state.otpEmail = email;
+      state.authModalMode = 'verify-otp';
+      state.otpDigits = ['', '', '', '', '', ''];
+      state.otpError = null;
+      state.otpSuccess = false;
+      state.otpTimerSeconds = 300;
+      state.otpCooldownSeconds = 0;
+      actions.startOtpCountdown();
+      renderApp();
+      actions.triggerToast(`📧 If an account exists for ${email}, a 6-digit code has been sent.`);
+    })
+    .catch(() => {
+      // Even on network failure, route the user to the OTP screen so they can
+      // still type the code from their inbox — fail-open UX.
+      state.otpFlow = 'reset';
+      state.otpEmail = email;
+      state.authModalMode = 'verify-otp';
+      state.otpDigits = ['', '', '', '', '', ''];
+      state.otpError = null;
+      state.otpSuccess = false;
+      state.otpTimerSeconds = 300;
+      state.otpCooldownSeconds = 0;
+      actions.startOtpCountdown();
+      renderApp();
+      actions.triggerToast(`📧 If an account exists for ${email}, a 6-digit code has been sent.`);
+    });
+  },
+
+  // Forgot-password: after OTP is verified, send the new password + email to
+  // the server. On success, drop back into the login screen.
+  submitPasswordReset() {
+    const newPassword = document.getElementById('resetNewPassword')?.value || '';
+    const confirmPassword = document.getElementById('resetConfirmPassword')?.value || '';
+
+    if (newPassword !== confirmPassword) {
+      actions.triggerToast('❌ Passwords do not match.');
+      return;
+    }
+    if (newPassword.length < 8) { actions.triggerToast('❌ Password must be at least 8 characters long.'); return; }
+    if (!/[A-Z]/.test(newPassword)) { actions.triggerToast('❌ Must contain at least 1 uppercase letter.'); return; }
+    if (!/[a-z]/.test(newPassword)) { actions.triggerToast('❌ Must contain at least 1 lowercase letter.'); return; }
+    if (!/[0-9]/.test(newPassword)) { actions.triggerToast('❌ Must contain at least 1 number.'); return; }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) { actions.triggerToast('❌ Must contain at least 1 special character.'); return; }
+
+    const code = state.otpDigits.join('');
+    if (code.length !== 6) {
+      actions.triggerToast('❌ Verification code missing. Please restart the reset flow.');
+      actions.openAuthModal('forgot-password');
+      return;
+    }
+
+    fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: state.otpEmail, otp: code, newPassword })
+    })
+    .then(res => res.json().then(b => ({ status: res.status, body: b })))
+    .then(({ status, body }) => {
+      if (status === 200 && body.success) {
+        actions.triggerToast('✅ Password reset successfully. Please log in.');
+        state.otpFlow = 'register';
+        state.otpDigits = ['', '', '', '', '', ''];
+        state.otpSuccess = false;
+        actions.openAuthModal('login');
+      } else {
+        actions.triggerToast(`❌ ${body.message || 'Reset failed.'}`);
+      }
+    })
+    .catch(() => actions.triggerToast('❌ Could not reach the server.'));
+  },
+
   submitOtpVerification() {
     const code = state.otpDigits.join('');
     if (code.length !== 6) {
@@ -478,6 +577,17 @@ const actions = {
       state.otpSuccess = true;
       state.otpError = null;
       renderApp();
+
+      // Password reset flow: after a successful OTP we hand off to the
+      // new-password entry instead of auto-routing to a dashboard.
+      if (state.otpFlow === 'reset') {
+        setTimeout(() => {
+          state.otpSuccess = false;
+          state.authModalMode = 'forgot-password-reset';
+          renderApp();
+        }, 1200);
+        return;
+      }
 
       setTimeout(() => {
         const resumeView = state.pendingGuardView;

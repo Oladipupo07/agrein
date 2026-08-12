@@ -448,6 +448,92 @@ const authController = {
   },
 
 
+  // Public: request a 6-digit OTP for password reset. To prevent user
+  // enumeration we always return success + a generic message even when no
+  // account exists for that email — the only difference is whether an OTP is
+  // actually dispatched.
+  async forgotPassword(req, res) {
+    try {
+      const { email } = req.body || {};
+      const GENERIC = 'If an account exists for that email, a 6-digit code has been sent.';
+
+      if (!email) {
+        return res.status(400).json({ success: false, message: 'Email address required.' });
+      }
+
+      const normalizedEmail = String(email).toLowerCase();
+      const user = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+
+      if (!user) {
+        // Intentionally indistinguishable from the success path to prevent
+        // email enumeration. We log so the operator can audit probes.
+        console.log(`[forgotPassword] No account for ${normalizedEmail} (returning generic success).`);
+        return res.json({ success: true, message: GENERIC, expiresInSeconds: 300 });
+      }
+
+      otpService.generateOtp(normalizedEmail);
+
+      res.json({ success: true, message: GENERIC, expiresInSeconds: 300 });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  // Public: verify OTP + write a new password. Server-side strength validation
+  // mirrors the registration rules so an attacker can't bypass client checks.
+  async resetPassword(req, res) {
+    try {
+      const { email, otp, newPassword } = req.body || {};
+
+      if (!email || !otp || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Email, verification code, and new password are required.' });
+      }
+
+      const normalizedEmail = String(email).toLowerCase();
+      const user = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'No account found for that email.' });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({ success: false, message: 'New password must be at least 8 characters long.' });
+      }
+      if (!/[A-Z]/.test(newPassword)) {
+        return res.status(400).json({ success: false, message: 'New password must contain at least 1 uppercase letter (A-Z).' });
+      }
+      if (!/[a-z]/.test(newPassword)) {
+        return res.status(400).json({ success: false, message: 'New password must contain at least 1 lowercase letter (a-z).' });
+      }
+      if (!/[0-9]/.test(newPassword)) {
+        return res.status(400).json({ success: false, message: 'New password must contain at least 1 number (0-9).' });
+      }
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+        return res.status(400).json({ success: false, message: 'New password must contain at least 1 special character.' });
+      }
+
+      const otpResult = otpService.verifyOtp(normalizedEmail, otp);
+      if (!otpResult.success) {
+        return res.status(400).json({
+          success: false,
+          reason: otpResult.reason,
+          message: otpResult.message,
+          attemptsRemaining: otpResult.attemptsRemaining
+        });
+      }
+
+      const { salt, hash } = passwordService.hashPassword(newPassword);
+      user.passwordSalt = salt;
+      user.passwordHash = hash;
+
+      res.json({
+        success: true,
+        message: 'Password reset successfully. You can now log in with your new password.'
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
   // Authenticated password change — caller identified by x-user-email header
   async changePassword(req, res) {
     try {
