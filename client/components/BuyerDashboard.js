@@ -74,7 +74,11 @@ function renderBuyerDashboard(state, actions) {
             </p>
           </div>
 
-          <div class="flex items-center space-x-3 flex-shrink-0">
+          <div class="flex flex-wrap items-center gap-3 flex-shrink-0">
+            <button onclick="actions.openChangePasswordModal()" class="px-4 py-3 rounded-2xl glass-panel border border-blue-600/30 text-blue-900 dark:text-blue-300 font-extrabold text-xs hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all flex items-center space-x-2" title="Change Password">
+              <i class="fa-solid fa-lock text-blue-500"></i>
+              <span class="hidden sm:inline">Change Password</span>
+            </button>
             <button onclick="actions.setView('marketplace')" class="px-5 py-3 rounded-2xl bg-blue-700 hover:bg-blue-800 text-white font-extrabold text-xs shadow-lg shadow-blue-700/20 transition-all flex items-center space-x-2">
               <i class="fa-solid fa-basket-shopping text-amber-300"></i>
               <span>Browse Produce</span>

@@ -78,7 +78,7 @@ function renderCartDrawer(state, actions) {
               </div>
             </div>
 
-            <button onclick="actions.toggleCartDrawer(); actions.initiateInterswitchCheckout(${totalAmount}, 'Agrein Bulk Harvest Order (${cart.length} Items)');" class="w-full py-4 rounded-2xl bg-gradient-to-r from-red-700 via-emerald-800 to-emerald-700 hover:from-red-800 hover:to-emerald-800 text-white font-extrabold text-xs shadow-xl shadow-emerald-700/30 transition-all text-center flex items-center justify-center space-x-2">
+            <button onclick="if(!state.currentUser){ actions.openAuthModal('login'); return; } actions.toggleCartDrawer(); actions.initiateInterswitchCheckout(${totalAmount}, 'Agrein Bulk Harvest Order (${cart.length} Items)');" class="w-full py-4 rounded-2xl bg-gradient-to-r from-red-700 via-emerald-800 to-emerald-700 hover:from-red-800 hover:to-emerald-800 text-white font-extrabold text-xs shadow-xl shadow-emerald-700/30 transition-all text-center flex items-center justify-center space-x-2">
               <i class="fa-solid fa-lock text-amber-300"></i>
               <span>Interswitch Webpay Checkout</span>
             </button>

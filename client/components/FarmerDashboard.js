@@ -65,6 +65,10 @@ function renderFarmerDashboard(state, actions) {
           </div>
 
           <div class="flex flex-wrap items-center gap-3 flex-shrink-0">
+            <button onclick="actions.openChangePasswordModal()" class="px-4 py-3 rounded-2xl glass-panel border border-emerald-600/30 text-emerald-900 dark:text-emerald-300 font-extrabold text-xs hover:bg-emerald-50 transition-all flex items-center space-x-2" title="Change Password">
+              <i class="fa-solid fa-lock text-emerald-500"></i>
+              <span class="hidden sm:inline">Change Password</span>
+            </button>
             <button onclick="actions.openAddProductModal()" class="px-5 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-lg shadow-emerald-700/20 transition-all flex items-center space-x-2">
               <i class="fa-solid fa-plus text-amber-300"></i>
               <span>List New Crop</span>

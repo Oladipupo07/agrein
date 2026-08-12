@@ -37,8 +37,8 @@ function renderFooter(state, actions) {
             <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400">Agrein Ecosystem</h4>
             <ul class="space-y-2 text-xs text-gray-400">
               <li><button onclick="actions.setView('marketplace')" class="hover:text-emerald-400 transition-colors">Direct Harvest Marketplace</button></li>
-              <li><button onclick="actions.switchRole('farmer')" class="hover:text-emerald-400 transition-colors">Farmer Merchant Portal</button></li>
-              <li><button onclick="actions.switchRole('buyer')" class="hover:text-emerald-400 transition-colors">Bulk Buyer Logistics</button></li>
+              <li><button onclick="actions.guardView('farmer-dashboard')" class="hover:text-emerald-400 transition-colors">Farmer Merchant Portal</button></li>
+              <li><button onclick="actions.guardView('buyer-dashboard')" class="hover:text-emerald-400 transition-colors">Bulk Buyer Logistics</button></li>
               <li><button onclick="actions.setView('ai-insights')" class="hover:text-emerald-400 transition-colors">AI Crop Price Forecasting</button></li>
               <li><button onclick="actions.setView('nearby-farms')" class="hover:text-emerald-400 transition-colors">Geospatial Farm Finder</button></li>
             </ul>

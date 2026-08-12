@@ -1,5 +1,7 @@
 // Authentication & Role-Based Access Control (RBAC) Middleware for Agrein
 
+const authController = require('../controllers/authController');
+
 /**
  * Verify authorization token or header
  */
@@ -18,6 +20,29 @@ function authenticateToken(req, res, next) {
     verificationStatus: mockVerificationStatus
   };
 
+  next();
+}
+
+/**
+ * Header-based auth that reads the caller's email and resolves them against
+ * the registered user table. Used by /api/auth/change-password so the caller
+ * is bound to a real account. Attaches `req.user = { id, email, role, verificationStatus }`.
+ */
+function authenticateFromHeader(req, res, next) {
+  const email = (req.headers['x-user-email'] || '').toLowerCase();
+  if (!email) {
+    return res.status(401).json({ success: false, message: 'Authentication required.' });
+  }
+  const user = authController.findUserByEmail(email);
+  if (!user) {
+    return res.status(401).json({ success: false, message: 'Account not found.' });
+  }
+  req.user = {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    verificationStatus: user.verification_status
+  };
   next();
 }
 
@@ -68,6 +93,7 @@ function requireApprovedFarmer(req, res, next) {
 
 module.exports = {
   authenticateToken,
+  authenticateFromHeader,
   requireRole,
   requireApprovedFarmer
 };

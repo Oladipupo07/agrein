@@ -71,6 +71,12 @@ const state = {
   // Buyer Protection Dispute State
   disputeModalActive: false,
 
+  // Authenticated session (replaces the public Portal View Mode switcher)
+  currentUser: null, // null when logged out; { id, full_name, email, role, token, verification_status } when logged in
+  pendingGuardView: null, // gated view a visitor tried to enter before logging in
+  changePasswordModalActive: false,
+  navbarMenuOpen: false,
+
   // Admin Review Dossier State
   adminReviewDossier: null,
   adminActionModalActive: false,
@@ -136,16 +142,74 @@ const actions = {
     renderApp();
   },
 
-  switchRole(role) {
-    state.activeRole = role;
-    if (role === 'farmer') state.currentView = 'farmer-dashboard';
-    else if (role === 'buyer') state.currentView = 'buyer-dashboard';
-    else if (role === 'admin') state.currentView = 'admin-verification';
-    else state.currentView = 'landing';
-    
-    actions.triggerToast(`Switched view mode to: ${role.toUpperCase()} portal`);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Gated routing — visitors must log in to reach portals; logged-in users must
+  // own the right role. Falls back to the visitor landing page on any failure.
+  guardView(view) {
+    const GATED_VIEWS = {
+      'farmer-dashboard': 'FARMER',
+      'farmer-verification': 'FARMER',
+      'buyer-dashboard': 'BUYER',
+      'admin-dashboard': 'ADMIN',
+      'admin-verification': 'ADMIN',
+      'admin-review': 'ADMIN'
+    };
+    const roleDefaultView = (role) => {
+      if (role === 'BUYER') return 'buyer-dashboard';
+      if (role === 'ADMIN') return 'admin-verification';
+      if (role === 'FARMER') return 'farmer-verification';
+      return 'landing';
+    };
+
+    const requiredRole = GATED_VIEWS[view];
+    if (!requiredRole) {
+      actions.setView(view);
+      return;
+    }
+
+    if (!state.currentUser) {
+      state.pendingGuardView = view;
+      actions.openAuthModal('login');
+      actions.triggerToast('🔒 Please log in to access that portal.');
+      return;
+    }
+
+    const userRole = (state.currentUser.role || '').toUpperCase();
+    if (userRole !== requiredRole) {
+      actions.triggerToast(`⛔ This portal is restricted to ${requiredRole} accounts.`);
+      actions.setView(roleDefaultView(userRole));
+      return;
+    }
+
+    // Logged in with the right role — but a farmer who hasn't been verified
+    // yet should land on the verification page, not the dashboard.
+    if (view === 'farmer-dashboard' && state.currentUser.verification_status !== 'APPROVED') {
+      actions.triggerToast('📋 Complete your farm verification to access the dashboard.');
+      actions.setView('farmer-verification');
+      return;
+    }
+
+    actions.setView(view);
+  },
+
+  guardViewAndCloseMobile(view) {
+    state.mobileMenuOpen = false;
+    actions.guardView(view);
+  },
+
+  logout() {
+    state.currentUser = null;
+    state.activeRole = 'visitor';
+    state.pendingGuardView = null;
+    state.navbarMenuOpen = false;
+    state.currentView = 'landing';
+    state.mobileMenuOpen = false;
+    actions.triggerToast('👋 You have been logged out.');
     renderApp();
+  },
+
+  // Track the view a visitor wanted to enter so we can resume it after login.
+  setPendingGuardView(view) {
+    state.pendingGuardView = view;
   },
 
   toggleDarkMode() {
@@ -298,14 +362,40 @@ const actions = {
           return;
         }
 
+        if (!data.success) {
+          actions.triggerToast(`❌ ${data.message || 'Login failed.'}`);
+          return;
+        }
+
+        const user = data.user || {};
+        state.currentUser = {
+          id: user.id,
+          full_name: user.full_name,
+          email: user.email,
+          role: (user.role || '').toUpperCase(),
+          token: user.token,
+          verification_status: user.verification_status
+        };
+        state.activeRole = (state.currentUser.role || 'visitor').toLowerCase();
         state.authModalActive = false;
-        actions.triggerToast('Logged in successfully!');
-        renderApp();
+        actions.triggerToast(`✅ Logged in as ${state.currentUser.full_name || state.currentUser.email}.`);
+
+        const resumeView = state.pendingGuardView;
+        state.pendingGuardView = null;
+        if (resumeView) {
+          actions.guardView(resumeView);
+        } else if (state.currentUser.role === 'ADMIN') {
+          actions.guardView('admin-verification');
+        } else if (state.currentUser.role === 'FARMER') {
+          actions.guardView(state.currentUser.verification_status === 'APPROVED' ? 'farmer-dashboard' : 'farmer-verification');
+        } else if (state.currentUser.role === 'BUYER') {
+          actions.guardView('buyer-dashboard');
+        } else {
+          actions.setView('landing');
+        }
       })
       .catch(() => {
-        state.authModalActive = false;
-        actions.triggerToast('Logged in successfully!');
-        renderApp();
+        actions.triggerToast('❌ Login failed. Check your connection and try again.');
       });
     }
   },
@@ -359,6 +449,33 @@ const actions = {
       return;
     }
 
+    const finishOtpSuccess = () => {
+      state.otpSuccess = true;
+      state.otpError = null;
+      renderApp();
+
+      setTimeout(() => {
+        const resumeView = state.pendingGuardView;
+        const userRole = (state.currentUser && state.currentUser.role) || state.otpRole;
+        state.authModalActive = false;
+        state.otpSuccess = false;
+        state.activeRole = (userRole || 'visitor').toLowerCase();
+        state.pendingGuardView = null;
+
+        if (resumeView) {
+          actions.guardView(resumeView);
+        } else if (userRole === 'FARMER') {
+          actions.guardView('farmer-verification');
+        } else if (userRole === 'BUYER') {
+          actions.guardView('buyer-dashboard');
+        } else if (userRole === 'ADMIN') {
+          actions.guardView('admin-verification');
+        } else {
+          actions.setView('landing');
+        }
+      }, 1400);
+    };
+
     fetch('/api/auth/verify-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -372,49 +489,37 @@ const actions = {
         return;
       }
 
-      state.otpSuccess = true;
-      state.otpError = null;
-      renderApp();
-
-      setTimeout(() => {
-        state.authModalActive = false;
-        state.otpSuccess = false;
-        const targetRole = state.otpRole;
-
-        if (targetRole === 'FARMER') {
-          state.activeRole = 'farmer';
-          state.currentView = 'farmer-verification';
-          actions.triggerToast('🎉 Email Verified! Complete your farm verification to start selling.');
-        } else {
-          state.activeRole = 'buyer';
-          state.currentView = 'buyer-dashboard';
-          actions.triggerToast('🎉 Email Verified! Welcome to your Buyer Dashboard.');
-        }
-        renderApp();
-      }, 1400);
+      const user = data.user || {};
+      const role = (user.role || state.otpRole || 'BUYER').toUpperCase();
+      const verificationStatus = user.verification_status || (role === 'FARMER' ? 'NOT_STARTED' : 'APPROVED');
+      state.currentUser = {
+        id: user.id,
+        full_name: user.full_name,
+        email: user.email,
+        role,
+        token: user.token,
+        verification_status: verificationStatus
+      };
+      actions.triggerToast(role === 'FARMER'
+        ? '🎉 Email Verified! Complete your farm verification to start selling.'
+        : '🎉 Email Verified! Welcome to your dashboard.');
+      finishOtpSuccess();
     })
     .catch(() => {
-      // Fallback verification for demo
-      state.otpSuccess = true;
-      state.otpError = null;
-      renderApp();
-
-      setTimeout(() => {
-        state.authModalActive = false;
-        state.otpSuccess = false;
-        const targetRole = state.otpRole;
-
-        if (targetRole === 'FARMER') {
-          state.activeRole = 'farmer';
-          state.currentView = 'farmer-verification';
-          actions.triggerToast('🎉 Email Verified! Complete your farm verification to start selling.');
-        } else {
-          state.activeRole = 'buyer';
-          state.currentView = 'buyer-dashboard';
-          actions.triggerToast('🎉 Email Verified! Welcome to your Buyer Dashboard.');
-        }
-        renderApp();
-      }, 1400);
+      // Fallback verification for demo — synthesize a session using the local role hint
+      const role = (state.otpRole || 'BUYER').toUpperCase();
+      state.currentUser = {
+        id: `usr-${Date.now()}`,
+        full_name: state.otpEmail.split('@')[0],
+        email: state.otpEmail,
+        role,
+        token: `AGREIN_JWT_TOKEN_${Date.now()}`,
+        verification_status: role === 'FARMER' ? 'NOT_STARTED' : 'APPROVED'
+      };
+      actions.triggerToast(role === 'FARMER'
+        ? '🎉 Email Verified! Complete your farm verification to start selling.'
+        : '🎉 Email Verified! Welcome to your dashboard.');
+      finishOtpSuccess();
     });
   },
 
@@ -821,16 +926,79 @@ const actions = {
     renderApp();
   },
 
-  switchRoleAndCloseMobile(role) {
-    state.activeRole = role;
-    if (role === 'farmer') state.currentView = 'farmer-dashboard';
-    else if (role === 'buyer') state.currentView = 'buyer-dashboard';
-    else if (role === 'admin') state.currentView = 'admin-verification';
-    else state.currentView = 'landing';
-    state.mobileMenuOpen = false;
-    actions.triggerToast(`Switched view mode to: ${role.toUpperCase()} portal`);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  toggleNavbarMenu() {
+    state.navbarMenuOpen = !state.navbarMenuOpen;
     renderApp();
+  },
+
+  closeNavbarMenu() {
+    state.navbarMenuOpen = false;
+    renderApp();
+  },
+
+  openChangePasswordModal() {
+    if (!state.currentUser) {
+      actions.openAuthModal('login');
+      return;
+    }
+    state.changePasswordModalActive = true;
+    state.navbarMenuOpen = false;
+    renderApp();
+  },
+
+  closeChangePasswordModal() {
+    state.changePasswordModalActive = false;
+    renderApp();
+  },
+
+  submitChangePassword(currentPassword, newPassword, confirmPassword) {
+    if (!state.currentUser) {
+      actions.triggerToast('❌ You must be logged in to change your password.');
+      return;
+    }
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      actions.triggerToast('❌ Please fill in all password fields.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      actions.triggerToast('❌ New password must be at least 8 characters long.');
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+      actions.triggerToast('❌ New password must include upper, lower, digit, and special characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      actions.triggerToast('❌ New password and confirmation do not match.');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      actions.triggerToast('❌ Your new password must be different from your current password.');
+      return;
+    }
+
+    fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-email': state.currentUser.email
+      },
+      body: JSON.stringify({ currentPassword, newPassword })
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })))
+    .then(({ status, body }) => {
+      if (status === 200 && body.success) {
+        actions.triggerToast('🔐 Password updated successfully.');
+        state.changePasswordModalActive = false;
+        renderApp();
+      } else {
+        actions.triggerToast(`❌ ${body.message || 'Could not update password.'}`);
+      }
+    })
+    .catch(() => {
+      actions.triggerToast('❌ Could not reach the server. Check your connection and try again.');
+    });
   },
 
   openProductModal(productId) {
@@ -1140,6 +1308,7 @@ function renderApp() {
       ${renderCheckoutModal(state, actions)}
       ${renderChatDrawer(state, actions)}
       ${renderAuthModal(state, actions)}
+      ${renderChangePasswordModal(state, actions)}
       ${renderBuyerDisputeModal(state, actions)}
       ${renderAdminActionModal(state, actions)}
 
@@ -1284,6 +1453,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (state.disputeModalActive) {
         state.disputeModalActive = false;
+        renderApp();
+      }
+      if (state.changePasswordModalActive) {
+        state.changePasswordModalActive = false;
+        renderApp();
+      }
+      if (state.navbarMenuOpen) {
+        state.navbarMenuOpen = false;
         renderApp();
       }
     }

@@ -20,6 +20,10 @@ function renderAdminDashboard(state, actions) {
             <p class="text-xs text-gray-500">Overseeing agricultural transactions, escrow protection, and user verifications across 36 states.</p>
           </div>
           <div class="flex items-center space-x-2">
+            <button onclick="actions.openChangePasswordModal()" class="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-extrabold shadow-md transition-all flex items-center space-x-2" title="Change Password">
+              <i class="fa-solid fa-lock text-amber-300"></i>
+              <span>Change Password</span>
+            </button>
             <span class="px-3 py-1.5 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 text-xs font-bold">System Status: 100% Operational</span>
           </div>
         </div>

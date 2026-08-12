@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 
 // Middleware
-const { authenticateToken, requireRole, requireApprovedFarmer } = require('../middleware/auth');
+const { authenticateToken, authenticateFromHeader, requireRole, requireApprovedFarmer } = require('../middleware/auth');
 
 // Controllers
 const productController = require('../controllers/productController');
@@ -24,6 +24,7 @@ router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
 router.post('/auth/verify-otp', authController.verifyOtp);
 router.post('/auth/resend-otp', authController.resendOtp);
+router.post('/auth/change-password', authenticateFromHeader, authController.changePassword);
 router.post('/admin/users/create-admin', authenticateToken, requireRole(['ADMIN']), authController.createAdminAccount);
 
 // ===== FARMER VERIFICATION ROUTES =====

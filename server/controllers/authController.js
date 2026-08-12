@@ -1,8 +1,33 @@
 // User Authentication & Role Controller for Agrein with Email OTP Verification
 const otpService = require('../utils/otpService');
+const passwordService = require('../utils/passwordService');
+
+// Helper: pre-compute a deterministic-ish password hash pair for seeds.
+// We hash here at module load so the registeredUsers array is a plain literal
+// of user records. New users created via /register get fresh salts.
+function hashSync(plain) {
+  return passwordService.hashPassword(plain);
+}
 
 // In-memory registered user database
+const adminSeed = hashSync('password123');
+const demoIbrahim = hashSync('demo1234');
+const demoAnita = hashSync('demo1234');
+
 let registeredUsers = [
+  {
+    id: 'usr-admin-01',
+    full_name: 'Akobe Oladipupo',
+    email: 'akobeoladipupo@gmail.com',
+    phone_number: '08000000001',
+    role: 'ADMIN',
+    email_verified: true,
+    is_verified: true,
+    verification_status: 'APPROVED',
+    passwordSalt: adminSeed.salt,
+    passwordHash: adminSeed.hash,
+    created_at: new Date().toISOString()
+  },
   {
     id: 'usr-001',
     full_name: 'Mallam Ibrahim Bello',
@@ -11,7 +36,10 @@ let registeredUsers = [
     role: 'FARMER',
     email_verified: true,
     is_verified: true,
-    verification_status: 'APPROVED'
+    verification_status: 'APPROVED',
+    passwordSalt: demoIbrahim.salt,
+    passwordHash: demoIbrahim.hash,
+    created_at: new Date().toISOString()
   },
   {
     id: 'usr-002',
@@ -21,9 +49,20 @@ let registeredUsers = [
     role: 'BUYER',
     email_verified: true,
     is_verified: true,
-    verification_status: 'APPROVED'
+    verification_status: 'APPROVED',
+    passwordSalt: demoAnita.salt,
+    passwordHash: demoAnita.hash,
+    created_at: new Date().toISOString()
   }
 ];
+
+// Strip the password material before returning a user record to clients.
+function toClientUser(user) {
+  if (!user) return null;
+  // eslint-disable-next-line no-unused-vars
+  const { passwordHash, passwordSalt, ...safe } = user;
+  return safe;
+}
 
 const authController = {
   // Public Sign Up for BUYER and FARMER -> Triggers Email OTP
@@ -36,6 +75,7 @@ const authController = {
       }
 
       const normalizedRole = role.toUpperCase();
+      const normalizedEmail = email.toLowerCase();
 
       // Security Alert: Prohibit public creation of ADMIN or DELIVERY_PARTNER roles
       if (normalizedRole === 'ADMIN' || normalizedRole === 'DELIVERY_PARTNER') {
@@ -45,37 +85,52 @@ const authController = {
         });
       }
 
-      const existing = registeredUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+      if (!password || password.length < 8) {
+        return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long.' });
+      }
+
+      const existing = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
       if (existing && existing.email_verified) {
         return res.status(400).json({ success: false, message: 'An account with this email address already exists. Please log in.' });
       }
 
-      const newUser = {
-        id: `usr-${Date.now()}`,
-        full_name: fullName,
-        email: email.toLowerCase(),
-        phone_number: phone,
-        role: normalizedRole,
-        email_verified: false, // Unverified until 6-digit OTP verification succeeds
-        is_verified: false,
-        verification_status: normalizedRole === 'FARMER' ? 'NOT_STARTED' : 'APPROVED',
-        created_at: new Date().toISOString()
-      };
+      const { salt, hash } = passwordService.hashPassword(password);
 
-      if (!existing) {
+      if (existing) {
+        // Update the unverified existing record with the new credentials + role data
+        existing.full_name = fullName;
+        existing.phone_number = phone;
+        existing.role = normalizedRole;
+        existing.passwordSalt = salt;
+        existing.passwordHash = hash;
+      } else {
+        const newUser = {
+          id: `usr-${Date.now()}`,
+          full_name: fullName,
+          email: normalizedEmail,
+          phone_number: phone,
+          role: normalizedRole,
+          email_verified: false,
+          is_verified: false,
+          verification_status: normalizedRole === 'FARMER' ? 'NOT_STARTED' : 'APPROVED',
+          passwordSalt: salt,
+          passwordHash: hash,
+          created_at: new Date().toISOString()
+        };
         registeredUsers.push(newUser);
       }
 
-      // Generate 6-Digit Email OTP
-      const { rawOtp, expiresAt } = otpService.generateOtp(newUser.email);
+      // Generate 6-Digit Email OTP against the (possibly updated) record
+      const target = existing || registeredUsers[registeredUsers.length - 1];
+      const { rawOtp, expiresAt } = otpService.generateOtp(target.email);
 
       res.status(201).json({
         success: true,
         requiresEmailVerification: true,
-        message: `We've sent a 6-digit verification code to ${newUser.email}.`,
-        email: newUser.email,
-        role: normalizedRole,
-        demoOtp: rawOtp, // Provided for easy local preview/testing in demo toast
+        message: `We've sent a 6-digit verification code to ${target.email}.`,
+        email: target.email,
+        role: target.role,
+        demoOtp: rawOtp,
         expiresInSeconds: 300
       });
     } catch (error) {
@@ -101,15 +156,15 @@ const authController = {
         });
       }
 
-      // Mark user email as verified
-      let user = registeredUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+      const normalizedEmail = email.toLowerCase();
+      let user = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
       if (user) {
         user.email_verified = true;
       } else {
         user = {
           id: `usr-${Date.now()}`,
-          email: email.toLowerCase(),
-          full_name: email.split('@')[0],
+          email: normalizedEmail,
+          full_name: normalizedEmail.split('@')[0],
           role: 'BUYER',
           email_verified: true,
           verification_status: 'APPROVED'
@@ -124,7 +179,7 @@ const authController = {
         message: '✓ Email Verified Successfully. Your email has been verified.',
         email_verified: true,
         user: {
-          ...user,
+          ...toClientUser(user),
           token: `AGREIN_JWT_TOKEN_${Date.now()}`
         },
         redirectView
@@ -164,7 +219,7 @@ const authController = {
     }
   },
 
-  // User Login (Checks email verification status)
+  // User Login — verifies email + password against the seeded/registered records
   async login(req, res) {
     try {
       const { email, password } = req.body;
@@ -173,20 +228,18 @@ const authController = {
       }
 
       const normalizedEmail = email.toLowerCase();
-      let user = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+      const user = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
 
-      let userRole = 'BUYER';
-      let verificationStatus = 'APPROVED';
-
-      if (normalizedEmail.includes('farmer') || normalizedEmail.includes('ibrahim')) {
-        userRole = 'FARMER';
-        verificationStatus = 'APPROVED';
-      } else if (normalizedEmail.includes('admin')) {
-        userRole = 'ADMIN';
+      if (!user) {
+        return res.status(401).json({ success: false, message: 'Invalid email or password.' });
       }
 
-      // Check if user exists and email is verified
-      if (user && !user.email_verified && userRole !== 'ADMIN') {
+      if (!user.passwordHash || !passwordService.verifyPassword(password, user.passwordSalt, user.passwordHash)) {
+        return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+      }
+
+      // Email verification gate for non-admins
+      if (!user.email_verified && user.role !== 'ADMIN') {
         const { rawOtp } = otpService.generateOtp(normalizedEmail);
         return res.status(403).json({
           success: false,
@@ -201,12 +254,7 @@ const authController = {
         success: true,
         message: 'Login successful',
         user: {
-          id: user ? user.id : `usr-${Date.now()}`,
-          email: normalizedEmail,
-          full_name: user ? user.full_name : normalizedEmail.split('@')[0].toUpperCase(),
-          role: user ? user.role : userRole,
-          email_verified: true,
-          verification_status: user ? user.verification_status : verificationStatus,
+          ...toClientUser(user),
           token: `AGREIN_JWT_TOKEN_${Date.now()}`
         }
       });
@@ -220,7 +268,6 @@ const authController = {
     try {
       const { fullName, email, password } = req.body;
 
-      // Verify requesting user is existing ADMIN
       if (req.user && req.user.role !== 'ADMIN') {
         return res.status(403).json({ success: false, message: 'Forbidden: Only existing Admins can create new Admin accounts.' });
       }
@@ -242,7 +289,52 @@ const authController = {
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
+  },
+
+  // Authenticated password change — caller identified by x-user-email header
+  async changePassword(req, res) {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Current and new password are required.' });
+      }
+
+      const email = (req.user && req.user.email) || (req.headers['x-user-email'] || '').toLowerCase();
+      if (!email) {
+        return res.status(401).json({ success: false, message: 'Authentication required.' });
+      }
+
+      const user = registeredUsers.find(u => u.email.toLowerCase() === email);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'Account not found.' });
+      }
+
+      if (!passwordService.verifyPassword(currentPassword, user.passwordSalt, user.passwordHash)) {
+        return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({ success: false, message: 'New password must be at least 8 characters long.' });
+      }
+
+      const { salt, hash } = passwordService.hashPassword(newPassword);
+      user.passwordSalt = salt;
+      user.passwordHash = hash;
+
+      res.json({
+        success: true,
+        message: 'Password updated successfully. Please use your new password next time you sign in.'
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
   }
+};
+
+// Used by middleware/auth.js to look up the seed user table without circular imports
+authController.findUserByEmail = (email) => {
+  if (!email) return null;
+  return registeredUsers.find(u => u.email.toLowerCase() === String(email).toLowerCase()) || null;
 };
 
 module.exports = authController;

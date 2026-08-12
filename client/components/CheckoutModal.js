@@ -49,7 +49,7 @@ function renderCheckoutModal(state, actions) {
               </div>
               <h3 class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white">Interswitch Approved!</h3>
               <p class="text-xs text-gray-500">Transaction Reference: <strong class="text-emerald-700 dark:text-emerald-400">${txnRef}</strong>. Escrow locked. Farmer notified for dispatch.</p>
-              <button onclick="actions.closeInterswitchCheckout(); actions.switchRole('buyer');" class="w-full py-3.5 rounded-2xl bg-emerald-700 text-white font-extrabold text-xs shadow-lg hover:bg-emerald-800 transition-all">
+              <button onclick="actions.closeInterswitchCheckout(); actions.guardView('buyer-dashboard');" class="w-full py-3.5 rounded-2xl bg-emerald-700 text-white font-extrabold text-xs shadow-lg hover:bg-emerald-800 transition-all">
                 View ColdChain Delivery Timeline
               </button>
             </div>
