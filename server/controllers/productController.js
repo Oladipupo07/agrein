@@ -1,40 +1,8 @@
 // Product Controller for Agrein Backend API
 
-// Mock repository array for standalone runtime
-let mockProducts = [
-  {
-    id: 'prod-001',
-    title: 'Fresh Grade-A Yellow Maize (Corn)',
-    category: 'Grains',
-    price_per_unit: 450,
-    unit_type: 'kg',
-    available_quantity: 5000,
-    min_order_quantity: 50,
-    is_organic: true,
-    harvest_date: '2026-08-01',
-    origin_state: 'Kaduna',
-    farm_name: 'Sunnyside Organic Grain Farm',
-    farmer_name: 'Mallam Ibrahim Bello',
-    rating: 4.9,
-    status: 'active'
-  },
-  {
-    id: 'prod-002',
-    title: 'Premium Benue Yam Tubers (Export Quality)',
-    category: 'Tubers',
-    price_per_unit: 1800,
-    unit_type: 'tuber',
-    available_quantity: 1200,
-    min_order_quantity: 10,
-    is_organic: false,
-    harvest_date: '2026-08-04',
-    origin_state: 'Benue',
-    farm_name: 'Gboko Harvest Estate',
-    farmer_name: 'Chief Terver Ortom',
-    rating: 4.8,
-    status: 'active'
-  }
-];
+// Mock repository array for standalone runtime. Real listings are pushed
+// in via /api/products POST when farmers create them.
+let mockProducts = [];
 
 exports.getAllProducts = (req, res) => {
   const { category, state, organic, search } = req.query;

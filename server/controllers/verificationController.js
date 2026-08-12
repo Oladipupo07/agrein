@@ -1,148 +1,9 @@
 // Comprehensive 7-Stage Farmer Verification & Admin Audit Controller for Agrein Backend
 const supabase = require('../utils/supabaseClient');
 
-let mockVerifications = [
-  {
-    id: 'ver-001',
-    farmer_id: 'farm-01',
-    farmer_name: 'Mallam Ibrahim Bello',
-    email: 'ibrahim.bello@agrein-farms.ng',
-    phone: '+234 803 456 7890',
-    state: 'Kaduna',
-    lga: 'Zaria Central',
-    residential_address: 'No 14 Samaru Road, Zaria',
-    farm_name: 'Zaria Agro-Gold Farms',
-    farm_state: 'Kaduna',
-    farm_lga: 'Zaria',
-    farm_location: 'Plot A12-A18, Samaru Agricultural Zone',
-    farm_size_acres: 45.0,
-    farm_type: 'Crop Farming',
-    crops_produced: ['Yellow Maize', 'White Sesame Seeds', 'Sorghum'],
-    years_experience: 14,
-    gps_latitude: 11.1500,
-    gps_longitude: 7.6500,
-    intended_products: 'Bulk Yellow Maize, Machine-Cleaned Sesame Seeds',
-    status: 'APPROVED',
-    nin_masked: '••••••••890',
-    bvn_masked: '••••••••044',
-    submitted_at: '2026-08-01T09:30:00Z',
-    reviewed_at: '2026-08-02T14:15:00Z',
-    reviewed_by: 'admin@agrein.ng',
-    documents: [
-      { type: 'government_id', name: 'National Voters Card', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80' },
-      { type: 'farm_deed', name: 'Kaduna State C-of-O Land Title', url: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=400&q=80' },
-      { type: 'farm_photo', name: 'Sun-Drying Maize Plot', url: 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=400&q=80' }
-    ],
-    checklist: {
-      identityVerified: true,
-      farmInfoVerified: true,
-      locationReviewed: true,
-      photosReviewed: true,
-      documentsReviewed: true,
-      informationLegitimate: true
-    }
-  },
-  {
-    id: 'ver-002',
-    farmer_id: 'farm-02',
-    farmer_name: 'Chief Terver Ortom',
-    email: 'terver.ortom@gbokoyams.ng',
-    phone: '+234 805 111 2233',
-    state: 'Benue',
-    lga: 'Gboko East',
-    residential_address: 'Gboko Road, Makurdi',
-    farm_name: 'Gboko Giant Yam Estate',
-    farm_state: 'Benue',
-    farm_lga: 'Gboko',
-    farm_location: 'Mile 4, Gboko-Makurdi Expressway',
-    farm_size_acres: 28.5,
-    farm_type: 'Tubers & Root Crops',
-    crops_produced: ['Pona Yam Tubers', 'Cassava Starch'],
-    years_experience: 20,
-    gps_latitude: 7.3167,
-    gps_longitude: 9.0000,
-    intended_products: 'Export Grade White Yam Tubers',
-    status: 'PENDING_REVIEW',
-    nin_masked: '••••••••112',
-    bvn_masked: '••••••••901',
-    submitted_at: '2026-08-08T11:20:00Z',
-    documents: [
-      { type: 'government_id', name: 'NIMC National ID Slip', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80' },
-      { type: 'farm_photo', name: 'Tuber Harvest Storage Mound', url: 'https://images.unsplash.com/photo-1590779033100-9f60a05a013d?auto=format&fit=crop&w=400&q=80' }
-    ],
-    checklist: {
-      identityVerified: true,
-      farmInfoVerified: true,
-      locationReviewed: false,
-      photosReviewed: true,
-      documentsReviewed: false,
-      informationLegitimate: true
-    }
-  },
-  {
-    id: 'ver-003',
-    farmer_id: 'farm-03',
-    farmer_name: 'Mrs. Grace Pam',
-    email: 'grace.pam@plateauhighlands.ng',
-    phone: '+234 802 999 4455',
-    state: 'Plateau',
-    lga: 'Jos South',
-    residential_address: 'Highland Avenue, Jos',
-    farm_name: 'Plateau Highlands Greenhouse',
-    farm_state: 'Plateau',
-    farm_lga: 'Jos South',
-    farm_location: 'Vom Road, Jos South',
-    farm_size_acres: 12.0,
-    farm_type: 'Horticulture Greenhouse',
-    crops_produced: ['Roma Tomatoes', 'Irish Potatoes', 'Bell Peppers'],
-    years_experience: 8,
-    gps_latitude: 9.8965,
-    gps_longitude: 8.8583,
-    intended_products: 'Plum Greenhouse Tomatoes',
-    status: 'CHANGES_REQUIRED',
-    admin_notes: 'Please upload a clearer image of your government-issued ID and update your farm LGA land deed document.',
-    changes_requested_notes: 'Government ID image provided was blurry. Certificate of Occupancy needed.',
-    submitted_at: '2026-08-05T16:45:00Z',
-    reviewed_at: '2026-08-06T10:30:00Z',
-    reviewed_by: 'admin@agrein.ng',
-    documents: [
-      { type: 'government_id', name: 'Drivers License (Unclear)', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80' }
-    ],
-    checklist: {
-      identityVerified: false,
-      farmInfoVerified: true,
-      locationReviewed: true,
-      photosReviewed: true,
-      documentsReviewed: false,
-      informationLegitimate: true
-    }
-  }
-];
+let mockVerifications = [];
 
-let mockAuditLogs = [
-  {
-    id: 'log-001',
-    verification_id: 'ver-001',
-    farmer_name: 'Mallam Ibrahim Bello',
-    admin_email: 'admin@agrein.ng',
-    action: 'APPROVED',
-    previous_status: 'UNDER_REVIEW',
-    new_status: 'APPROVED',
-    reason: 'Verified NIN/BVN credentials against NIMC database. Farm location and C-of-O deed confirmed legitimate.',
-    created_at: '2026-08-02T14:15:00Z'
-  },
-  {
-    id: 'log-002',
-    verification_id: 'ver-003',
-    farmer_name: 'Mrs. Grace Pam',
-    admin_email: 'admin@agrein.ng',
-    action: 'REQUESTED_CHANGES',
-    previous_status: 'PENDING_REVIEW',
-    new_status: 'CHANGES_REQUIRED',
-    reason: 'Government ID image was blurry. Requested resubmission of clear ID card and C-of-O land document.',
-    created_at: '2026-08-06T10:30:00Z'
-  }
-];
+let mockAuditLogs = [];
 
 const verificationController = {
   // Legacy identity quick check handler
@@ -311,8 +172,8 @@ const verificationController = {
       }
 
       const metrics = {
-        total_farmers: mockVerifications.length + 14820,
-        verified_farmers: mockVerifications.filter(v => v.status === 'APPROVED').length + 13500,
+        total_farmers: mockVerifications.length,
+        verified_farmers: mockVerifications.filter(v => v.status === 'APPROVED').length,
         pending_review: mockVerifications.filter(v => v.status === 'PENDING_REVIEW').length,
         under_review: mockVerifications.filter(v => v.status === 'UNDER_REVIEW').length,
         changes_required: mockVerifications.filter(v => v.status === 'CHANGES_REQUIRED').length,

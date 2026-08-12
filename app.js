@@ -4,7 +4,7 @@ const state = {
   currentView: 'landing', // 'landing', 'marketplace', 'ai-insights', 'nearby-farms', 'farmer-dashboard', 'buyer-dashboard', 'admin-dashboard',
   //                        'rfq-board', 'commodity-index', 'agro-doctor', 'weather', 'cooperatives', 'forum', 'learning-center',
   //                        'wallet', 'logistics', 'export-trade', 'bulk-b2b', 'subscriptions', 'traceability',
-  //                        'farmer-verification', 'admin-verification', 'admin-review'
+  //                        'farmer-verification', 'admin-verification', 'admin-review', 'account-settings'
   activeRole: 'visitor', // 'visitor', 'farmer', 'buyer', 'admin'
   darkMode: false,
   cart: [
@@ -76,6 +76,12 @@ const state = {
   pendingGuardView: null, // gated view a visitor tried to enter before logging in
   changePasswordModalActive: false,
   navbarMenuOpen: false,
+
+  // Account Settings / Deletion flow
+  deletionReasonText: '',
+  deletionSubmitting: false,
+  deletionRequests: [],  // admin queue snapshot, populated when admin opens Admin Verification view
+  deletionRequestsLoaded: false,
 
   // Admin Review Dossier State
   adminReviewDossier: null,
@@ -151,7 +157,8 @@ const actions = {
       'buyer-dashboard': 'BUYER',
       'admin-dashboard': 'ADMIN',
       'admin-verification': 'ADMIN',
-      'admin-review': 'ADMIN'
+      'admin-review': 'ADMIN',
+      'account-settings': null  // any logged-in user; not role-locked
     };
     const roleDefaultView = (role) => {
       if (role === 'BUYER') return 'buyer-dashboard';
@@ -161,7 +168,25 @@ const actions = {
     };
 
     const requiredRole = GATED_VIEWS[view];
-    if (!requiredRole) {
+
+    // 'account-settings' is the only view that requires a login but no role check.
+    if (view === 'account-settings') {
+      if (!state.currentUser) {
+        state.pendingGuardView = view;
+        actions.openAuthModal('login');
+        actions.triggerToast('🔒 Please log in to access Account Settings.');
+        return;
+      }
+      actions.setView(view);
+      return;
+    }
+
+    if (requiredRole === undefined) {
+      actions.setView(view);
+      return;
+    }
+    if (requiredRole === null) {
+      // reserved for future generic login-only views
       actions.setView(view);
       return;
     }
@@ -767,6 +792,18 @@ const actions = {
       return;
     }
 
+    // Deletion-request actions short-circuit; they target a user, not a verification.
+    if (type === 'APPROVE_DELETION' || type === 'REJECT_DELETION') {
+      const decision = type === 'APPROVE_DELETION' ? 'APPROVE' : 'CANCEL';
+      actions.adminResolveDeletionRequest(id, decision, reason);
+      state.adminActionModalActive = false;
+      state.adminActionTargetId = null;
+      state.adminActionType = null;
+      state.adminActionReasonText = '';
+      renderApp();
+      return;
+    }
+
     const v = state.mockData.adminVerifications.find(app => app.id === id);
     if (!v) return;
 
@@ -950,6 +987,134 @@ const actions = {
     state.changePasswordModalActive = false;
     renderApp();
   },
+
+  // ===== ACCOUNT SETTINGS / DELETION =====
+  setDeletionReason(text) {
+    state.deletionReasonText = text;
+  },
+
+  requestAccountDeletion(reason) {
+    if (!state.currentUser) {
+      actions.openAuthModal('login');
+      return;
+    }
+    state.deletionSubmitting = true;
+    renderApp();
+    fetch('/api/auth/request-deletion', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-email': state.currentUser.email
+      },
+      body: JSON.stringify({ reason: reason || '' })
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })))
+    .then(({ status, body }) => {
+      state.deletionSubmitting = false;
+      if (status === 200 && body.success) {
+        state.currentUser.deletion_pending = true;
+        state.currentUser.deletion_requested_at = new Date().toISOString();
+        state.currentUser.deletion_scheduled_for = body.scheduledFor;
+        state.currentUser.deletion_request_reason = reason || 'No reason provided.';
+        state.deletionReasonText = '';
+        actions.triggerToast(`⚠️ Deletion requested. Account will be purged on ${new Date(body.scheduledFor).toDateString()}.`);
+        renderApp();
+      } else {
+        actions.triggerToast(`❌ ${body.message || 'Could not request deletion.'}`);
+        renderApp();
+      }
+    })
+    .catch(() => {
+      state.deletionSubmitting = false;
+      actions.triggerToast('❌ Could not reach the server. Check your connection and try again.');
+      renderApp();
+    });
+  },
+
+  cancelAccountDeletion() {
+    if (!state.currentUser) return;
+    fetch('/api/auth/cancel-deletion', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-email': state.currentUser.email
+      }
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })))
+    .then(({ status, body }) => {
+      if (status === 200 && body.success) {
+        delete state.currentUser.deletion_pending;
+        delete state.currentUser.deletion_requested_at;
+        delete state.currentUser.deletion_scheduled_for;
+        delete state.currentUser.deletion_request_reason;
+        actions.triggerToast('✅ Deletion request cancelled. Your account is restored.');
+        renderApp();
+      } else {
+        actions.triggerToast(`❌ ${body.message || 'Could not cancel deletion.'}`);
+      }
+    })
+    .catch(() => actions.triggerToast('❌ Could not reach the server.'));
+  },
+
+  // ===== ADMIN: deletion queue =====
+  loadAdminDeletionQueue() {
+    if (!state.currentUser || state.currentUser.role !== 'ADMIN') return;
+    fetch('/api/admin/deletion-requests', {
+      headers: {
+        'x-user-role': 'ADMIN',
+        'x-user-id': state.currentUser.id || ''
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data && data.success) {
+        state.deletionRequests = data.requests || [];
+        state.deletionRequestsLoaded = true;
+        renderApp();
+      }
+    })
+    .catch(() => { /* swallow; queue shows empty */ });
+  },
+
+  adminResolveDeletionRequest(userId, decision, reason) {
+    if (!state.currentUser || state.currentUser.role !== 'ADMIN') return;
+    fetch(`/api/admin/deletion-requests/${userId}/resolve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-role': 'ADMIN',
+        'x-user-id': state.currentUser.id || ''
+      },
+      body: JSON.stringify({ decision, reason })
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })))
+    .then(({ status, body }) => {
+      if (status === 200 && body.success) {
+        if (decision === 'APPROVE') {
+          actions.triggerToast(`🗑️ Account ${body.purgedUser?.email || userId} permanently removed.`);
+        } else {
+          actions.triggerToast(`✅ Deletion rejected. Account ${body.restoredUser?.email || userId} restored.`);
+        }
+        // Refresh queue and re-render
+        actions.loadAdminDeletionQueue();
+      } else {
+        actions.triggerToast(`❌ ${body.message || 'Could not resolve deletion.'}`);
+      }
+    })
+    .catch(() => actions.triggerToast('❌ Could not reach the server.'));
+  },
+
+  adminOpenDeletionAction(userId, type) {
+    state.adminActionTargetId = userId;
+    state.adminActionType = type; // 'APPROVE_DELETION' or 'REJECT_DELETION'
+    state.adminActionReasonText = type === 'APPROVE_DELETION'
+      ? 'Confirmed data retention policy met. Approving permanent account removal.'
+      : 'Deletion request denied. Account restored to active status.';
+    state.adminActionModalActive = true;
+    renderApp();
+  },
+
+  // ===== end ACCOUNT SETTINGS / DELETION =====
 
   submitChangePassword(currentPassword, newPassword, confirmPassword) {
     if (!state.currentUser) {
@@ -1276,6 +1441,11 @@ function renderApp() {
       bodyContent = renderTraceabilityView(state, actions);
       break;
 
+    // === ACCOUNT SETTINGS ===
+    case 'account-settings':
+      bodyContent = renderAccountSettings(state, actions);
+      break;
+
     default:
       bodyContent = renderHero(state, actions) + renderProductCatalog(state, actions);
   }
@@ -1327,7 +1497,9 @@ function renderAdminActionModal(state, actions) {
   const config = {
     'REQUEST_CHANGES': { title: 'Request Application Changes', icon: 'fa-pen-to-square', color: 'orange', btnText: 'Request Changes', bg: 'bg-orange-600' },
     'REJECT': { title: 'Reject Verification Application', icon: 'fa-circle-xmark', color: 'red', btnText: 'Reject Application', bg: 'bg-red-600' },
-    'SUSPEND': { title: 'Suspend Verified Farmer', icon: 'fa-ban', color: 'red', btnText: 'Suspend Farmer', bg: 'bg-red-700' }
+    'SUSPEND': { title: 'Suspend Verified Farmer', icon: 'fa-ban', color: 'red', btnText: 'Suspend Farmer', bg: 'bg-red-700' },
+    'APPROVE_DELETION': { title: 'Approve Account Deletion (Permanent)', icon: 'fa-trash-can', color: 'red', btnText: 'Approve & Purge', bg: 'bg-red-700' },
+    'REJECT_DELETION': { title: 'Reject Account Deletion (Restore)', icon: 'fa-rotate-left', color: 'emerald', btnText: 'Restore Account', bg: 'bg-emerald-700' }
   }[type] || { title: 'Admin Decision Note', icon: 'fa-gavel', color: 'slate', btnText: 'Confirm', bg: 'bg-emerald-700' };
 
   return `

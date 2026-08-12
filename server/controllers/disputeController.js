@@ -1,22 +1,6 @@
 // Buyer Protection & Escrow Dispute Controller for Agrein
 
-let mockDisputes = [
-  {
-    id: 'dsp-001',
-    dispute_code: 'DSP-2026-0891',
-    order_id: 'ORD-84920',
-    buyer_name: 'Dr. Anita Okonjo',
-    buyer_email: 'anita.okonjo@freshmart.ng',
-    farmer_id: 'farm-01',
-    farmer_name: 'Mallam Ibrahim Bello',
-    reason: 'DAMAGED',
-    description: '15 baskets of tomatoes delivered showed severe heat spoilage due to logistics delay.',
-    evidence_urls: ['https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=400&q=80'],
-    status: 'UNDER_INVESTIGATION',
-    created_at: '2026-08-09T14:20:00Z',
-    refund_amount: 125000
-  }
-];
+let mockDisputes = [];
 
 const disputeController = {
   // File a Buyer Dispute
@@ -37,9 +21,9 @@ const disputeController = {
         id: `dsp-${Date.now()}`,
         dispute_code: `DSP-2026-${Math.floor(1000 + Math.random() * 9000)}`,
         order_id: orderId,
-        buyer_id: req.user ? req.user.id : 'usr-buyer-01',
-        buyer_name: 'Dr. Anita Okonjo',
-        farmer_name: 'Mallam Ibrahim Bello',
+        buyer_id: req.user ? req.user.id : null,
+        buyer_name: req.user ? req.user.full_name : null,
+        farmer_name: null,
         reason,
         description,
         evidence_urls: evidenceUrls || [],

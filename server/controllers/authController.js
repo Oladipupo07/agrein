@@ -9,10 +9,9 @@ function hashSync(plain) {
   return passwordService.hashPassword(plain);
 }
 
-// In-memory registered user database
+// In-memory registered user database. Only the admin account is seeded; new
+// farmers and buyers register via /api/auth/register.
 const adminSeed = hashSync('password123');
-const demoIbrahim = hashSync('demo1234');
-const demoAnita = hashSync('demo1234');
 
 let registeredUsers = [
   {
@@ -26,32 +25,6 @@ let registeredUsers = [
     verification_status: 'APPROVED',
     passwordSalt: adminSeed.salt,
     passwordHash: adminSeed.hash,
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'usr-001',
-    full_name: 'Mallam Ibrahim Bello',
-    email: 'ibrahim.bello@agrein-farms.ng',
-    phone_number: '08034567890',
-    role: 'FARMER',
-    email_verified: true,
-    is_verified: true,
-    verification_status: 'APPROVED',
-    passwordSalt: demoIbrahim.salt,
-    passwordHash: demoIbrahim.hash,
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'usr-002',
-    full_name: 'Dr. Anita Okonjo',
-    email: 'buyer@agrein.com',
-    phone_number: '08021234567',
-    role: 'BUYER',
-    email_verified: true,
-    is_verified: true,
-    verification_status: 'APPROVED',
-    passwordSalt: demoAnita.salt,
-    passwordHash: demoAnita.hash,
     created_at: new Date().toISOString()
   }
 ];
@@ -130,7 +103,6 @@ const authController = {
         message: `We've sent a 6-digit verification code to ${target.email}.`,
         email: target.email,
         role: target.role,
-        demoOtp: rawOtp,
         expiresInSeconds: 300
       });
     } catch (error) {
@@ -211,7 +183,6 @@ const authController = {
         success: true,
         message: result.message,
         email,
-        demoOtp: result.rawOtp,
         expiresInSeconds: 300
       });
     } catch (error) {
@@ -245,7 +216,6 @@ const authController = {
           success: false,
           emailVerificationRequired: true,
           email: normalizedEmail,
-          demoOtp: rawOtp,
           message: "Email verification required. We've sent a new verification code to your email."
         });
       }
@@ -290,6 +260,193 @@ const authController = {
       res.status(500).json({ success: false, message: error.message });
     }
   },
+
+  // Self-service: flag this account for deletion. After 14 days an Admin can
+  // approve the purge. The user may cancel any time before approval.
+  async requestAccountDeletion(req, res) {
+    try {
+      const email = (req.user && req.user.email) || (req.headers['x-user-email'] || '').toLowerCase();
+      if (!email) {
+        return res.status(401).json({ success: false, message: 'Authentication required.' });
+      }
+      const user = registeredUsers.find(u => u.email.toLowerCase() === email);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'Account not found.' });
+      }
+
+      // Admins cannot self-delete — must be removed via the admin queue by another admin.
+      if (user.role === 'ADMIN') {
+        return res.status(403).json({
+          success: false,
+          message: 'Administrator accounts cannot self-delete. Please contact another Agrein administrator.'
+        });
+      }
+
+      if (user.deletion_pending) {
+        return res.status(400).json({
+          success: false,
+          alreadyPending: true,
+          scheduledFor: user.deletion_scheduled_for || null,
+          message: 'A deletion request is already pending for this account.'
+        });
+      }
+
+      const { reason } = req.body || {};
+      const requestedAt = new Date();
+      const scheduledFor = new Date(requestedAt.getTime() + DELETION_GRACE_DAYS * 24 * 60 * 60 * 1000);
+
+      user.deletion_pending = true;
+      user.deletion_requested_at = requestedAt.toISOString();
+      user.deletion_scheduled_for = scheduledFor.toISOString();
+      user.deletion_request_reason = (reason || '').trim() || 'No reason provided.';
+
+      logDeletionAudit({
+        action: 'DELETION_REQUESTED',
+        user_id: user.id,
+        user_email: user.email,
+        user_role: user.role,
+        actor_email: user.email,
+        reason: user.deletion_request_reason,
+        scheduled_for: user.deletion_scheduled_for
+      });
+
+      res.json({
+        success: true,
+        message: `Deletion requested. Your account will be permanently removed on ${scheduledFor.toDateString()} unless cancelled.`,
+        scheduledFor: user.deletion_scheduled_for,
+        daysRemaining: DELETION_GRACE_DAYS
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  // Self-service: cancel a pending deletion request within the 14-day window.
+  async cancelAccountDeletion(req, res) {
+    try {
+      const email = (req.user && req.user.email) || (req.headers['x-user-email'] || '').toLowerCase();
+      if (!email) {
+        return res.status(401).json({ success: false, message: 'Authentication required.' });
+      }
+      const user = registeredUsers.find(u => u.email.toLowerCase() === email);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'Account not found.' });
+      }
+      if (!user.deletion_pending) {
+        return res.status(400).json({ success: false, message: 'No deletion request is currently pending for this account.' });
+      }
+
+      const prevScheduled = user.deletion_scheduled_for;
+      delete user.deletion_pending;
+      delete user.deletion_requested_at;
+      delete user.deletion_scheduled_for;
+      delete user.deletion_request_reason;
+
+      logDeletionAudit({
+        action: 'DELETION_CANCELLED_BY_USER',
+        user_id: user.id,
+        user_email: user.email,
+        user_role: user.role,
+        actor_email: user.email,
+        previous_scheduled_for: prevScheduled
+      });
+
+      res.json({
+        success: true,
+        message: 'Deletion request cancelled. Your account is fully restored.'
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  // Admin: list every account flagged for deletion.
+  async adminGetDeletionQueue(req, res) {
+    try {
+      const requests = registeredUsers
+        .filter(u => u.deletion_pending === true)
+        .map(u => ({
+          ...toClientUser(u),
+          days_remaining: u.deletion_scheduled_for
+            ? Math.max(0, Math.ceil((new Date(u.deletion_scheduled_for).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+            : null
+        }));
+      res.json({
+        success: true,
+        requests,
+        auditLogs: mockDeletionAuditLogs.slice(0, 50),
+        metrics: {
+          total_pending: requests.length,
+          grace_window_days: DELETION_GRACE_DAYS
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  // Admin: approve (purge) or reject (restore) a pending deletion request.
+  async adminResolveDeletionRequest(req, res) {
+    try {
+      const { id } = req.params;
+      const { decision, reason } = req.body || {};
+      if (!decision || (decision !== 'APPROVE' && decision !== 'CANCEL')) {
+        return res.status(400).json({ success: false, message: "decision must be 'APPROVE' or 'CANCEL'." });
+      }
+      if (!reason || !reason.trim()) {
+        return res.status(400).json({ success: false, message: 'Mandatory reason required when resolving a deletion request.' });
+      }
+
+      const user = findUserById(id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'Account not found.' });
+      }
+      if (!user.deletion_pending) {
+        return res.status(400).json({ success: false, message: 'No deletion request is pending for this account.' });
+      }
+
+      const actorEmail = (req.user && req.user.email) || 'admin@agrein.ng';
+
+      if (decision === 'APPROVE') {
+        const removed = purgeUserCascade(user);
+        logDeletionAudit({
+          action: 'ACCOUNT_PURGED_BY_ADMIN',
+          user_id: removed.id,
+          user_email: removed.email,
+          user_role: removed.role,
+          actor_email: actorEmail,
+          reason: reason.trim()
+        });
+        return res.json({
+          success: true,
+          message: `Account ${removed.email} has been permanently removed.`,
+          purgedUser: { id: removed.id, email: removed.email }
+        });
+      }
+
+      // CANCEL: clear pending flags and log
+      delete user.deletion_pending;
+      delete user.deletion_requested_at;
+      delete user.deletion_scheduled_for;
+      user.deletion_request_reason = null;
+      logDeletionAudit({
+        action: 'DELETION_REJECTED_BY_ADMIN',
+        user_id: user.id,
+        user_email: user.email,
+        user_role: user.role,
+        actor_email: actorEmail,
+        reason: reason.trim()
+      });
+      res.json({
+        success: true,
+        message: `Deletion request for ${user.email} rejected. Account restored.`,
+        restoredUser: { id: user.id, email: user.email }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
 
   // Authenticated password change — caller identified by x-user-email header
   async changePassword(req, res) {
@@ -336,5 +493,35 @@ authController.findUserByEmail = (email) => {
   if (!email) return null;
   return registeredUsers.find(u => u.email.toLowerCase() === String(email).toLowerCase()) || null;
 };
+
+// Find by id (used by admin deletion endpoints)
+function findUserById(id) {
+  if (!id) return null;
+  return registeredUsers.find(u => u.id === id) || null;
+}
+
+// Append-only audit log of deletion-related actions
+let mockDeletionAuditLogs = [];
+
+function logDeletionAudit(entry) {
+  const log = {
+    id: `dlog-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
+    created_at: new Date().toISOString(),
+    ...entry
+  };
+  mockDeletionAuditLogs.unshift(log);
+  // Cap the in-memory log at 200 entries so a long-running server doesn't bloat.
+  if (mockDeletionAuditLogs.length > 200) mockDeletionAuditLogs.length = 200;
+  return log;
+}
+
+function purgeUserCascade(user) {
+  const idx = registeredUsers.findIndex(u => u.id === user.id);
+  if (idx === -1) return null;
+  const [removed] = registeredUsers.splice(idx, 1);
+  return removed;
+}
+
+const DELETION_GRACE_DAYS = 14;
 
 module.exports = authController;

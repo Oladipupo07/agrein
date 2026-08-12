@@ -102,8 +102,8 @@ function renderCheckoutModal(state, actions) {
                     <input type="hidden" name="txn_ref" value="${txnRef}" />
                     <input type="hidden" name="amount" value="${amountInKobo}" />
                     <input type="hidden" name="currency" value="566" />
-                    <input type="hidden" name="cust_email" value="buyer@agrein.com" />
-                    <input type="hidden" name="cust_name" value="Dr. Anita Okonjo" />
+                    <input type="hidden" name="cust_email" value="${(state.currentUser && state.currentUser.email) || ''}" />
+                    <input type="hidden" name="cust_name" value="${(state.currentUser && (state.currentUser.full_name || state.currentUser.name)) || ''}" />
 
                     <button type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-red-700 to-red-900 text-white font-extrabold text-xs shadow-xl transition-all flex items-center justify-center space-x-2">
                       <i class="fa-solid fa-paper-plane text-amber-300"></i>

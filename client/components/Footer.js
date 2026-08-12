@@ -26,8 +26,8 @@ function renderFooter(state, actions) {
                 <span>Escrow Protected</span>
               </span>
               <span class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 flex items-center space-x-1">
-                <i class="fa-solid fa-lock text-red-500"></i>
-                <span>Interswitch Webpay</span>
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                <span>Agrein Trust</span>
               </span>
             </div>
           </div>
@@ -57,7 +57,7 @@ function renderFooter(state, actions) {
         </div>
 
         <div class="pt-6 sm:pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4 sm:gap-0">
-          <div class="text-center sm:text-left">© 2026 Agrein Agricultural Marketplace. All rights reserved. Powered by Interswitch Webpay.</div>
+          <div class="text-center sm:text-left">© 2026 Agrein Agricultural Marketplace. All rights reserved.</div>
           <div class="flex space-x-4">
             <a href="#" class="hover:text-emerald-400" aria-label="Twitter"><i class="fa-brands fa-twitter text-base"></i></a>
             <a href="#" class="hover:text-emerald-400" aria-label="Facebook"><i class="fa-brands fa-facebook text-base"></i></a>

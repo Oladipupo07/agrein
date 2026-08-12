@@ -20,6 +20,10 @@ function renderAdminDashboard(state, actions) {
             <p class="text-xs text-gray-500">Overseeing agricultural transactions, escrow protection, and user verifications across 36 states.</p>
           </div>
           <div class="flex items-center space-x-2">
+            <button onclick="actions.guardView('account-settings')" class="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-extrabold shadow-md transition-all flex items-center space-x-2" title="Account Settings">
+              <i class="fa-solid fa-gear text-amber-300"></i>
+              <span>Account Settings</span>
+            </button>
             <button onclick="actions.openChangePasswordModal()" class="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-extrabold shadow-md transition-all flex items-center space-x-2" title="Change Password">
               <i class="fa-solid fa-lock text-amber-300"></i>
               <span>Change Password</span>
@@ -90,31 +94,21 @@ function renderAdminDashboard(state, actions) {
 
         <!-- Moderation Queue & User Management Tabs -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
+
           <!-- Farmer Verification Queue -->
           <div class="lg:col-span-6 glass-card rounded-3xl p-6 sm:p-8 space-y-6">
             <div class="flex items-center justify-between">
               <h3 class="font-heading font-extrabold text-xl text-slate-900 dark:text-white">Pending Farmer Audits</h3>
-              <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">${adminProfile.pendingVerifications} Action Items</span>
+              <span class="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-bold">${adminProfile.pendingVerifications} Action Items</span>
             </div>
 
-            <div class="space-y-4">
-              ${[
-                { name: 'Suleiman Danjuma', farm: 'Jigawa Groundnut Estate', location: 'Dutse, Jigawa', hectares: '30 Ha' },
-                { name: 'Kemi Ogunleye', farm: 'Egba Cassava Co-op', location: 'Abeokuta, Ogun', hectares: '18 Ha' },
-                { name: 'Dr. Danladi Ahmed', farm: 'Wukari Grain Belt', location: 'Wukari, Taraba', hectares: '55 Ha' }
-              ].map(farmer => `
-                <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between gap-4">
-                  <div>
-                    <div class="font-bold text-xs text-slate-900 dark:text-white">${farmer.name}</div>
-                    <div class="text-[11px] text-gray-500">${farmer.farm} • ${farmer.location} (${farmer.hectares})</div>
-                  </div>
-                  <div class="flex items-center space-x-2">
-                    <button onclick="actions.triggerToast('Farmer account verified! Badge issued.')" class="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-[11px] font-bold">Approve</button>
-                    <button onclick="actions.triggerToast('Audit requested from farmer.')" class="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-200 text-[11px] font-bold">Audit</button>
-                  </div>
-                </div>
-              `).join('')}
+            <div class="py-10 text-center">
+              <i class="fa-solid fa-shield-halved text-3xl text-amber-200 mb-2 block"></i>
+              <div class="font-heading font-extrabold text-base text-slate-900 dark:text-white">No pending audits</div>
+              <p class="text-xs text-gray-500 mt-1">When farmers submit verification, they'll appear here for review.</p>
+              <button onclick="actions.setView('admin-verification')" class="mt-4 px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md transition-all">
+                Open Verification Module
+              </button>
             </div>
           </div>
 
@@ -122,23 +116,13 @@ function renderAdminDashboard(state, actions) {
           <div class="lg:col-span-6 glass-card rounded-3xl p-6 sm:p-8 space-y-6">
             <div class="flex items-center justify-between">
               <h3 class="font-heading font-extrabold text-xl text-slate-900 dark:text-white">Escrow Dispute Center</h3>
-              <span class="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-bold">${adminProfile.pendingDisputes} Pending</span>
+              <span class="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-bold">${adminProfile.pendingDisputes} Pending</span>
             </div>
 
-            <div class="space-y-4">
-              <div class="p-4 rounded-2xl bg-amber-50 dark:bg-slate-800/60 border border-amber-500/20 space-y-2">
-                <div class="flex items-center justify-between text-xs">
-                  <span class="font-bold text-slate-900 dark:text-white">Dispute #DSP-4019 (Order #AGR-78190)</span>
-                  <span class="text-amber-600 font-extrabold">₦450,000 Held</span>
-                </div>
-                <p class="text-[11px] text-gray-600 dark:text-gray-300">
-                  Buyer claims 5% moisture variance on yellow maize delivery. Farmer submitted moisture test report prior to transport.
-                </p>
-                <div class="pt-2 flex items-center justify-end space-x-2">
-                  <button onclick="actions.triggerToast('Dispute resolved in favor of Buyer (Partial Refund).')" class="px-3 py-1 rounded-lg bg-amber-500 text-slate-950 text-[11px] font-bold">Refund Buyer</button>
-                  <button onclick="actions.triggerToast('Dispute resolved: Funds released to Farmer.')" class="px-3 py-1 rounded-lg bg-emerald-700 text-white text-[11px] font-bold">Release to Farmer</button>
-                </div>
-              </div>
+            <div class="py-10 text-center">
+              <i class="fa-solid fa-gavel text-3xl text-purple-200 mb-2 block"></i>
+              <div class="font-heading font-extrabold text-base text-slate-900 dark:text-white">No active disputes</div>
+              <p class="text-xs text-gray-500 mt-1">When buyers raise escrow disputes, they'll be queued here for adjudication.</p>
             </div>
           </div>
 

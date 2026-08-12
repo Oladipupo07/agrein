@@ -6,28 +6,10 @@ const traceabilityController = {
   async getBatchTrace(req, res) {
     try {
       const { batchId } = req.params;
-      // In production: SELECT tb.*, json_agg(ts.*) as journey FROM traceability_batches tb LEFT JOIN traceability_steps ts ON tb.id = ts.batch_id WHERE tb.id = $1 GROUP BY tb.id
-      res.json({
-        success: true,
-        data: {
-          batchId,
-          product: 'Yellow Maize (Grade A)',
-          farm: 'Zaria Agro-Gold Farms',
-          farmer: 'Mallam Ibrahim Bello',
-          origin: 'Zaria, Kaduna State',
-          harvestDate: '2026-08-01',
-          weight: '10,000 kg',
-          qualityGrade: 'A+',
-          moistureContent: '12.5%',
-          journey: [
-            { step: 'Planted', date: '2026-04-15', location: 'Farm Plot A-12, Zaria', verified: true },
-            { step: 'Harvested & Sun-Dried', date: '2026-08-01', location: 'Farm Drying Yard', verified: true },
-            { step: 'Quality Inspection Passed', date: '2026-08-03', location: 'Agrein QA Hub, Kaduna', verified: true },
-            { step: 'Packaged', date: '2026-08-04', location: 'Packaging Warehouse', verified: true },
-            { step: 'Dispatched', date: '2026-08-09', location: 'Kaduna Logistics Hub', verified: true },
-            { step: 'Delivered to Buyer', date: '2026-08-12 (Est.)', location: 'Apapa, Lagos', verified: false }
-          ]
-        }
+      // Real batches are looked up from a Supabase trace_batches table in production.
+      res.status(404).json({
+        success: false,
+        message: `No traceability record found for batch ${batchId}. Batches appear here once a farmer registers them.`
       });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Failed to retrieve batch trace', error: error.message });

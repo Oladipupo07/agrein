@@ -25,7 +25,13 @@ router.post('/auth/login', authController.login);
 router.post('/auth/verify-otp', authController.verifyOtp);
 router.post('/auth/resend-otp', authController.resendOtp);
 router.post('/auth/change-password', authenticateFromHeader, authController.changePassword);
+router.post('/auth/request-deletion', authenticateFromHeader, authController.requestAccountDeletion);
+router.post('/auth/cancel-deletion', authenticateFromHeader, authController.cancelAccountDeletion);
 router.post('/admin/users/create-admin', authenticateToken, requireRole(['ADMIN']), authController.createAdminAccount);
+
+// ===== ADMIN ACCOUNT DELETION QUEUE =====
+router.get('/admin/deletion-requests', authenticateToken, requireRole(['ADMIN']), authController.adminGetDeletionQueue);
+router.post('/admin/deletion-requests/:id/resolve', authenticateToken, requireRole(['ADMIN']), authController.adminResolveDeletionRequest);
 
 // ===== FARMER VERIFICATION ROUTES =====
 router.get('/farmers/verification', authenticateToken, verificationController.getFarmerVerification);

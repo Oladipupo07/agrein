@@ -143,6 +143,10 @@ function renderNavbar(state, actions) {
                     <i class="fa-solid ${currentRoleInfo.icon} ${currentRoleInfo.color}"></i>
                     <span>My Portal</span>
                   </button>
+                  <button onclick="actions.guardView('account-settings'); actions.closeNavbarMenu();" class="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-slate-800 flex items-center space-x-2">
+                    <i class="fa-solid fa-gear text-emerald-600"></i>
+                    <span>Account Settings</span>
+                  </button>
                   <button onclick="actions.openChangePasswordModal()" class="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-slate-800 flex items-center space-x-2">
                     <i class="fa-solid fa-lock text-emerald-600"></i>
                     <span>Change Password</span>
@@ -288,6 +292,10 @@ function renderNavbar(state, actions) {
               <button onclick="actions.guardViewAndCloseMobile('${roleDefaultView(currentUser.role)}')" class="px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-gray-200 border border-gray-300 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center space-x-1.5">
                 <i class="fa-solid ${currentRoleInfo.icon} ${currentRoleInfo.color}"></i>
                 <span>My Portal</span>
+              </button>
+              <button onclick="actions.guardViewAndCloseMobile('account-settings')" class="px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-gray-200 border border-gray-300 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center space-x-1.5">
+                <i class="fa-solid fa-gear text-emerald-600"></i>
+                <span>Account Settings</span>
               </button>
               <button onclick="actions.closeMobileMenu(); setTimeout(() => actions.openChangePasswordModal(), 100);" class="px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-gray-200 border border-gray-300 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center space-x-1.5">
                 <i class="fa-solid fa-lock text-emerald-600"></i>

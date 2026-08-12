@@ -1,5 +1,6 @@
 // Secure Email OTP Generator & Verification Service for Agrein Backend
 const crypto = require('crypto');
+const mailer = require('./mailer');
 
 // In-memory store for OTP records (production environment would use Supabase/Redis)
 const otpStore = new Map();
@@ -37,6 +38,12 @@ const otpService = {
     console.log(`Code: ${rawOtp}`);
     console.log(`Expires: 5 minutes (${new Date(expiresAt).toLocaleTimeString()})`);
     console.log(`=================================================\n`);
+
+    // Dispatch the OTP via SMTP. Fire-and-forget so the HTTP response is not
+    // blocked by Gmail latency; failures are logged and the user can resend.
+    mailer.sendOtpEmail(email, rawOtp).catch(err => {
+      console.error('[otpService] SMTP dispatch threw:', err.message);
+    });
 
     return { rawOtp, expiresAt, cooldownUntil };
   },

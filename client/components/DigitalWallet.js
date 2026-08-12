@@ -49,7 +49,7 @@ function renderDigitalWallet(state, actions) {
           <div class="glass-card p-6 rounded-3xl space-y-2">
             <div class="text-xs font-bold text-gray-500">Platform Escrow Status</div>
             <div class="text-2xl font-heading font-extrabold text-emerald-700 dark:text-emerald-400">100% Secured</div>
-            <div class="text-[11px] text-gray-500 font-semibold">Supported by Interswitch Webpay</div>
+            <div class="text-[11px] text-gray-500 font-semibold">Agrein-secured wallet</div>
           </div>
         </div>
 

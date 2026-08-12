@@ -26,7 +26,7 @@ exports.createOrder = async (req, res) => {
 
     // Initialize Interswitch Gateway Checkout
     const iswResult = await initializeInterswitchPayment({
-      email: buyerEmail || 'buyer@agrein.com',
+      email: buyerEmail || '',
       amount: totalAmount,
       reference: orderNumber,
       redirectUrl: 'http://localhost:3000/order-confirmation'

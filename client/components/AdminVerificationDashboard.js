@@ -3,6 +3,12 @@
 function renderAdminVerificationDashboard(state, actions) {
   const verifications = state.mockData.adminVerifications || [];
   const metrics = state.mockData.verificationMetrics || {};
+  const deletionRequests = state.deletionRequests || [];
+
+  // Refresh the deletion queue whenever the admin enters this view.
+  if (!state.deletionRequestsLoaded) {
+    actions.loadAdminDeletionQueue();
+  }
 
   const metricCards = [
     { label: 'Total Farmers', value: metrics.total_farmers || '14,823', icon: 'fa-users', color: 'text-slate-700 dark:text-white', bg: 'bg-slate-50 dark:bg-slate-800' },
@@ -97,6 +103,88 @@ function renderAdminVerificationDashboard(state, actions) {
               `).join('')}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Account Deletion Requests Queue -->
+      <div class="mt-8 bg-white dark:bg-slate-900 rounded-2xl border-2 border-red-500/30 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-red-100 dark:border-red-900/40 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="inline-flex items-center space-x-2 text-[10px] font-extrabold uppercase tracking-wider text-red-700 dark:text-red-300">
+              <i class="fa-solid fa-trash-can"></i>
+              <span>Account Deletion Queue</span>
+            </div>
+            <h3 class="text-sm font-heading font-extrabold text-slate-900 dark:text-white mt-1">Pending Account Removals</h3>
+            <p class="text-[11px] text-gray-500 mt-0.5">Users who have requested account deletion. After 14 days without action, approve to permanently remove.</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="px-3 py-1.5 rounded-xl bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs font-extrabold">
+              ${deletionRequests.length} Pending
+            </span>
+            <button onclick="actions.loadAdminDeletionQueue()" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-gray-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center space-x-1">
+              <i class="fa-solid fa-rotate"></i>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="p-4">
+          ${deletionRequests.length === 0 ? `
+            <div class="py-10 text-center text-xs text-gray-400">
+              <i class="fa-solid fa-shield-halved text-2xl text-emerald-400 mb-2 block"></i>
+              <div class="font-bold text-gray-500">No pending deletion requests.</div>
+              <p class="mt-1">All Agrein accounts are in good standing. New requests will appear here automatically.</p>
+            </div>
+          ` : `
+            <div class="space-y-3">
+              ${deletionRequests.map(req => {
+                const accent = req.role === 'FARMER' ? 'amber' : req.role === 'BUYER' ? 'blue' : 'emerald';
+                const pill = accent === 'amber' ? 'bg-amber-600' : accent === 'blue' ? 'bg-blue-600' : 'bg-emerald-600';
+                return `
+                  <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                          <span class="font-extrabold text-sm text-slate-900 dark:text-white truncate">${req.full_name || req.email}</span>
+                          <span class="px-2 py-0.5 rounded-full ${pill} text-white text-[10px] font-extrabold uppercase tracking-wider">${(req.role || 'USER').toUpperCase()}</span>
+                          <span class="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 text-[10px] font-extrabold uppercase tracking-wider">Deletion Pending</span>
+                        </div>
+                        <div class="text-[11px] text-gray-500 truncate mt-0.5">${req.email}</div>
+                        <div class="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                          <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-700">
+                            <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Requested</div>
+                            <div class="font-bold text-slate-900 dark:text-white">${req.deletion_requested_at ? new Date(req.deletion_requested_at).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</div>
+                          </div>
+                          <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-700">
+                            <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Scheduled Purge</div>
+                            <div class="font-bold text-slate-900 dark:text-white">${req.deletion_scheduled_for ? new Date(req.deletion_scheduled_for).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</div>
+                          </div>
+                          <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-700">
+                            <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Days Remaining</div>
+                            <div class="font-extrabold ${req.days_remaining !== null && req.days_remaining <= 3 ? 'text-red-600' : 'text-amber-600'}">${req.days_remaining !== null && req.days_remaining !== undefined ? `${req.days_remaining} day${req.days_remaining === 1 ? '' : 's'}` : '—'}</div>
+                          </div>
+                        </div>
+                        <div class="mt-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-700 text-[11px]">
+                          <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Reason on file</div>
+                          <div class="text-gray-700 dark:text-gray-300 italic">"${req.deletion_request_reason || 'No reason provided.'}"</div>
+                        </div>
+                      </div>
+                      <div class="flex sm:flex-col gap-2 sm:gap-2 flex-shrink-0">
+                        <button onclick="actions.adminOpenDeletionAction('${req.id}', 'REJECT_DELETION')" class="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white text-[11px] font-extrabold shadow-md transition-all flex items-center justify-center space-x-1 whitespace-nowrap">
+                          <i class="fa-solid fa-rotate-left"></i>
+                          <span>Restore</span>
+                        </button>
+                        <button onclick="actions.adminOpenDeletionAction('${req.id}', 'APPROVE_DELETION')" class="px-3 py-2 rounded-xl bg-gradient-to-r from-red-700 to-red-900 hover:from-red-800 hover:to-red-950 text-white text-[11px] font-extrabold shadow-md transition-all flex items-center justify-center space-x-1 whitespace-nowrap">
+                          <i class="fa-solid fa-trash-can"></i>
+                          <span>Approve &amp; Purge</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
         </div>
       </div>
     </section>
