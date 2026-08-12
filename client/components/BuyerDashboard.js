@@ -343,7 +343,7 @@ function renderBuyerDashboard(state, actions) {
                       <div class="text-[10px] text-gray-400 font-semibold">${farmer.crop} • ⭐ ${farmer.rating} • ${farmer.totalOrders} orders</div>
                     </div>
                   </div>
-                  <button onclick="actions.setView('marketplace')" class="opacity-0 group-hover:opacity-100 px-3 py-1.5 rounded-lg bg-blue-700 text-white text-[10px] font-bold transition-all shadow-sm">
+                  <button onclick="actions.setView('marketplace')" class="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 px-3 py-1.5 rounded-lg bg-blue-700 text-white text-[10px] font-bold transition-all shadow-sm">
                     Re-order
                   </button>
                 </div>

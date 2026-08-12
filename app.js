@@ -1332,7 +1332,7 @@ function renderAdminActionModal(state, actions) {
 
   return `
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-      <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden animate-modal">
+      <div class="modal-fullscreen-mobile relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden animate-modal">
         <button onclick="actions.closeAdminActionModal()" class="absolute top-4 right-4 text-gray-400 hover:text-slate-900 dark:hover:text-white">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>

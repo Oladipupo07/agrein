@@ -27,7 +27,7 @@ function renderSubscriptionPlans(state, actions) {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           
           <!-- Free Farmer Plan -->
-          <div class="glass-card rounded-3xl p-8 space-y-6 flex flex-col justify-between border border-gray-200 dark:border-slate-800">
+          <div class="glass-card rounded-3xl p-6 sm:p-8 space-y-6 flex flex-col justify-between border border-gray-200 dark:border-slate-800">
             <div class="space-y-4">
               <span class="px-3 py-1 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 text-xs font-bold">Free Farmer</span>
               <div>
@@ -47,7 +47,7 @@ function renderSubscriptionPlans(state, actions) {
           </div>
 
           <!-- Pro Farmer Plan -->
-          <div class="glass-card rounded-3xl p-8 space-y-6 flex flex-col justify-between border-2 border-emerald-600 relative shadow-2xl">
+          <div class="glass-card rounded-3xl p-6 sm:p-8 space-y-6 flex flex-col justify-between border-2 border-emerald-600 relative shadow-2xl">
             <div class="absolute -top-3.5 left-1/2 transform -translate-x-1/2 px-4 py-1 rounded-full bg-emerald-700 text-white text-[10px] font-extrabold uppercase tracking-widest shadow-md">
               Most Popular
             </div>
@@ -73,7 +73,7 @@ function renderSubscriptionPlans(state, actions) {
           </div>
 
           <!-- Enterprise Plan -->
-          <div class="glass-card rounded-3xl p-8 space-y-6 flex flex-col justify-between border border-amber-500/30">
+          <div class="glass-card rounded-3xl p-6 sm:p-8 space-y-6 flex flex-col justify-between border border-amber-500/30">
             <div class="space-y-4">
               <span class="px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-xs font-bold">Enterprise & Co-op</span>
               <div>

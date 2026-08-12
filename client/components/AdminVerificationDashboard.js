@@ -26,7 +26,7 @@ function renderAdminVerificationDashboard(state, actions) {
   };
 
   return `
-    <section class="max-w-7xl mx-auto px-4 py-10">
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div class="flex items-center justify-between mb-8">
         <div>
           <h1 class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white">Farmer Verification</h1>

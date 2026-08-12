@@ -32,7 +32,7 @@ function renderWeatherDashboard(state, actions) {
         </div>
 
         <!-- Weather Metrics KPI Bar -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div class="glass-card p-6 rounded-3xl space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-xs font-bold">
               <span>Temperature</span>

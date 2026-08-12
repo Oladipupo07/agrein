@@ -72,7 +72,7 @@ function renderProductCatalog(state, actions) {
 
         <!-- Products Grid / List Container -->
         ${filteredProducts.length === 0 ? `
-          <div class="py-16 text-center glass-card rounded-3xl p-8 space-y-4">
+          <div class="py-16 text-center glass-card rounded-3xl p-6 sm:p-8 space-y-4">
             <div class="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-emerald-600 text-2xl mx-auto">
               <i class="fa-solid fa-basket-shopping"></i>
             </div>

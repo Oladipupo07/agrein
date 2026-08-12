@@ -40,7 +40,7 @@ function renderFarmerVerificationView(state, actions) {
   const currentStep = sc.step;
 
   return `
-    <section class="max-w-4xl mx-auto px-4 py-10">
+    <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div class="text-center mb-8">
         <h1 class="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">Farmer Verification</h1>
         <p class="text-sm text-gray-500 mt-2">Complete your farm verification to start selling on Agrein</p>

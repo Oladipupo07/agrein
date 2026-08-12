@@ -120,7 +120,7 @@ function renderAuthModal(state, actions) {
               </div>
 
               <!-- First Name & Last Name -->
-              <div class="grid grid-cols-2 gap-2">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label class="text-xs font-bold text-gray-500 dark:text-gray-400">First Name *</label>
                   <input type="text" id="regFirstName" placeholder="Ibrahim" class="w-full mt-1 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">

@@ -33,7 +33,7 @@ function renderDigitalWallet(state, actions) {
         </div>
 
         <!-- Wallet KPI Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <div class="glass-card p-6 rounded-3xl space-y-2">
             <div class="text-xs font-bold text-gray-500">Available Wallet Balance</div>
             <div class="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">₦${wallet.availableBalance.toLocaleString()}</div>

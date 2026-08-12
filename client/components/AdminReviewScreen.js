@@ -21,7 +21,7 @@ function renderAdminReviewScreen(state, actions) {
   const sb = statusBadge(dossier.status);
 
   return `
-    <section class="max-w-5xl mx-auto px-4 py-10">
+    <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <!-- Back Button -->
       <button onclick="actions.setView('admin-verification')" class="mb-6 flex items-center space-x-2 text-xs font-bold text-gray-500 hover:text-emerald-600 transition-all">
         <i class="fa-solid fa-arrow-left"></i>
@@ -29,13 +29,13 @@ function renderAdminReviewScreen(state, actions) {
       </button>
 
       <!-- Header -->
-      <div class="flex items-center justify-between mb-8">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-8">
         <div>
           <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Farmer Verification</div>
           <h1 class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white">${dossier.farmer_name || 'Farmer'}</h1>
           <div class="text-xs text-gray-500 mt-1">Farmer ID: <span class="font-bold text-emerald-600">AGR-FRM-${(dossier.id || 'ver-001').slice(-5).toUpperCase()}</span></div>
         </div>
-        <span class="px-3 py-1.5 rounded-xl ${sb.bg} ${sb.text} font-extrabold text-xs">${sb.dot} ${(dossier.status || 'PENDING_REVIEW').replaceAll('_', ' ')}</span>
+        <span class="px-3 py-1.5 rounded-xl ${sb.bg} ${sb.text} font-extrabold text-xs flex-shrink-0">${sb.dot} ${(dossier.status || 'PENDING_REVIEW').replaceAll('_', ' ')}</span>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -45,24 +45,24 @@ function renderAdminReviewScreen(state, actions) {
           <!-- Personal Information -->
           <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm">
             <h3 class="text-xs font-heading font-extrabold text-slate-900 dark:text-white mb-4 flex items-center space-x-2"><i class="fa-solid fa-user text-emerald-500"></i><span>Personal Information</span></h3>
-            <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div><span class="text-gray-400">Name:</span> <span class="font-bold text-slate-900 dark:text-white">${dossier.farmer_name}</span></div>
               <div><span class="text-gray-400">Phone:</span> <span class="font-bold text-slate-900 dark:text-white">${dossier.phone || '+234 803 456 7890'}</span></div>
               <div><span class="text-gray-400">Email:</span> <span class="font-bold text-slate-900 dark:text-white">${dossier.email}</span></div>
               <div><span class="text-gray-400">State:</span> <span class="font-bold text-slate-900 dark:text-white">${dossier.state}, ${dossier.lga}</span></div>
-              <div class="col-span-2"><span class="text-gray-400">Address:</span> <span class="font-bold text-slate-900 dark:text-white">${dossier.residential_address || 'N/A'}</span></div>
+              <div class="sm:col-span-2"><span class="text-gray-400">Address:</span> <span class="font-bold text-slate-900 dark:text-white">${dossier.residential_address || 'N/A'}</span></div>
             </div>
           </div>
 
           <!-- Farm Information -->
           <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm">
             <h3 class="text-xs font-heading font-extrabold text-slate-900 dark:text-white mb-4 flex items-center space-x-2"><i class="fa-solid fa-tractor text-emerald-500"></i><span>Farm Information</span></h3>
-            <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div><span class="text-gray-400">Farm Name:</span> <span class="font-bold text-slate-900 dark:text-white">${dossier.farm_name}</span></div>
               <div><span class="text-gray-400">Farm Size:</span> <span class="font-bold text-slate-900 dark:text-white">${dossier.farm_size_acres || 0} Acres</span></div>
               <div><span class="text-gray-400">Farm Type:</span> <span class="font-bold text-slate-900 dark:text-white">${dossier.farm_type}</span></div>
               <div><span class="text-gray-400">Experience:</span> <span class="font-bold text-slate-900 dark:text-white">${dossier.years_experience} Years</span></div>
-              <div class="col-span-2"><span class="text-gray-400">Products:</span> <span class="font-bold text-slate-900 dark:text-white">${(dossier.crops_produced || []).join(', ')}</span></div>
+              <div class="sm:col-span-2"><span class="text-gray-400">Products:</span> <span class="font-bold text-slate-900 dark:text-white">${(dossier.crops_produced || []).join(', ')}</span></div>
             </div>
           </div>
 

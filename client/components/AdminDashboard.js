@@ -41,7 +41,7 @@ function renderAdminDashboard(state, actions) {
             </button>
           </div>
 
-          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div class="p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700 min-w-0">
               <div class="text-[10px] font-bold text-gray-500 break-words">Total Farmers</div>
               <div class="text-lg font-heading font-extrabold text-slate-900 dark:text-white mt-1">14,823</div>
