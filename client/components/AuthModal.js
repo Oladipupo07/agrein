@@ -248,7 +248,7 @@ function renderAuthModal(state, actions) {
                 ${isLogin ? 'Sign Up' : 'Log In'}
               </button>
             </div>
-          `}
+          `)}
 
         </div>
       </div>
