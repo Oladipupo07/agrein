@@ -266,3 +266,20 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   animation: drawerSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Mobile bottom-nav bar — iOS notch / Android gesture bar safe area */
+.bottom-nav-safe {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
+
+/* Mobile top bar — smooth height transition (reserved for v2 compress-on-scroll) */
+.topbar { transition: height 200ms ease, padding 200ms ease; }
+
+/* Bottom-sheet slide-up animation (used by sell sheet) */
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-sheet-up {
+  animation: sheetUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

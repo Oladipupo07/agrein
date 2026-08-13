@@ -84,6 +84,11 @@ const state = {
   deletionRequests: [],  // admin queue snapshot, populated when admin opens Admin Verification view
   deletionRequestsLoaded: false,
 
+  // Mobile bottom-nav state
+  bottomNavHidden: false,  // hidden on scroll-down, re-shown on scroll-up
+  scrollY: 0,              // last scroll position; reserved for v2 top-bar compress
+  sellSheetOpen: false,    // raised Sell button opens this bottom sheet
+
   // Admin Review Dossier State
   adminReviewDossier: null,
   adminActionModalActive: false,
@@ -1065,6 +1070,18 @@ const actions = {
     renderApp();
   },
 
+  // Sell sheet (raised Sell button in the bottom-nav bar)
+  openSellSheet() {
+    state.sellSheetOpen = true;
+    state.mobileMenuOpen = false;
+    renderApp();
+  },
+
+  closeSellSheet() {
+    state.sellSheetOpen = false;
+    renderApp();
+  },
+
   // Helper: navigate from mobile menu and close it in one shot
   setViewAndCloseMobile(view) {
     state.currentView = view;
@@ -1578,7 +1595,7 @@ function renderApp() {
       ${renderEcosystemNav(state, actions)}
 
       <!-- Main Body Content -->
-      <main class="flex-grow">
+      <main class="flex-grow lg:pb-0 pb-20">
         ${bodyContent}
       </main>
 
@@ -1682,7 +1699,7 @@ function renderEcosystemNav(state, actions) {
   };
 
   return `
-    <div class="sticky top-20 z-30 w-full glass-panel border-b border-emerald-900/5 dark:border-white/5">
+    <div class="sticky top-20 z-30 w-full glass-panel border-b border-emerald-900/5 dark:border-white/5 hidden sm:block">
       <div class="max-w-7xl mx-auto px-2 sm:px-4">
         <div class="flex items-center overflow-x-auto py-2 space-x-1 scrollbar-hide" style="scrollbar-width: none; -ms-overflow-style: none;">
           ${ecosystemItems.map(item => {
@@ -1705,6 +1722,30 @@ function renderEcosystemNav(state, actions) {
 // Initial Boot
 document.addEventListener('DOMContentLoaded', () => {
   renderApp();
+
+  // Mobile bottom-nav: hide on scroll-down, re-show on scroll-up.
+  // Passive + rAF-throttled so it has no perceivable cost. Width-gated so
+  // the desktop layout never re-renders on scroll.
+  let lastY = window.scrollY;
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (window.innerWidth >= 1024) return; // desktop: never hide
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const goingDown = y > lastY && y > 80;
+        if (goingDown !== state.bottomNavHidden) {
+          state.bottomNavHidden = goingDown;
+          if (y <= 80) state.bottomNavHidden = false; // always show at top
+          renderApp();
+        }
+        lastY = y;
+        state.scrollY = y;
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }, { passive: true });
 
   // Close any open overlay (mobile menu, modals, drawers) on Escape
   document.addEventListener('keydown', (e) => {
