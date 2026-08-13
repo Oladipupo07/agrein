@@ -122,7 +122,8 @@ function renderAuthModal(state, actions) {
                   ${[0, 1, 2, 3, 4, 5].map(idx => `
                     <input type="text" maxlength="1" id="otpDigit_${idx}"
                            value="${(state.otpDigits || [])[idx] || ''}"
-                           onkeyup="actions.handleOtpDigitInput(event, ${idx})"
+                           oninput="actions.handleOtpDigitInput(event, ${idx})"
+                           onkeydown="actions.handleOtpKeyDown(event, ${idx})"
                            onfocus="this.select()"
                            class="w-11 h-12 text-center text-lg font-mono font-extrabold rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm">
                   `).join('')}
@@ -133,10 +134,10 @@ function renderAuthModal(state, actions) {
               <div class="flex items-center justify-between text-xs text-gray-500 pt-2">
                 <div class="flex items-center space-x-1.5 font-medium">
                   <i class="fa-regular fa-clock text-emerald-600"></i>
-                  <span>Code expires in <strong class="text-slate-900 dark:text-white font-mono font-bold">${actions.formatOtpTimer(state.otpTimerSeconds || 300)}</strong></span>
+                  <span>Code expires in <strong class="otp-timer-display text-slate-900 dark:text-white font-mono font-bold">${actions.formatOtpTimer(state.otpTimerSeconds || 300)}</strong></span>
                 </div>
                 ${state.otpCooldownSeconds > 0 ? `
-                  <span class="text-[11px] text-gray-400 font-semibold">Resend in ${state.otpCooldownSeconds}s</span>
+                  <span class="otp-cooldown-display text-[11px] text-gray-400 font-semibold">Resend in ${state.otpCooldownSeconds}s</span>
                 ` : `
                   <button onclick="actions.resendEmailOtp()" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center space-x-1">
                     <i class="fa-solid fa-rotate-right text-[10px]"></i>

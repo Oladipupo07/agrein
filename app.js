@@ -263,6 +263,14 @@ const actions = {
   },
 
   closeAuthModal() {
+    if (state.otpTimerInterval) {
+      clearInterval(state.otpTimerInterval);
+      state.otpTimerInterval = null;
+    }
+    if (state.otpCooldownInterval) {
+      clearInterval(state.otpCooldownInterval);
+      state.otpCooldownInterval = null;
+    }
     state.authModalActive = false;
     renderApp();
   },
@@ -441,11 +449,11 @@ const actions = {
     state.otpTimerInterval = setInterval(() => {
       if (state.otpTimerSeconds > 0) {
         state.otpTimerSeconds -= 1;
-        // Don't call renderApp on every tick to preserve input focus unless modal is active
         const timerEl = document.querySelector('.otp-timer-display');
         if (timerEl) timerEl.textContent = actions.formatOtpTimer(state.otpTimerSeconds);
       } else {
         clearInterval(state.otpTimerInterval);
+        state.otpTimerInterval = null;
         state.otpError = 'This verification code has expired. Please request a new verification code.';
         renderApp();
       }
@@ -459,15 +467,28 @@ const actions = {
   },
 
   handleOtpDigitInput(event, index) {
-    const val = event.target.value.replace(/[^0-9]/g, '');
+    const input = event.target;
+    let val = input.value.replace(/[^0-9]/g, '');
+    if (val.length > 1) val = val.slice(-1);
+    input.value = val;
     state.otpDigits[index] = val;
 
-    if (event.key === 'Backspace' && index > 0 && !val) {
-      const prevEl = document.getElementById(`otpDigit_${index - 1}`);
-      if (prevEl) prevEl.focus();
-    } else if (val && index < 5) {
+    if (val && index < 5) {
       const nextEl = document.getElementById(`otpDigit_${index + 1}`);
-      if (nextEl) nextEl.focus();
+      if (nextEl) {
+        nextEl.focus();
+        nextEl.select();
+      }
+    }
+  },
+
+  handleOtpKeyDown(event, index) {
+    if (event.key === 'Backspace' && !event.target.value && index > 0) {
+      const prevEl = document.getElementById(`otpDigit_${index - 1}`);
+      if (prevEl) {
+        prevEl.focus();
+        prevEl.select();
+      }
     }
   },
 
@@ -579,6 +600,8 @@ const actions = {
     }
 
     const finishOtpSuccess = () => {
+      if (state.otpTimerInterval) { clearInterval(state.otpTimerInterval); state.otpTimerInterval = null; }
+      if (state.otpCooldownInterval) { clearInterval(state.otpCooldownInterval); state.otpCooldownInterval = null; }
       state.otpSuccess = true;
       state.otpError = null;
       renderApp();
@@ -688,10 +711,13 @@ const actions = {
       state.otpCooldownInterval = setInterval(() => {
         if (state.otpCooldownSeconds > 0) {
           state.otpCooldownSeconds -= 1;
+          const cooldownEl = document.querySelector('.otp-cooldown-display');
+          if (cooldownEl) cooldownEl.textContent = `Resend in ${state.otpCooldownSeconds}s`;
         } else {
           clearInterval(state.otpCooldownInterval);
+          state.otpCooldownInterval = null;
+          renderApp();
         }
-        renderApp();
       }, 1000);
 
       actions.triggerToast(`📧 New 6-digit verification code sent to ${state.otpEmail}`);
