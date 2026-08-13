@@ -100,8 +100,8 @@ function renderNavbar(state, actions) {
         <!-- 3. Right Action Cluster -->
         <div class="flex items-center space-x-2 lg:space-x-3">
 
-          <!-- Cart Drawer Button (always visible; label only on sm+) -->
-          <button onclick="actions.toggleCartDrawer()" class="relative p-2 lg:p-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-700/20 transition-all flex items-center space-x-2 flex-shrink-0">
+          <!-- Cart Drawer Button (sm+ only — lives in the hamburger menu on mobile) -->
+          <button onclick="actions.toggleCartDrawer()" class="relative p-2 lg:p-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-700/20 transition-all items-center space-x-2 flex-shrink-0 hidden sm:inline-flex">
             <i class="fa-solid fa-cart-shopping text-sm"></i>
             <span class="text-xs font-bold hidden sm:inline">Cart</span>
             ${cartCount > 0 ? `<span class="w-5 h-5 bg-amber-400 text-emerald-950 rounded-full text-[10px] font-extrabold flex items-center justify-center">${cartCount}</span>` : ''}
