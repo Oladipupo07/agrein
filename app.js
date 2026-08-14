@@ -1854,24 +1854,58 @@ function renderAdminActionModal(state, actions) {
   `;
 }
 
-// Ecosystem Navigation Strip Component (inline)
+// Ecosystem Navigation Strip Component (Role-Aware)
 function renderEcosystemNav(state, actions) {
-  const ecosystemItems = [
-    { view: 'marketplace', label: 'Marketplace', icon: 'fa-store', color: 'emerald' },
-    { view: 'farmer-verification', label: 'Farm Verify', icon: 'fa-shield-halved', color: 'teal' },
-    { view: 'admin-verification', label: 'Admin Verify', icon: 'fa-user-check', color: 'violet' },
-    { view: 'rfq-board', label: 'RFQ Board', icon: 'fa-clipboard-list', color: 'blue' },
-    { view: 'commodity-index', label: 'Price Index', icon: 'fa-chart-line', color: 'amber' },
-    { view: 'agro-doctor', label: 'AI Crop Doctor', icon: 'fa-stethoscope', color: 'rose' },
-    { view: 'weather', label: 'Weather', icon: 'fa-cloud-sun-rain', color: 'sky' },
-    { view: 'cooperatives', label: 'Cooperatives', icon: 'fa-people-group', color: 'violet' },
-    { view: 'forum', label: 'Forum', icon: 'fa-comments', color: 'orange' },
-    { view: 'wallet', label: 'Wallet', icon: 'fa-wallet', color: 'green' },
-    { view: 'logistics', label: 'Logistics', icon: 'fa-truck-fast', color: 'indigo' },
-    { view: 'export-trade', label: 'Export', icon: 'fa-globe-africa', color: 'cyan' },
-    { view: 'bulk-b2b', label: 'B2B Bulk', icon: 'fa-boxes-stacked', color: 'fuchsia' },
-    { view: 'traceability', label: 'Traceability', icon: 'fa-qrcode', color: 'lime' }
-  ];
+  const role = ((state.currentUser && state.currentUser.role) || state.activeRole || 'visitor').toUpperCase();
+
+  let ecosystemItems = [];
+
+  if (role === 'FARMER') {
+    ecosystemItems = [
+      { view: 'farmer-dashboard', label: 'Farmer Hub', icon: 'fa-tractor', color: 'emerald' },
+      { view: 'marketplace', label: 'Marketplace', icon: 'fa-store', color: 'teal' },
+      { view: 'ai-insights', label: 'AI Price Predictor', icon: 'fa-wand-magic-sparkles', color: 'amber' },
+      { view: 'agro-doctor', label: 'AI Crop Doctor', icon: 'fa-stethoscope', color: 'rose' },
+      { view: 'weather', label: 'Weather Radar', icon: 'fa-cloud-sun-rain', color: 'sky' },
+      { view: 'cooperatives', label: 'Cooperatives', icon: 'fa-people-group', color: 'violet' },
+      { view: 'farmer-verification', label: 'Farm Verify (KYC)', icon: 'fa-shield-halved', color: 'emerald' },
+      { view: 'wallet', label: 'Wallet & Payouts', icon: 'fa-wallet', color: 'green' },
+      { view: 'logistics', label: 'Logistics', icon: 'fa-truck-fast', color: 'indigo' },
+      { view: 'forum', label: 'Community Forum', icon: 'fa-comments', color: 'orange' }
+    ];
+  } else if (role === 'BUYER') {
+    ecosystemItems = [
+      { view: 'buyer-dashboard', label: 'Buyer Hub', icon: 'fa-cart-shopping', color: 'blue' },
+      { view: 'marketplace', label: 'Produce Catalog', icon: 'fa-store', color: 'emerald' },
+      { view: 'bulk-b2b', label: 'B2B Wholesale', icon: 'fa-boxes-stacked', color: 'fuchsia' },
+      { view: 'rfq-board', label: 'RFQ Sourcing Board', icon: 'fa-clipboard-list', color: 'blue' },
+      { view: 'commodity-index', label: 'Price Index', icon: 'fa-chart-line', color: 'amber' },
+      { view: 'nearby-farms', label: 'Nearby Farms', icon: 'fa-location-dot', color: 'teal' },
+      { view: 'export-trade', label: 'Export Marketplace', icon: 'fa-globe-africa', color: 'cyan' },
+      { view: 'traceability', label: 'QR Traceability', icon: 'fa-qrcode', color: 'lime' },
+      { view: 'logistics', label: 'ColdChain Tracker', icon: 'fa-truck-fast', color: 'indigo' }
+    ];
+  } else if (role === 'ADMIN') {
+    ecosystemItems = [
+      { view: 'admin-dashboard', label: 'Admin Console', icon: 'fa-shield-halved', color: 'violet' },
+      { view: 'admin-verification', label: 'Farmer KYC Queue', icon: 'fa-user-check', color: 'purple' },
+      { view: 'marketplace', label: 'Marketplace Audit', icon: 'fa-store', color: 'emerald' },
+      { view: 'commodity-index', label: 'Price Index', icon: 'fa-chart-line', color: 'amber' },
+      { view: 'rfq-board', label: 'RFQ Moderation', icon: 'fa-clipboard-list', color: 'blue' }
+    ];
+  } else {
+    // Visitor / Public View
+    ecosystemItems = [
+      { view: 'marketplace', label: 'Marketplace', icon: 'fa-store', color: 'emerald' },
+      { view: 'commodity-index', label: 'Price Index', icon: 'fa-chart-line', color: 'amber' },
+      { view: 'nearby-farms', label: 'Nearby Farms', icon: 'fa-location-dot', color: 'teal' },
+      { view: 'ai-insights', label: 'AI Crop Forecast', icon: 'fa-wand-magic-sparkles', color: 'amber' },
+      { view: 'weather', label: 'Weather Radar', icon: 'fa-cloud-sun-rain', color: 'sky' },
+      { view: 'export-trade', label: 'Export Market', icon: 'fa-globe-africa', color: 'cyan' },
+      { view: 'cooperatives', label: 'Cooperatives', icon: 'fa-people-group', color: 'violet' },
+      { view: 'forum', label: 'Farmer Forum', icon: 'fa-comments', color: 'orange' }
+    ];
+  }
 
   const colorMap = {
     emerald: { active: 'bg-emerald-600 text-white shadow-emerald-600/30', inactive: 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30', icon: 'text-emerald-500' },
@@ -1880,6 +1914,7 @@ function renderEcosystemNav(state, actions) {
     rose: { active: 'bg-rose-600 text-white shadow-rose-600/30', inactive: 'text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30', icon: 'text-rose-500' },
     sky: { active: 'bg-sky-600 text-white shadow-sky-600/30', inactive: 'text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/30', icon: 'text-sky-500' },
     violet: { active: 'bg-violet-600 text-white shadow-violet-600/30', inactive: 'text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30', icon: 'text-violet-500' },
+    purple: { active: 'bg-purple-600 text-white shadow-purple-600/30', inactive: 'text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/30', icon: 'text-purple-500' },
     orange: { active: 'bg-orange-600 text-white shadow-orange-600/30', inactive: 'text-orange-700 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-950/30', icon: 'text-orange-500' },
     teal: { active: 'bg-teal-600 text-white shadow-teal-600/30', inactive: 'text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/30', icon: 'text-teal-500' },
     green: { active: 'bg-green-600 text-white shadow-green-600/30', inactive: 'text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950/30', icon: 'text-green-500' },
@@ -1896,7 +1931,7 @@ function renderEcosystemNav(state, actions) {
         <div class="flex items-center overflow-x-auto py-2 space-x-1 scrollbar-hide" style="scrollbar-width: none; -ms-overflow-style: none;">
           ${ecosystemItems.map(item => {
             const isActive = state.currentView === item.view;
-            const colors = colorMap[item.color];
+            const colors = colorMap[item.color] || colorMap.emerald;
             return `
               <button onclick="actions.setView('${item.view}')" 
                 class="flex-shrink-0 flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${isActive ? colors.active + ' shadow-md' : colors.inactive}">
