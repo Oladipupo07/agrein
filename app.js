@@ -96,6 +96,10 @@ const state = {
   adminActionType: null, // 'REQUEST_CHANGES', 'REJECT', 'SUSPEND'
   adminActionReasonText: '',
 
+  // Live Modals State
+  addProductModalActive: false,
+  withdrawalModalActive: false,
+
   // AI Predictor Tool
   aiSelectedCrop: 'Yellow Maize',
   aiSelectedState: 'Kaduna',
@@ -736,6 +740,166 @@ const actions = {
 
   handleAuthSubmit(mode, role) {
     actions.validateAndSubmitAuth(mode, role);
+  },
+
+  // Password Visibility Toggle (Show/Hide Password)
+  togglePasswordVisibility(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    if (!input) return;
+    if (input.type === 'password') {
+      input.type = 'text';
+      if (icon) {
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      }
+    } else {
+      input.type = 'password';
+      if (icon) {
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    }
+  },
+
+  // Live Interactive Password Requirements Validator
+  checkPasswordRequirements(password, prefix = 'reg') {
+    const p = password || '';
+    const rules = [
+      { id: `${prefix}_req_len`, ico: `${prefix}_ico_len`, valid: p.length >= 8 },
+      { id: `${prefix}_req_upper`, ico: `${prefix}_ico_upper`, valid: /[A-Z]/.test(p) },
+      { id: `${prefix}_req_lower`, ico: `${prefix}_ico_lower`, valid: /[a-z]/.test(p) },
+      { id: `${prefix}_req_num`, ico: `${prefix}_ico_num`, valid: /[0-9]/.test(p) },
+      { id: `${prefix}_req_special`, ico: `${prefix}_ico_special`, valid: /[!@#$%^&*(),.?":{}|<>]/.test(p) }
+    ];
+
+    rules.forEach(r => {
+      const el = document.getElementById(r.id);
+      const ico = document.getElementById(r.ico);
+      if (!el || !ico) return;
+
+      if (r.valid) {
+        el.className = 'flex items-center space-x-1.5 text-emerald-600 dark:text-emerald-400 font-bold transition-all';
+        ico.className = 'fa-solid fa-circle-check text-emerald-500';
+      } else {
+        if (p.length > 0) {
+          el.className = 'flex items-center space-x-1.5 text-red-500 dark:text-red-400 font-semibold transition-all';
+          ico.className = 'fa-solid fa-circle-xmark text-red-500';
+        } else {
+          el.className = 'flex items-center space-x-1.5 text-gray-500 dark:text-gray-400 transition-all';
+          ico.className = 'fa-regular fa-circle text-gray-400';
+        }
+      }
+    });
+  },
+
+  // Live Crop Product Listing Modal Handlers
+  openAddProductModal() {
+    state.addProductModalActive = true;
+    renderApp();
+  },
+
+  closeAddProductModal() {
+    state.addProductModalActive = false;
+    renderApp();
+  },
+
+  submitNewProduct() {
+    const title = document.getElementById('newProdTitle')?.value?.trim();
+    const category = document.getElementById('newProdCategory')?.value || 'Grains & Cereals';
+    const price = parseFloat(document.getElementById('newProdPrice')?.value) || 0;
+    const unit = document.getElementById('newProdUnit')?.value || 'kg';
+    const availableQty = parseFloat(document.getElementById('newProdQty')?.value) || 0;
+    const originState = document.getElementById('newProdState')?.value || 'Kaduna';
+    const isOrganic = document.getElementById('newProdOrganic')?.checked || false;
+    const image = document.getElementById('newProdImage')?.value?.trim() || 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80';
+
+    if (!title || price <= 0 || availableQty <= 0) {
+      actions.triggerToast('❌ Please fill in title, price per unit and available quantity.');
+      return;
+    }
+
+    const farmerName = state.currentUser ? (state.currentUser.full_name || 'Verified Producer') : 'Agrein Producer';
+    const newProd = {
+      id: `prod-${Date.now()}`,
+      title,
+      category,
+      price,
+      unit,
+      availableQty,
+      originState,
+      isOrganic,
+      image,
+      farmerName,
+      farmName: state.currentUser ? `${farmerName}'s Farm` : 'Zaria Agro-Gold Farms',
+      rating: 5.0,
+      trustScore: 98,
+      verified: true
+    };
+
+    // Optimistically add to state
+    if (state.mockData && state.mockData.products) {
+      state.mockData.products.unshift(newProd);
+    }
+
+    // Persist to backend API
+    fetch('/api/products', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.currentUser?.token || ''}`
+      },
+      body: JSON.stringify(newProd)
+    }).catch(() => {});
+
+    state.addProductModalActive = false;
+    actions.triggerToast(`✅ Crop listed: "${title}" is now active on the Marketplace!`);
+    renderApp();
+  },
+
+  // Live Payout / Withdrawal Modal Handlers
+  openWithdrawalModal() {
+    state.withdrawalModalActive = true;
+    renderApp();
+  },
+
+  closeWithdrawalModal() {
+    state.withdrawalModalActive = false;
+    renderApp();
+  },
+
+  submitWithdrawal() {
+    const amount = parseFloat(document.getElementById('withdrawAmount')?.value) || 0;
+    const bankName = document.getElementById('withdrawBank')?.value || 'First Bank of Nigeria';
+    const accountNumber = document.getElementById('withdrawAccount')?.value?.trim();
+
+    if (amount <= 0 || !accountNumber || accountNumber.length < 10) {
+      actions.triggerToast('❌ Please enter a valid withdrawal amount and 10-digit NUBAN account.');
+      return;
+    }
+
+    const currentBalance = state.mockData.farmerProfile?.availableBalance || 0;
+    if (amount > currentBalance) {
+      actions.triggerToast('❌ Withdrawal amount exceeds your available balance.');
+      return;
+    }
+
+    // Call live API
+    fetch('/api/wallet/withdraw', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.currentUser?.token || ''}`
+      },
+      body: JSON.stringify({ amount, bankName, accountNumber })
+    }).catch(() => {});
+
+    if (state.mockData.farmerProfile) {
+      state.mockData.farmerProfile.availableBalance -= amount;
+    }
+    state.withdrawalModalActive = false;
+    actions.triggerToast(`✅ Payout of ₦${amount.toLocaleString()} queued for instant Interswitch bank transfer.`);
+    renderApp();
   },
 
   // Real Browser GPS Geolocation Pinning
@@ -1634,6 +1798,8 @@ function renderApp() {
       ${renderChangePasswordModal(state, actions)}
       ${renderBuyerDisputeModal(state, actions)}
       ${renderAdminActionModal(state, actions)}
+      ${renderAddProductModal(state, actions)}
+      ${renderWithdrawalModal(state, actions)}
 
       <!-- Footer -->
       ${renderFooter(state, actions)}
@@ -1776,42 +1942,196 @@ document.addEventListener('DOMContentLoaded', () => {
   // Close any open overlay (mobile menu, modals, drawers) on Escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (state.mobileMenuOpen) {
-        state.mobileMenuOpen = false;
-        renderApp();
-      }
-      if (state.cartOpen) {
-        state.cartOpen = false;
-        renderApp();
-      }
-      if (state.chatActive) {
-        state.chatActive = false;
-        renderApp();
-      }
-      if (state.authModalActive) {
-        state.authModalActive = false;
-        renderApp();
-      }
-      if (state.activeModalProductId) {
-        state.activeModalProductId = null;
-        renderApp();
-      }
-      if (state.interswitchCheckoutActive) {
-        state.interswitchCheckoutActive = false;
-        renderApp();
-      }
-      if (state.disputeModalActive) {
-        state.disputeModalActive = false;
-        renderApp();
-      }
-      if (state.changePasswordModalActive) {
-        state.changePasswordModalActive = false;
-        renderApp();
-      }
-      if (state.navbarMenuOpen) {
-        state.navbarMenuOpen = false;
-        renderApp();
-      }
+      if (state.mobileMenuOpen) { state.mobileMenuOpen = false; renderApp(); }
+      if (state.cartOpen) { state.cartOpen = false; renderApp(); }
+      if (state.chatActive) { state.chatActive = false; renderApp(); }
+      if (state.authModalActive) { state.authModalActive = false; renderApp(); }
+      if (state.addProductModalActive) { state.addProductModalActive = false; renderApp(); }
+      if (state.withdrawalModalActive) { state.withdrawalModalActive = false; renderApp(); }
+      if (state.activeModalProductId) { state.activeModalProductId = null; renderApp(); }
+      if (state.interswitchCheckoutActive) { state.interswitchCheckoutActive = false; renderApp(); }
+      if (state.disputeModalActive) { state.disputeModalActive = false; renderApp(); }
+      if (state.changePasswordModalActive) { state.changePasswordModalActive = false; renderApp(); }
+      if (state.navbarMenuOpen) { state.navbarMenuOpen = false; renderApp(); }
     }
   });
+
+  // Sync live products from backend
+  fetch('/api/products')
+    .then(r => r.json())
+    .then(data => {
+      if (data && data.success && Array.isArray(data.products) && data.products.length > 0) {
+        state.mockData.products = data.products;
+        renderApp();
+      }
+    })
+    .catch(() => {});
 });
+
+// Live Crop Listing Modal Component
+function renderAddProductModal(state, actions) {
+  if (!state.addProductModalActive) return '';
+
+  return `
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+      <div class="modal-fullscreen-mobile relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/20 overflow-hidden animate-modal max-h-[90vh] overflow-y-auto">
+        <button onclick="actions.closeAddProductModal()" class="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-gray-300 flex items-center justify-center hover:bg-slate-300 transition-all">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+
+        <div class="bg-gradient-to-r from-emerald-800 to-emerald-900 p-6 text-white text-center">
+          <div class="w-12 h-12 rounded-2xl bg-white/20 mx-auto flex items-center justify-center mb-2">
+            <i class="fa-solid fa-plus text-amber-300 text-xl"></i>
+          </div>
+          <h3 class="text-xl font-heading font-extrabold">List New Harvest Crop</h3>
+          <p class="text-xs text-emerald-200 mt-1">Publish produce directly to buyers with Interswitch escrow protection</p>
+        </div>
+
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Crop Title *</label>
+            <input type="text" id="newProdTitle" placeholder="e.g. Export-Grade White Yam Tubers" class="w-full mt-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Category *</label>
+              <select id="newProdCategory" class="w-full mt-1 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                <option value="Grains & Cereals">Grains & Cereals</option>
+                <option value="Tubers & Roots">Tubers & Roots</option>
+                <option value="Oilseeds & Nuts">Oilseeds & Nuts</option>
+                <option value="Vegetables">Vegetables</option>
+                <option value="Fruits">Fruits</option>
+                <option value="Livestock & Poultry">Livestock & Poultry</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Farm State *</label>
+              <select id="newProdState" class="w-full mt-1 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                <option value="Kaduna">Kaduna</option>
+                <option value="Benue">Benue</option>
+                <option value="Jos, Plateau">Jos, Plateau</option>
+                <option value="Ogun">Ogun</option>
+                <option value="Ondo">Ondo</option>
+                <option value="Jigawa">Jigawa</option>
+                <option value="Kano">Kano</option>
+                <option value="Lagos">Lagos</option>
+                <option value="Oyo">Oyo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Price (₦) *</label>
+              <input type="number" id="newProdPrice" placeholder="520" class="w-full mt-1 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Unit *</label>
+              <select id="newProdUnit" class="w-full mt-1 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                <option value="kg">kg</option>
+                <option value="Bag">Bag (50kg)</option>
+                <option value="Tuber">Tuber</option>
+                <option value="Ton">Metric Ton</option>
+                <option value="Crate">Crate</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Available Qty *</label>
+              <input type="number" id="newProdQty" placeholder="500" class="w-full mt-1 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Image URL (Optional)</label>
+            <input type="url" id="newProdImage" placeholder="https://images.unsplash.com/..." class="w-full mt-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+
+          <div class="flex items-center space-x-2 pt-1">
+            <input type="checkbox" id="newProdOrganic" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300">
+            <label for="newProdOrganic" class="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center space-x-1">
+              <i class="fa-solid fa-leaf text-emerald-500"></i>
+              <span>Certified Organic / Pesticide-Free Crop</span>
+            </label>
+          </div>
+
+          <div class="pt-3">
+            <button onclick="actions.submitNewProduct()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-700 to-emerald-900 text-white font-extrabold text-xs shadow-xl hover:shadow-2xl transition-all flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-cloud-arrow-up text-amber-300"></i>
+              <span>Publish Crop to Marketplace</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Live Payout / Withdrawal Modal Component
+function renderWithdrawalModal(state, actions) {
+  if (!state.withdrawalModalActive) return '';
+  const availableBalance = state.mockData.farmerProfile?.availableBalance || 0;
+
+  return `
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+      <div class="modal-fullscreen-mobile relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/20 overflow-hidden animate-modal">
+        <button onclick="actions.closeWithdrawalModal()" class="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-gray-300 flex items-center justify-center hover:bg-slate-300 transition-all">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+
+        <div class="bg-gradient-to-r from-emerald-800 to-emerald-900 p-6 text-white text-center">
+          <div class="w-12 h-12 rounded-2xl bg-white/20 mx-auto flex items-center justify-center mb-2">
+            <i class="fa-solid fa-building-columns text-amber-300 text-xl"></i>
+          </div>
+          <h3 class="text-xl font-heading font-extrabold">Instant Bank Payout</h3>
+          <p class="text-xs text-emerald-200 mt-1">Interswitch Automated Clearing House (ACH)</p>
+        </div>
+
+        <div class="p-6 space-y-4">
+          <div class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-500/20 flex items-center justify-between">
+            <div>
+              <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Available Balance</div>
+              <div class="text-2xl font-heading font-extrabold text-emerald-700 dark:text-emerald-300">₦${availableBalance.toLocaleString()}</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
+              <i class="fa-solid fa-wallet text-base"></i>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Withdrawal Amount (₦) *</label>
+            <input type="number" id="withdrawAmount" max="${availableBalance}" placeholder="Enter amount (e.g. 50000)" class="w-full mt-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Destination Bank *</label>
+            <select id="withdrawBank" class="w-full mt-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+              <option value="First Bank of Nigeria">First Bank of Nigeria</option>
+              <option value="Zenith Bank">Zenith Bank</option>
+              <option value="Access Bank">Access Bank</option>
+              <option value="United Bank for Africa (UBA)">United Bank for Africa (UBA)</option>
+              <option value="Guaranty Trust Bank (GTBank)">Guaranty Trust Bank (GTBank)</option>
+              <option value="Stanbic IBTC Bank">Stanbic IBTC Bank</option>
+              <option value="Fidelity Bank">Fidelity Bank</option>
+              <option value="Kuda Microfinance Bank">Kuda Bank</option>
+              <option value="Moniepoint Microfinance Bank">Moniepoint</option>
+              <option value="OPay Digital Services">OPay</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-gray-500 dark:text-gray-400">10-Digit NUBAN Account Number *</label>
+            <input type="tel" id="withdrawAccount" maxlength="10" placeholder="0123456789" class="w-full mt-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+
+          <div class="pt-2">
+            <button onclick="actions.submitWithdrawal()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-700 to-emerald-900 text-white font-extrabold text-xs shadow-xl hover:shadow-2xl transition-all flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-paper-plane text-amber-300"></i>
+              <span>Initiate Bank Transfer</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
