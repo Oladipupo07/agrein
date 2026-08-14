@@ -17,11 +17,14 @@ const useSecure = SMTP_PORT === 465;
 
 const transporter = SMTP_USER && SMTP_PASS
   ? nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: useSecure,
-      auth: { user: SMTP_USER, pass: SMTP_PASS }
-    })
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: useSecure, // false for 587 (STARTTLS)
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    tls: {
+      rejectUnauthorized: false
+    }
+  })
   : null;
 
 const mailer = {

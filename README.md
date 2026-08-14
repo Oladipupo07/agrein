@@ -158,6 +158,36 @@ The server initializes transactions using Interswitch Webpay collections and ver
 
 ---
 
+## 📧 Transactional Email (OTP Delivery)
+
+The registration and password-reset flows send a 6-digit OTP code to the user's email.
+
+### Production / Render (recommended)
+Agrein uses [Brevo](https://www.brevo.com) for transactional email. Brevo's HTTPS API listens on port 443, which **Render's free tier does not block** — unlike SMTP ports 25/465/587, which is why Gmail SMTP "works locally but never delivers on Render".
+
+Sign up at https://app.brevo.com, get an API key at **Settings → SMTP & API → API Keys**, then:
+```env
+BREVO_API_KEY=xkeysib-...
+MAIL_FROM_ADDRESS=akobeoladipupo@gmail.com
+MAIL_FROM_NAME=Agrein Market
+```
+
+Free tier: 300 emails / day.
+
+### Local Development Fallback
+For local dev, Gmail SMTP via App Passwords still works (no Render network restrictions). The mailer auto-detects which path is configured.
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=akobeoladipupo@gmail.com
+SMTP_PASS=your_gmail_app_password
+```
+
+Generate a Gmail App Password at https://myaccount.google.com/apppasswords (requires 2-Step Verification on the Gmail account).
+
+---
+
 ## 📜 License
 
 This project is licensed under the [MIT License](LICENSE).
