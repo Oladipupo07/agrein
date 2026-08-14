@@ -49,7 +49,6 @@ const state = {
   interswitchCheckoutActive: false,
   interswitchCheckoutAmount: 0,
   interswitchItemTitle: '',
-  interswitchMethod: 'inline', // 'inline', 'redirect', 'card'
   interswitchProcessing: false,
   interswitchSuccess: false,
 
@@ -88,6 +87,9 @@ const state = {
   bottomNavHidden: false,  // hidden on scroll-down, re-shown on scroll-up
   scrollY: 0,              // last scroll position; reserved for v2 top-bar compress
   sellSheetOpen: false,    // raised Sell button opens this bottom sheet
+
+  // Document Upload Progress Tracking
+  documentUploads: {}, // { 'government_id': { progress: 45, fileName: 'id.pdf', isUploading: true }, ... }
 
   // Locked-farmer chrome suppression. True when a FARMER is signed in but
   // hasn't been admin-verified yet. The farmer-verification page hides the
@@ -321,12 +323,16 @@ const actions = {
               clearInterval(state._farmerVerifPollId);
               state._farmerVerifPollId = null;
               actions.triggerToast('🎉 Your farm has been verified! Welcome to your Farmer Dashboard.');
-              actions.setView('farmer-dashboard');
+              // Auto-redirect after a small delay to show the toast
+              setTimeout(() => {
+                actions.setView('farmer-dashboard');
+                renderApp();
+              }, 800);
             }
           }
         })
         .catch(() => {});
-    }, 15000);
+    }, 10000); // Check every 10 seconds for faster feedback
   },
 
   stopFarmerVerificationPolling() {
@@ -1064,34 +1070,86 @@ const actions = {
     }
   },
 
-  // Real File Upload Handler
+  // Real File Upload Handler with Progress Tracking
   handleDocumentUpload(docType, event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
 
-    actions.triggerToast(`📄 Uploading ${file.name}...`);
     const docName = file.name;
-    const fakeFileUrl = URL.createObjectURL(file);
+    const docLabel = {
+      'government_id': 'Government ID',
+      'farm_photo': 'Farm Photo',
+      'profile_photo': 'Profile Photo',
+      'farm_deed': 'Proof of Ownership',
+      'agricultural_cert': 'Agricultural Certification',
+      'coop_proof': 'Cooperative Proof'
+    }[docType] || 'Document';
 
-    fetch('/api/farmers/documents', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ documentType: docType, documentName: docName, documentUrl: fakeFileUrl })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success && state.mockData.farmerVerificationApp) {
-        state.mockData.farmerVerificationApp.documents = state.mockData.farmerVerificationApp.documents || [];
-        state.mockData.farmerVerificationApp.documents.push({
-          type: docType,
-          name: docName,
-          url: fakeFileUrl
-        });
+    // Validate file size (max 3MB)
+    const maxFileSize = 3 * 1024 * 1024; // 3MB in bytes
+    if (file.size > maxFileSize) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      actions.triggerToast(`⚠️ File too large! ${docLabel} is ${fileSizeMB}MB. Maximum allowed: 3MB`);
+      return;
+    }
+
+    // Initialize upload tracking
+    state.documentUploads[docType] = {
+      isUploading: true,
+      progress: 0,
+      fileName: docName,
+      docLabel: docLabel
+    };
+    renderApp(); // Show loading state immediately
+
+    const fakeFileUrl = URL.createObjectURL(file);
+    const xhr = new XMLHttpRequest();
+
+    // Track upload progress
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const percentComplete = Math.round((e.loaded / e.total) * 100);
+        state.documentUploads[docType].progress = percentComplete;
+        renderApp(); // Re-render to show progress
       }
-      actions.triggerToast(`✓ ${docName} uploaded securely!`);
-      renderApp();
-    })
-    .catch(() => {
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 200 || xhr.status === 201) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (data.success && state.mockData.farmerVerificationApp) {
+            state.mockData.farmerVerificationApp.documents = state.mockData.farmerVerificationApp.documents || [];
+            state.mockData.farmerVerificationApp.documents.push({
+              type: docType,
+              name: docName,
+              url: fakeFileUrl
+            });
+          }
+        } catch (e) {
+          // JSON parse error, but still treat as success
+          if (state.mockData.farmerVerificationApp) {
+            state.mockData.farmerVerificationApp.documents = state.mockData.farmerVerificationApp.documents || [];
+            state.mockData.farmerVerificationApp.documents.push({
+              type: docType,
+              name: docName,
+              url: fakeFileUrl
+            });
+          }
+        }
+        actions.triggerToast(`✅ ${docLabel} (${docName}) uploaded successfully!`);
+      } else {
+        actions.triggerToast(`⚠️ Upload failed for ${docLabel}. Please try again.`);
+      }
+      // Clear upload state
+      setTimeout(() => {
+        delete state.documentUploads[docType];
+        renderApp();
+      }, 500);
+    });
+
+    xhr.addEventListener('error', () => {
+      // Fallback: still add the document (simulating successful upload)
       if (state.mockData.farmerVerificationApp) {
         state.mockData.farmerVerificationApp.documents = state.mockData.farmerVerificationApp.documents || [];
         state.mockData.farmerVerificationApp.documents.push({
@@ -1100,9 +1158,26 @@ const actions = {
           url: fakeFileUrl
         });
       }
-      actions.triggerToast(`✓ ${docName} uploaded securely!`);
+      actions.triggerToast(`✅ ${docLabel} uploaded securely!`);
+      delete state.documentUploads[docType];
       renderApp();
     });
+
+    xhr.addEventListener('abort', () => {
+      actions.triggerToast(`⚠️ Upload cancelled for ${docLabel}.`);
+      delete state.documentUploads[docType];
+      renderApp();
+    });
+
+    // Send the request
+    xhr.open('POST', '/api/farmers/documents', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+
+    xhr.send(JSON.stringify({
+      documentType: docType,
+      documentName: docName,
+      documentUrl: fakeFileUrl
+    }));
   },
 
   // Verification Actions
@@ -1137,7 +1212,9 @@ const actions = {
       existing.status = 'PENDING_REVIEW';
       existing.submitted_at = app.submitted_at;
     }
-    actions.triggerToast('📋 Farm verification application submitted! Admin review in progress (18-24 hrs).');
+    actions.triggerToast('✅ Farm verification application submitted! Our team will review it soon.');
+    // Redirect to pending approval view to show beautiful waiting state
+    state.currentView = 'farmer-pending-approval';
     renderApp();
   },
 
@@ -1148,7 +1225,9 @@ const actions = {
       app.status = 'PENDING_REVIEW';
       app.submitted_at = new Date().toISOString();
       app.changes_requested_notes = null;
-      actions.triggerToast('📋 Updated application resubmitted for admin review!');
+      actions.triggerToast('✅ Updated application resubmitted! Our team will review it again.');
+      // Redirect to pending approval view
+      state.currentView = 'farmer-pending-approval';
       renderApp();
     }
   },
@@ -1194,6 +1273,14 @@ const actions = {
       v.status = 'APPROVED';
       v.reviewed_at = new Date().toISOString();
       v.reviewed_by = 'admin@agrein.ng';
+      
+      // Also update the farmer's verification app
+      if (state.mockData.farmerVerificationApp && state.mockData.farmerVerificationApp.id === id) {
+        state.mockData.farmerVerificationApp.status = 'APPROVED';
+        state.mockData.farmerVerificationApp.reviewed_at = v.reviewed_at;
+        state.mockData.farmerVerificationApp.reviewed_by = v.reviewed_by;
+      }
+      
       state.mockData.verificationAuditLogs.unshift({
         id: `log-${Date.now()}`,
         verification_id: v.id,
@@ -1205,10 +1292,10 @@ const actions = {
         reason: 'Farm location and documents confirmed legitimate.',
         created_at: new Date().toISOString()
       });
-      actions.triggerToast(`🟢 Farmer ${v.farmer_name} APPROVED! Verified Producer badge awarded.`);
+      actions.triggerToast(`🟢 Farmer ${v.farmer_name} APPROVED! They will be redirected to their dashboard.`);
 
       // Push the approval to the backend so the user's verification_status
-      // flips to APPROVED on the server. The locked farmer's 15-second poll
+      // flips to APPROVED on the server. The locked farmer's 10-second poll
       // (app.js startFarmerVerificationPolling) sees this and auto-routes
       // them to farmer-dashboard.
       if (v.farmer_email) {
@@ -1777,7 +1864,6 @@ const actions = {
     state.interswitchCheckoutActive = true;
     state.interswitchCheckoutAmount = amount;
     state.interswitchItemTitle = title;
-    state.interswitchMethod = 'inline';
     state.interswitchProcessing = false;
     state.interswitchSuccess = false;
     renderApp();
@@ -1813,11 +1899,6 @@ const actions = {
       actions.triggerToast('Simulating Interswitch Inline Checkout payment...');
       actions.executeInterswitchPayment();
     }
-  },
-
-  setInterswitchMethod(method) {
-    state.interswitchMethod = method;
-    renderApp();
   },
 
   closeInterswitchCheckout() {
@@ -1906,6 +1987,13 @@ function renderApp() {
     case 'farmer-verification':
       bodyContent = renderFarmerVerificationView(state, actions);
       // Start polling for verification approval if farmer is unverified
+      if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
+        actions.startFarmerVerificationPolling();
+      }
+      break;
+    case 'farmer-pending-approval':
+      bodyContent = renderFarmerPendingApprovalView(state, actions);
+      // Start polling for verification approval
       if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
         actions.startFarmerVerificationPolling();
       }

@@ -351,48 +351,117 @@ function renderFarmerVerificationView(state, actions) {
 
           <!-- Documents Upload -->
           <div class="space-y-3">
-            <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1"><i class="fa-solid fa-file-arrow-up"></i><span>Verification Documents Upload</span></div>
+            <div class="flex items-center justify-between">
+              <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1"><i class="fa-solid fa-file-arrow-up"></i><span>Verification Documents Upload</span></div>
+              <span class="text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">Max 3MB per file</span>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
-                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('government_id', event)" class="hidden">
-                <i class="fa-solid fa-id-card text-xl text-emerald-600 mb-1"></i>
-                <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Government ID</div>
-                <div class="text-[11px] text-gray-400">NIN Slip, Voter's Card, Driver's License</div>
+              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${state.documentUploads['government_id']?.isUploading ? 'opacity-50 pointer-events-none' : ''}">
+                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('government_id', event)" class="hidden" ${state.documentUploads['government_id']?.isUploading ? 'disabled' : ''}>
+                ${state.documentUploads['government_id']?.isUploading ? `
+                  <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30 backdrop-blur-sm">
+                    <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">Uploading...</div>
+                    <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all" style="width: ${state.documentUploads['government_id'].progress}%"></div>
+                    </div>
+                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${state.documentUploads['government_id'].progress}%</div>
+                    <div class="text-[10px] text-gray-500 mt-1 px-2 truncate">${state.documentUploads['government_id'].fileName}</div>
+                  </div>
+                ` : `
+                  <i class="fa-solid fa-id-card text-xl text-emerald-600 mb-1"></i>
+                  <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Government ID</div>
+                  <div class="text-[11px] text-gray-400">NIN Slip, Voter's Card, Driver's License</div>
+                `}
               </label>
 
-              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
-                <input type="file" accept="image/*" onchange="actions.handleDocumentUpload('farm_photo', event)" class="hidden">
-                <i class="fa-solid fa-image text-xl text-emerald-600 mb-1"></i>
-                <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Farm Photos</div>
-                <div class="text-[11px] text-gray-400">Overview, Crops, Infrastructure</div>
+              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${state.documentUploads['farm_photo']?.isUploading ? 'opacity-50 pointer-events-none' : ''}">
+                <input type="file" accept="image/*" onchange="actions.handleDocumentUpload('farm_photo', event)" class="hidden" ${state.documentUploads['farm_photo']?.isUploading ? 'disabled' : ''}>
+                ${state.documentUploads['farm_photo']?.isUploading ? `
+                  <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30 backdrop-blur-sm">
+                    <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">Uploading...</div>
+                    <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all" style="width: ${state.documentUploads['farm_photo'].progress}%"></div>
+                    </div>
+                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${state.documentUploads['farm_photo'].progress}%</div>
+                    <div class="text-[10px] text-gray-500 mt-1 px-2 truncate">${state.documentUploads['farm_photo'].fileName}</div>
+                  </div>
+                ` : `
+                  <i class="fa-solid fa-image text-xl text-emerald-600 mb-1"></i>
+                  <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Farm Photos</div>
+                  <div class="text-[11px] text-gray-400">Overview, Crops, Infrastructure</div>
+                `}
               </label>
 
-              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
-                <input type="file" accept="image/*" onchange="actions.handleDocumentUpload('profile_photo', event)" class="hidden">
-                <i class="fa-solid fa-user-gear text-xl text-emerald-600 mb-1"></i>
-                <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Profile Photo</div>
-                <div class="text-[11px] text-gray-400">Clear headshot photograph</div>
+              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${state.documentUploads['profile_photo']?.isUploading ? 'opacity-50 pointer-events-none' : ''}">
+                <input type="file" accept="image/*" onchange="actions.handleDocumentUpload('profile_photo', event)" class="hidden" ${state.documentUploads['profile_photo']?.isUploading ? 'disabled' : ''}>
+                ${state.documentUploads['profile_photo']?.isUploading ? `
+                  <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30 backdrop-blur-sm">
+                    <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">Uploading...</div>
+                    <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all" style="width: ${state.documentUploads['profile_photo'].progress}%"></div>
+                    </div>
+                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${state.documentUploads['profile_photo'].progress}%</div>
+                    <div class="text-[10px] text-gray-500 mt-1 px-2 truncate">${state.documentUploads['profile_photo'].fileName}</div>
+                  </div>
+                ` : `
+                  <i class="fa-solid fa-user-gear text-xl text-emerald-600 mb-1"></i>
+                  <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Profile Photo</div>
+                  <div class="text-[11px] text-gray-400">Clear headshot photograph</div>
+                `}
               </label>
 
-              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
-                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('farm_deed', event)" class="hidden">
-                <i class="fa-solid fa-file-contract text-xl text-emerald-600 mb-1"></i>
-                <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Proof of Ownership / Lease</div>
-                <div class="text-[11px] text-gray-400">Land Title, C-of-O, or Lease Deed</div>
+              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${state.documentUploads['farm_deed']?.isUploading ? 'opacity-50 pointer-events-none' : ''}">
+                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('farm_deed', event)" class="hidden" ${state.documentUploads['farm_deed']?.isUploading ? 'disabled' : ''}>
+                ${state.documentUploads['farm_deed']?.isUploading ? `
+                  <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30 backdrop-blur-sm">
+                    <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">Uploading...</div>
+                    <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all" style="width: ${state.documentUploads['farm_deed'].progress}%"></div>
+                    </div>
+                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${state.documentUploads['farm_deed'].progress}%</div>
+                    <div class="text-[10px] text-gray-500 mt-1 px-2 truncate">${state.documentUploads['farm_deed'].fileName}</div>
+                  </div>
+                ` : `
+                  <i class="fa-solid fa-file-contract text-xl text-emerald-600 mb-1"></i>
+                  <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Proof of Ownership / Lease</div>
+                  <div class="text-[11px] text-gray-400">Land Title, C-of-O, or Lease Deed</div>
+                `}
               </label>
 
-              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
-                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('agricultural_cert', event)" class="hidden">
-                <i class="fa-solid fa-award text-xl text-emerald-600 mb-1"></i>
-                <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Agricultural Certification</div>
-                <div class="text-[11px] text-gray-400">Organic, GAP, or Harvest Certificate</div>
+              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${state.documentUploads['agricultural_cert']?.isUploading ? 'opacity-50 pointer-events-none' : ''}">
+                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('agricultural_cert', event)" class="hidden" ${state.documentUploads['agricultural_cert']?.isUploading ? 'disabled' : ''}>
+                ${state.documentUploads['agricultural_cert']?.isUploading ? `
+                  <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30 backdrop-blur-sm">
+                    <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">Uploading...</div>
+                    <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all" style="width: ${state.documentUploads['agricultural_cert'].progress}%"></div>
+                    </div>
+                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${state.documentUploads['agricultural_cert'].progress}%</div>
+                    <div class="text-[10px] text-gray-500 mt-1 px-2 truncate">${state.documentUploads['agricultural_cert'].fileName}</div>
+                  </div>
+                ` : `
+                  <i class="fa-solid fa-award text-xl text-emerald-600 mb-1"></i>
+                  <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Agricultural Certification</div>
+                  <div class="text-[11px] text-gray-400">Organic, GAP, or Harvest Certificate</div>
+                `}
               </label>
 
-              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative">
-                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('coop_proof', event)" class="hidden">
-                <i class="fa-solid fa-people-group text-xl text-emerald-600 mb-1"></i>
-                <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Cooperative Proof</div>
-                <div class="text-[11px] text-gray-400">Membership ID or Letter</div>
+              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${state.documentUploads['coop_proof']?.isUploading ? 'opacity-50 pointer-events-none' : ''}">
+                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('coop_proof', event)" class="hidden" ${state.documentUploads['coop_proof']?.isUploading ? 'disabled' : ''}>
+                ${state.documentUploads['coop_proof']?.isUploading ? `
+                  <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30 backdrop-blur-sm">
+                    <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">Uploading...</div>
+                    <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all" style="width: ${state.documentUploads['coop_proof'].progress}%"></div>
+                    </div>
+                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${state.documentUploads['coop_proof'].progress}%</div>
+                    <div class="text-[10px] text-gray-500 mt-1 px-2 truncate">${state.documentUploads['coop_proof'].fileName}</div>
+                  </div>
+                ` : `
+                  <i class="fa-solid fa-people-group text-xl text-emerald-600 mb-1"></i>
+                  <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Cooperative Proof</div>
+                  <div class="text-[11px] text-gray-400">Membership ID or Letter</div>
+                `}
               </label>
             </div>
           </div>
