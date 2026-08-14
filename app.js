@@ -89,6 +89,15 @@ const state = {
   scrollY: 0,              // last scroll position; reserved for v2 top-bar compress
   sellSheetOpen: false,    // raised Sell button opens this bottom sheet
 
+  // Locked-farmer chrome suppression. True when a FARMER is signed in but
+  // hasn't been admin-verified yet. The farmer-verification page hides the
+  // navbar, ecosystem strip, and footer to feel like a standalone onboarding.
+  isFarmerLocked() {
+    return Boolean(state.currentUser
+      && state.currentUser.role === 'FARMER'
+      && state.currentUser.verification_status !== 'APPROVED');
+  },
+
   // Admin Review Dossier State
   adminReviewDossier: null,
   adminActionModalActive: false,
@@ -99,6 +108,12 @@ const state = {
   // Live Modals State
   addProductModalActive: false,
   withdrawalModalActive: false,
+
+  // Admin Registered Users Directory State
+  registeredUsersList: [],
+  registeredUsersCounts: { total: 1, farmers: 0, buyers: 0, admins: 1 },
+  adminUserFilterRole: 'ALL',
+  adminUserSearch: '',
 
   // AI Predictor Tool
   aiSelectedCrop: 'Yellow Maize',
@@ -153,8 +168,52 @@ const state = {
 // Application Action Handlers
 const actions = {
   setView(view) {
+    // ── FARMER VERIFICATION LOCK ──
+    // Unverified farmers are locked on farmer-verification. They cannot navigate anywhere else.
+    if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
+      const allowedViews = ['farmer-verification', 'account-settings'];
+      if (!allowedViews.includes(view)) {
+        actions.triggerToast('🔒 Complete your farm verification before accessing the platform.');
+        view = 'farmer-verification';
+      }
+    }
+
     state.currentView = view;
+    try {
+      localStorage.setItem('agrein_current_view', view);
+      if (window.location.hash !== '#' + view) {
+        window.history.replaceState(null, '', '#' + view);
+      }
+    } catch (e) {}
+
+    if (view === 'admin-dashboard') {
+      actions.fetchRegisteredUsers();
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    renderApp();
+  },
+
+  // Admin Registered Users Directory Actions
+  fetchRegisteredUsers() {
+    fetch('/api/admin/users')
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.success && Array.isArray(data.users)) {
+          state.registeredUsersList = data.users;
+          if (data.counts) state.registeredUsersCounts = data.counts;
+          renderApp();
+        }
+      })
+      .catch(() => {});
+  },
+
+  setAdminUserFilter(role) {
+    state.adminUserFilterRole = role;
+    renderApp();
+  },
+
+  setAdminUserSearch(query) {
+    state.adminUserSearch = query;
     renderApp();
   },
 
@@ -216,11 +275,13 @@ const actions = {
     }
 
     // Logged in with the right role — but a farmer who hasn't been verified
-    // yet should land on the verification page, not the dashboard.
-    if (view === 'farmer-dashboard' && state.currentUser.verification_status !== 'APPROVED') {
-      actions.triggerToast('📋 Complete your farm verification to access the dashboard.');
-      actions.setView('farmer-verification');
-      return;
+    // yet is LOCKED on farmer-verification. They cannot go anywhere else.
+    if (userRole === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
+      if (view !== 'farmer-verification' && view !== 'account-settings') {
+        actions.triggerToast('🔒 Complete your farm verification to access the platform.');
+        actions.setView('farmer-verification');
+        return;
+      }
     }
 
     actions.setView(view);
@@ -231,7 +292,57 @@ const actions = {
     actions.guardView(view);
   },
 
+  // ── FARMER VERIFICATION STATUS POLLING ──
+  // Polls the server every 15s to check if the admin has approved the farmer.
+  // When status changes to APPROVED, auto-redirect to farmer-dashboard.
+  startFarmerVerificationPolling() {
+    if (state._farmerVerifPollId) return; // already polling
+    state._farmerVerifPollId = setInterval(() => {
+      if (!state.currentUser || state.currentUser.role !== 'FARMER' || state.currentUser.verification_status === 'APPROVED') {
+        clearInterval(state._farmerVerifPollId);
+        state._farmerVerifPollId = null;
+        return;
+      }
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: state.currentUser.email, password: '__STATUS_CHECK__' })
+      }).catch(() => {});
+      // Also check via the users endpoint
+      fetch(`/api/admin/users?q=${encodeURIComponent(state.currentUser.email)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.success && Array.isArray(data.users)) {
+            const me = data.users.find(u => u.email.toLowerCase() === state.currentUser.email.toLowerCase());
+            if (me && me.verification_status === 'APPROVED') {
+              state.currentUser.verification_status = 'APPROVED';
+              state.currentUser.is_verified = true;
+              try { localStorage.setItem('agrein_user_session', JSON.stringify(state.currentUser)); } catch (e) {}
+              clearInterval(state._farmerVerifPollId);
+              state._farmerVerifPollId = null;
+              actions.triggerToast('🎉 Your farm has been verified! Welcome to your Farmer Dashboard.');
+              actions.setView('farmer-dashboard');
+            }
+          }
+        })
+        .catch(() => {});
+    }, 15000);
+  },
+
+  stopFarmerVerificationPolling() {
+    if (state._farmerVerifPollId) {
+      clearInterval(state._farmerVerifPollId);
+      state._farmerVerifPollId = null;
+    }
+  },
+
   logout() {
+    try {
+      localStorage.removeItem('agrein_user_session');
+      localStorage.removeItem('agrein_current_view');
+      window.history.replaceState(null, '', window.location.pathname);
+    } catch (e) {}
+
     state.currentUser = null;
     state.activeRole = 'visitor';
     state.pendingGuardView = null;
@@ -426,6 +537,11 @@ const actions = {
         };
         state.activeRole = (state.currentUser.role || 'visitor').toLowerCase();
         state.authModalActive = false;
+
+        try {
+          localStorage.setItem('agrein_user_session', JSON.stringify(state.currentUser));
+        } catch (e) {}
+
         actions.triggerToast(`✅ Logged in as ${state.currentUser.full_name || state.currentUser.email}.`);
 
         const resumeView = state.pendingGuardView;
@@ -667,6 +783,12 @@ const actions = {
         token: user.token,
         verification_status: verificationStatus
       };
+      state.activeRole = (state.currentUser.role || 'visitor').toLowerCase();
+
+      try {
+        localStorage.setItem('agrein_user_session', JSON.stringify(state.currentUser));
+      } catch (e) {}
+
       actions.triggerToast(role === 'FARMER'
         ? '🎉 Email Verified! Complete your farm verification to start selling.'
         : '🎉 Email Verified! Welcome to your dashboard.');
@@ -683,6 +805,12 @@ const actions = {
         token: `AGREIN_JWT_TOKEN_${Date.now()}`,
         verification_status: role === 'FARMER' ? 'NOT_STARTED' : 'APPROVED'
       };
+      state.activeRole = (state.currentUser.role || 'visitor').toLowerCase();
+
+      try {
+        localStorage.setItem('agrein_user_session', JSON.stringify(state.currentUser));
+      } catch (e) {}
+
       actions.triggerToast(role === 'FARMER'
         ? '🎉 Email Verified! Complete your farm verification to start selling.'
         : '🎉 Email Verified! Welcome to your dashboard.');
@@ -979,9 +1107,36 @@ const actions = {
 
   // Verification Actions
   submitFarmerVerification() {
-    state.mockData.farmerVerificationApp.status = 'PENDING_REVIEW';
-    state.mockData.farmerVerificationApp.submitted_at = new Date().toISOString();
-    state.mockData.farmerVerificationApp.id = state.mockData.farmerVerificationApp.id || `ver-${Date.now()}`;
+    const app = state.mockData.farmerVerificationApp;
+    app.status = 'PENDING_REVIEW';
+    app.submitted_at = new Date().toISOString();
+    app.id = app.id || `ver-${Date.now()}`;
+    // Carry the farmer's email so the admin approval handler can promote the
+    // matching user record's verification_status to APPROVED on the server.
+    if (state.currentUser && state.currentUser.email) {
+      app.farmer_email = state.currentUser.email;
+    }
+    if (state.currentUser && state.currentUser.full_name) {
+      app.farmer_name = app.farmer_name || state.currentUser.full_name;
+    }
+    // Mirror the app into the admin queue so admins see it in the verification dashboard.
+    const existing = state.mockData.adminVerifications.find(v => v.id === app.id);
+    if (!existing) {
+      state.mockData.adminVerifications.unshift({
+        id: app.id,
+        farmer_name: app.farmer_name || (state.currentUser && state.currentUser.full_name) || 'New Farmer',
+        farmer_email: app.farmer_email,
+        status: 'PENDING_REVIEW',
+        submitted_at: app.submitted_at,
+        farm_location: app.farm_location || app.state || 'Nigeria',
+        farm_size_acres: app.farm_size_acres || 0,
+        years_experience: app.years_experience || 0,
+        documents: app.documents || []
+      });
+    } else {
+      existing.status = 'PENDING_REVIEW';
+      existing.submitted_at = app.submitted_at;
+    }
     actions.triggerToast('📋 Farm verification application submitted! Admin review in progress (18-24 hrs).');
     renderApp();
   },
@@ -1051,8 +1206,47 @@ const actions = {
         created_at: new Date().toISOString()
       });
       actions.triggerToast(`🟢 Farmer ${v.farmer_name} APPROVED! Verified Producer badge awarded.`);
+
+      // Push the approval to the backend so the user's verification_status
+      // flips to APPROVED on the server. The locked farmer's 15-second poll
+      // (app.js startFarmerVerificationPolling) sees this and auto-routes
+      // them to farmer-dashboard.
+      if (v.farmer_email) {
+        fetch('/api/admin/users/update-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: v.farmer_email, status: 'APPROVED' })
+        }).catch(() => {});
+      }
+
       renderApp();
     }
+  },
+
+  // One-click approve from the admin user directory — used when a farmer shows
+  // PENDING but hasn't submitted a full KYC dossier yet. Promotes the user-level
+  // verification_status to APPROVED on the server so the locked farmer's poll
+  // can detect the change and auto-route them to farmer-dashboard.
+  adminQuickApproveFarmer(email, fullName) {
+    if (!email) return;
+    const safeName = (fullName || email).replace(/[<>"']/g, '');
+    fetch('/api/admin/users/update-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, status: 'APPROVED' })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.success) {
+          actions.triggerToast(`🟢 ${safeName} approved. They will land on the Farmer Dashboard automatically.`);
+          actions.fetchRegisteredUsers();
+        } else {
+          actions.triggerToast(`⚠️ ${data && data.message ? data.message : 'Could not approve farmer.'}`);
+        }
+      })
+      .catch(() => {
+        actions.triggerToast('⚠️ Network error approving farmer.');
+      });
   },
 
   adminRequestChanges(id) {
@@ -1711,6 +1905,10 @@ function renderApp() {
     // === ECOSYSTEM & VERIFICATION VIEWS ===
     case 'farmer-verification':
       bodyContent = renderFarmerVerificationView(state, actions);
+      // Start polling for verification approval if farmer is unverified
+      if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
+        actions.startFarmerVerificationPolling();
+      }
       break;
     case 'admin-verification':
       bodyContent = renderAdminVerificationDashboard(state, actions);
@@ -1778,11 +1976,27 @@ function renderApp() {
         </div>
       ` : ''}
 
-      <!-- Navbar -->
-      ${renderNavbar(state, actions)}
+      <!-- Navbar (hidden for locked farmers) -->
+      ${state.isFarmerLocked()
+        ? `
+        <div class="sticky top-0 z-40 w-full h-14 border-b border-emerald-900/10 dark:border-white/10 bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl flex items-center px-4 safe-area-top">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 flex items-center justify-center text-white shadow-md flex-shrink-0">
+            <i class="fa-solid fa-wheat-awn text-sm"></i>
+          </div>
+          <div class="min-w-0 flex-1 px-3">
+            <div class="text-[10px] uppercase tracking-wider font-extrabold text-emerald-700 dark:text-emerald-400 leading-none">Agrein</div>
+            <div class="text-xs font-extrabold text-slate-900 dark:text-white truncate leading-tight">Farm Verification</div>
+          </div>
+          <button onclick="actions.logout()" class="px-3 py-2 rounded-xl text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+            <span>Log Out</span>
+          </button>
+        </div>
+        `
+        : renderNavbar(state, actions)}
 
-      <!-- Ecosystem Navigation Strip -->
-      ${renderEcosystemNav(state, actions)}
+      <!-- Ecosystem Navigation Strip (hidden for locked farmers) -->
+      ${state.isFarmerLocked() ? '' : renderEcosystemNav(state, actions)}
 
       <!-- Main Body Content -->
       <main class="flex-grow lg:pb-0 pb-20">
@@ -1801,8 +2015,8 @@ function renderApp() {
       ${renderAddProductModal(state, actions)}
       ${renderWithdrawalModal(state, actions)}
 
-      <!-- Footer -->
-      ${renderFooter(state, actions)}
+      <!-- Footer (hidden for locked farmers — standalone onboarding page) -->
+      ${state.isFarmerLocked() ? '' : renderFooter(state, actions)}
 
     </div>
   `;
@@ -1857,6 +2071,12 @@ function renderAdminActionModal(state, actions) {
 // Ecosystem Navigation Strip Component (Role-Aware)
 function renderEcosystemNav(state, actions) {
   const role = ((state.currentUser && state.currentUser.role) || state.activeRole || 'visitor').toUpperCase();
+
+  // ── HIDE NAVIGATION FOR UNVERIFIED FARMERS ──
+  // Unverified farmers are locked on farmer-verification. No navigation strip shown.
+  if (role === 'FARMER' && state.currentUser && state.currentUser.verification_status !== 'APPROVED') {
+    return '';
+  }
 
   let ecosystemItems = [];
 
@@ -1946,9 +2166,58 @@ function renderEcosystemNav(state, actions) {
   `;
 }
 
-// Initial Boot
+// Initial Boot with Session & View Restoration
 document.addEventListener('DOMContentLoaded', () => {
+  // 1. Restore User Login Session from LocalStorage
+  try {
+    const savedSession = localStorage.getItem('agrein_user_session');
+    if (savedSession) {
+      const user = JSON.parse(savedSession);
+      if (user && user.email) {
+        state.currentUser = user;
+        state.activeRole = (user.role || 'visitor').toLowerCase();
+      }
+    }
+  } catch (e) {
+    console.warn('Session restoration skipped:', e);
+  }
+
+  // 2. Restore Current View from URL Hash or LocalStorage
+  try {
+    // FARMER VERIFICATION LOCK ON BOOT: unverified farmers always go to farmer-verification
+    if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
+      state.currentView = 'farmer-verification';
+    } else {
+      const hash = window.location.hash.replace('#', '').trim();
+      const savedView = hash || localStorage.getItem('agrein_current_view');
+      if (savedView) {
+        if (state.currentUser) {
+          // If user is logged in, route safely to their view or dashboard
+          actions.guardView(savedView);
+        } else {
+          const publicViews = ['landing', 'marketplace', 'ai-insights', 'nearby-farms', 'rfq-board', 'commodity-index', 'agro-doctor', 'weather', 'cooperatives', 'forum', 'learning-center', 'export-trade', 'bulk-b2b', 'traceability'];
+          if (publicViews.includes(savedView)) {
+            state.currentView = savedView;
+          }
+        }
+      } else if (state.currentUser) {
+        const role = state.currentUser.role;
+        if (role === 'FARMER') state.currentView = 'farmer-dashboard';
+        else if (role === 'BUYER') state.currentView = 'buyer-dashboard';
+        else if (role === 'ADMIN') state.currentView = 'admin-dashboard';
+      }
+    }
+  } catch (e) {}
+
   renderApp();
+
+  // 3. Listen to browser Back/Forward & URL Hash changes
+  window.addEventListener('hashchange', () => {
+    const hash = window.location.hash.replace('#', '').trim();
+    if (hash && hash !== state.currentView) {
+      actions.guardView(hash);
+    }
+  });
 
   // Mobile bottom-nav: hide on scroll-down, re-show on scroll-up.
   // Passive + rAF-throttled so it has no perceivable cost. Width-gated so
@@ -1991,7 +2260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Sync live products from backend
+  // Sync live products and registered users from backend
   fetch('/api/products')
     .then(r => r.json())
     .then(data => {
@@ -2001,6 +2270,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     })
     .catch(() => {});
+
+  actions.fetchRegisteredUsers();
 });
 
 // Live Crop Listing Modal Component

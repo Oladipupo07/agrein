@@ -31,7 +31,9 @@ router.post('/auth/request-deletion', authenticateFromHeader, authController.req
 router.post('/auth/cancel-deletion', authenticateFromHeader, authController.cancelAccountDeletion);
 router.post('/admin/users/create-admin', authenticateToken, requireRole(['ADMIN']), authController.createAdminAccount);
 
-// ===== ADMIN ACCOUNT DELETION QUEUE =====
+// ===== ADMIN ACCOUNT DELETION & USER DIRECTORY =====
+router.get('/admin/users', authController.getRegisteredUsers);
+router.post('/admin/users/update-verification', authController.updateUserVerificationStatus);
 router.get('/admin/deletion-requests', authenticateToken, requireRole(['ADMIN']), authController.adminGetDeletionQueue);
 router.post('/admin/deletion-requests/:id/resolve', authenticateToken, requireRole(['ADMIN']), authController.adminResolveDeletionRequest);
 

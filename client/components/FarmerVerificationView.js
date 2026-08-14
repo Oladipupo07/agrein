@@ -2,6 +2,7 @@
 
 function renderFarmerVerificationView(state, actions) {
   const app = state.mockData.farmerVerificationApp || {};
+  const userStatus = (state.currentUser && state.currentUser.verification_status) || 'NOT_STARTED';
   const status = app.status || 'DRAFT';
 
   const statusConfig = {
@@ -42,8 +43,19 @@ function renderFarmerVerificationView(state, actions) {
   return `
     <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div class="text-center mb-8">
+        <div class="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 text-white items-center justify-center mb-4 shadow-xl shadow-emerald-700/20">
+          <i class="fa-solid fa-shield-halved text-2xl"></i>
+        </div>
         <h1 class="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">Farmer Verification</h1>
         <p class="text-sm text-gray-500 mt-2">Complete your farm verification to start selling on Agrein</p>
+
+        <!-- Standalone lock indicator: shows the farmer they're in onboarding mode. -->
+        ${userStatus !== 'APPROVED' ? `
+          <div class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700/40 text-amber-800 dark:text-amber-300 text-xs font-bold">
+            <i class="fa-solid fa-lock text-[10px]"></i>
+            <span>Platform access unlocks once an Agrein admin approves your farm.</span>
+          </div>
+        ` : ''}
       </div>
 
       <!-- ═══ STATUS TIMELINE TRACKER ═══ -->

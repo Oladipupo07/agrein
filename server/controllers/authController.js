@@ -37,7 +37,124 @@ function toClientUser(user) {
   return safe;
 }
 
+// Database helper: synchronize user record to Supabase if connected
+async function syncUserToDb(user) {
+  try {
+    const supabase = require('../utils/supabaseClient');
+    if (!supabase) return;
+    await supabase.from('users').upsert({
+      id: user.id,
+      full_name: user.full_name,
+      email: user.email,
+      phone_number: user.phone_number,
+      role: user.role,
+      email_verified: Boolean(user.email_verified),
+      is_verified: Boolean(user.is_verified),
+      verification_status: user.verification_status || 'APPROVED',
+      created_at: user.created_at || new Date().toISOString()
+    }, { onConflict: 'email' });
+  } catch (err) {
+    // Non-blocking sync log
+  }
+}
+
 const authController = {
+  // Query all registered users (Farmers, Buyers, Admins) from Database / Memory
+  async getRegisteredUsers(req, res) {
+    try {
+      const { role, q } = req.query;
+      let users = [...registeredUsers];
+
+      // Query from Supabase if connected
+      try {
+        const supabase = require('../utils/supabaseClient');
+        if (supabase) {
+          const { data: dbUsers, error } = await supabase.from('users').select('*');
+          if (!error && dbUsers && dbUsers.length > 0) {
+            dbUsers.forEach(dbU => {
+              const exists = users.find(u => u.email.toLowerCase() === (dbU.email || '').toLowerCase());
+              if (!exists) {
+                users.push({
+                  id: dbU.id,
+                  full_name: dbU.full_name || dbU.name || (dbU.email || '').split('@')[0],
+                  email: dbU.email,
+                  phone_number: dbU.phone_number || dbU.phone || 'N/A',
+                  role: (dbU.role || 'BUYER').toUpperCase(),
+                  email_verified: Boolean(dbU.email_verified ?? true),
+                  is_verified: Boolean(dbU.is_verified ?? false),
+                  verification_status: dbU.verification_status || (dbU.role === 'FARMER' ? 'PENDING' : 'APPROVED'),
+                  created_at: dbU.created_at || new Date().toISOString()
+                });
+              }
+            });
+          }
+        }
+      } catch (dbErr) {
+        console.warn('[authController] Supabase users query notice:', dbErr.message);
+      }
+
+      // Filter by Role
+      if (role && role !== 'ALL') {
+        const normRole = role.toUpperCase();
+        users = users.filter(u => u.role === normRole);
+      }
+
+      // Search Query Filter
+      if (q) {
+        const search = q.toLowerCase();
+        users = users.filter(u =>
+          (u.full_name && u.full_name.toLowerCase().includes(search)) ||
+          (u.email && u.email.toLowerCase().includes(search)) ||
+          (u.phone_number && String(u.phone_number).includes(search))
+        );
+      }
+
+      const safeUsers = users.map(toClientUser);
+
+      res.json({
+        success: true,
+        total: safeUsers.length,
+        counts: {
+          total: safeUsers.length,
+          farmers: safeUsers.filter(u => u.role === 'FARMER').length,
+          buyers: safeUsers.filter(u => u.role === 'BUYER').length,
+          admins: safeUsers.filter(u => u.role === 'ADMIN').length
+        },
+        users: safeUsers
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  // Admin: Update a farmer's verification status in the registered users database
+  async updateUserVerificationStatus(req, res) {
+    try {
+      const { email, status } = req.body;
+      if (!email || !status) {
+        return res.status(400).json({ success: false, message: 'Email and verification status are required.' });
+      }
+      const normalizedEmail = email.toLowerCase();
+      const user = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found in database.' });
+      }
+      const prevStatus = user.verification_status;
+      user.verification_status = status.toUpperCase();
+      if (status.toUpperCase() === 'APPROVED') {
+        user.is_verified = true;
+      }
+      syncUserToDb(user);
+      res.json({
+        success: true,
+        message: `Verification status updated from ${prevStatus} to ${user.verification_status} for ${user.email}.`,
+        user: toClientUser(user)
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
   // Public Sign Up for BUYER and FARMER -> Triggers Email OTP
   async register(req, res) {
     try {
@@ -96,6 +213,7 @@ const authController = {
       // Generate 6-Digit Email OTP against the (possibly updated) record
       const target = existing || registeredUsers[registeredUsers.length - 1];
       const { rawOtp, expiresAt } = otpService.generateOtp(target.email);
+      syncUserToDb(target);
 
       res.status(201).json({
         success: true,
@@ -132,6 +250,13 @@ const authController = {
       let user = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
       if (user) {
         user.email_verified = true;
+        // Newly verified farmers enter the admin KYC queue immediately so the
+        // admin can see them in the verification dashboard. The client-side
+        // lock prevents them from touching the platform until status flips
+        // to APPROVED via the admin approval action.
+        if (user.role === 'FARMER' && user.verification_status === 'NOT_STARTED') {
+          user.verification_status = 'PENDING';
+        }
       } else {
         user = {
           id: `usr-${Date.now()}`,
@@ -143,6 +268,8 @@ const authController = {
         };
         registeredUsers.push(user);
       }
+
+      syncUserToDb(user);
 
       const redirectView = user.role === 'FARMER' ? 'farmer-verification' : 'buyer-dashboard';
 
