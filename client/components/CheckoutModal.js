@@ -104,7 +104,7 @@ function renderCheckoutModal(state, actions) {
               <i class="fa-solid fa-shield-check text-sm flex-shrink-0 mt-0.5"></i>
               <span><strong>100% Secure & Protected.</strong> Your payment is encrypted with 256-bit SSL. Escrow locks funds until delivery confirmation.</span>
             </div>
-          `)}
+          `}
         </div>
 
       </div>
