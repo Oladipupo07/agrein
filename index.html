@@ -2,31 +2,92 @@
 <html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agrein — Connecting Farmers to Buyers, One Harvest at a Time</title>
-  <meta name="description" content="Agrein is the modern agricultural marketplace platform connecting smallholder farmers directly to buyers across 36 states with escrow protection, Paystack payments, and AI price forecasting.">
-  
-  <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes, maximum-scale=5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Agrein">
+  <meta name="theme-color" content="#059669">
+  <!-- Primary SEO Meta Tags -->
+  <title>Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade</title>
+  <meta name="title" content="Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade">
+  <meta name="description" content="Connect directly with 14,800+ verified smallholder farmers across 36 Nigerian states. Buy and sell grains, tubers, cash crops, and livestock with Interswitch escrow protection, cold-chain logistics, and AI harvest price forecasting.">
+  <meta name="keywords" content="agriculture marketplace Nigeria, buy crops direct from farmers, sell harvest Nigeria, farm produce B2B wholesale, yellow maize, sesame seeds, cassava tubers, organic farming, Escrow crop payment, agribusiness Africa, crop price forecast, cold chain logistics Nigeria">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="author" content="Agrein Technologies">
+  <meta name="publisher" content="Agrein Technologies">
+  <link rel="canonical" href="https://agrein.ng/">
 
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <!-- Open Graph / Facebook / WhatsApp / LinkedIn Meta Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_NG">
+  <meta property="og:url" content="https://agrein.ng/">
+  <meta property="og:site_name" content="Agrein Marketplace">
+  <meta property="og:title" content="Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade">
+  <meta property="og:description" content="Direct agricultural trade across 36 Nigerian states. Connect with 14,800+ verified farmers, 100% Interswitch escrow protection, and AI harvest price analytics.">
+  <meta property="og:image" content="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=80">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Agrein Agricultural Marketplace Fresh Harvest">
 
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@AgreinMarket">
+  <meta name="twitter:creator" content="@AgreinMarket">
+  <meta name="twitter:url" content="https://agrein.ng/">
+  <meta name="twitter:title" content="Agrein — Connecting Farmers to Buyers, One Harvest at a Time">
+  <meta name="twitter:description" content="Direct agricultural trade across 36 Nigerian states. Zero middleman exploitation, 100% escrow protection, and AI harvest price forecasting.">
+  <meta name="twitter:image" content="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=80">
 
-  <!-- Tailwind CSS (compiled locally) -->
-  <link rel="stylesheet" href="/styles.css">
-
-  <!-- Interswitch Web Checkout SDK (Live Production) -->
-  <script src="https://newwebpay.interswitchng.com/inline-checkout.js"></script>
+  <!-- JSON-LD Structured Data: Organization & WebSite -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://agrein.ng/#organization",
+        "name": "Agrein",
+        "url": "https://agrein.ng/",
+        "logo": "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=500&q=80",
+        "sameAs": [
+          "https://twitter.com/AgreinMarket",
+          "https://facebook.com/AgreinMarket",
+          "https://linkedin.com/company/agrein"
+        ],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "telephone": "+234-800-AGREIN-NG",
+          "contactType": "customer service",
+          "areaServed": "NG",
+          "availableLanguage": ["English", "Hausa", "Yoruba", "Igbo"]
+        },
+        "description": "Africa's trusted agricultural technology marketplace connecting smallholder farmers directly to wholesale and retail buyers with escrow guarantee."
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://agrein.ng/#website",
+        "url": "https://agrein.ng/",
+        "name": "Agrein Agricultural Marketplace",
+        "publisher": {
+          "@id": "https://agrein.ng/#organization"
+        },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://agrein.ng/#marketplace?search={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    ]
+  }
+  </script>
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-gray-100 antialiased selection:bg-emerald-500 selection:text-white">
   
   <!-- Root App Container -->
   <div id="app"></div>
+
+  <!-- Utilities & Storage -->
+  <script src="./client/utils/storageManager.js"></script>
 
   <!-- Client Data Script -->
   <script src="./client/data/mockData.js"></script>
@@ -44,6 +105,7 @@
   <script src="./client/components/CheckoutModal.js"></script>
   <script src="./client/components/ChatDrawer.js"></script>
   <script src="./client/components/CartDrawer.js"></script>
+  <script src="./client/components/WishlistDrawer.js"></script>
   <script src="./client/components/Footer.js"></script>
 
   <!-- Ecosystem Expansion Components -->
@@ -75,5 +137,54 @@
   <!-- App Orchestrator -->
   <script src="./app.js"></script>
 
+  <!-- PWA Service Worker Registration -->
+  <script>
+    // Register Service Worker for PWA functionality
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('✅ Service Worker registered:', registration.scope);
+            // Check for updates periodically
+            setInterval(() => {
+              registration.update();
+            }, 60000); // Check every minute
+          })
+          .catch(error => console.warn('⚠️ Service Worker registration failed:', error));
+      });
+
+      // Listen for updates to the service worker
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('🔄 New Service Worker activated');
+        // Optionally show a notification to the user about app update
+      });
+    }
+
+    // Request notification permission for push updates
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // Add to Home Screen prompt handling
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      console.log('💾 Install prompt ready');
+    });
+
+    // Expose install function globally for app to use
+    window.installApp = () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(choiceResult => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('✅ App installed');
+          }
+          deferredPrompt = null;
+        });
+      }
+    };
+  </script>
 </body>
 </html>

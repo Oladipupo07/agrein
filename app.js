@@ -43,14 +43,18 @@ const state = {
   ],
   chatInputText: '',
 
-  // Cart & Interswitch Checkout
+  // Cart & UI State
   cartOpen: false,
+  wishlistOpen: false,
   mobileMenuOpen: false,
+
+  // Checkout State (Simplified Payment Gateway)
+  checkoutModalActive: false,
+  checkoutTotal: 0,
+  checkoutItemCount: 0,
+  checkoutProcessing: false,
   interswitchCheckoutActive: false,
   interswitchCheckoutAmount: 0,
-  interswitchItemTitle: '',
-  interswitchProcessing: false,
-  interswitchSuccess: false,
 
   // Authentication & Email OTP State
   authModalActive: false,
@@ -167,6 +171,112 @@ const state = {
   mockData: INITIAL_MOCK_DATA
 };
 
+// Dynamic SPA SEO Metadata Registry
+const SEO_REGISTRY = {
+  'landing': {
+    title: "Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade",
+    description: "Connect directly with 14,800+ verified smallholder farmers across 36 Nigerian states. Buy and sell crops with Interswitch escrow protection, cold-chain logistics, and AI price forecasting."
+  },
+  'marketplace': {
+    title: "Fresh Harvest Produce Catalog & Wholesale Crops | Agrein Marketplace",
+    description: "Explore verified grain, tuber, livestock, and cash crop listings directly from Nigerian farmers at live farm-gate prices."
+  },
+  'ai-insights': {
+    title: "AI Agricultural Crop Price Forecasting & Market Trends | Agrein",
+    description: "Predict crop market prices up to 6 months in advance with Agrein's AI market intelligence model across all 36 Nigerian states."
+  },
+  'commodity-index': {
+    title: "Nigeria Agricultural Commodity Price Index (Live Market Rates) | Agrein",
+    description: "Live commodity price tracker for Maize, Sorghum, Cassava, Rice, Yam, and Soybeans across major Nigerian commercial hubs."
+  },
+  'nearby-farms': {
+    title: "Geospatial Local Farm Finder & Direct Farm Visits | Agrein",
+    description: "Locate certified farms near your state and LGA. Inspect satellite GPS coordinates and arrange direct farm gate pickups."
+  },
+  'bulk-b2b': {
+    title: "B2B Wholesale Agricultural Procurement & Export Contracts | Agrein",
+    description: "Industrial-scale produce contracts for FMCG manufacturers, food processors, and international agricultural exporters."
+  },
+  'rfq-board': {
+    title: "Reverse RFQ Agricultural Sourcing Board | Agrein",
+    description: "Post procurement requests and receive competitive bids directly from certified farmers across Nigeria."
+  },
+  'weather': {
+    title: "Hyperlocal Agricultural Weather Radar & Farming Forecast | Agrein",
+    description: "Real-time rainfall, soil moisture, humidity, and agronomy weather alerts tailored to Nigerian farming clusters."
+  },
+  'agro-doctor': {
+    title: "AgroDoctor AI — Instant Crop Disease Diagnosis Scanner | Agrein",
+    description: "Upload a crop leaf photo to instantly detect blight, pests, rust, and nutrient deficiencies with expert remedy recommendations."
+  },
+  'export-trade': {
+    title: "Cross-Border Agricultural Export Marketplace | Agrein",
+    description: "International export hub for Nigerian Ginger, Cocoa, Sesame, Cashew, and Hibiscus with phytosanitary compliance."
+  },
+  'cooperatives': {
+    title: "Agricultural Cooperatives & Group Sourcing Network | Agrein",
+    description: "Join farmer cooperatives to pool harvests, secure bulk discounts on fertilizers, and access zero-interest micro-loans."
+  },
+  'forum': {
+    title: "Farmers Community Forum & Agronomy Knowledge Exchange | Agrein",
+    description: "Connect with over 14,800 Nigerian farmers, agronomists, and agricultural extension officers."
+  },
+  'learning-center': {
+    title: "Agrein Agronomy Academy — Free Farming & Post-Harvest Guides | Agrein",
+    description: "Expert masterclasses on precision agriculture, drip irrigation, post-harvest loss reduction, and organic pest control."
+  },
+  'traceability': {
+    title: "QR Harvest Traceability & Farm Provenance | Agrein",
+    description: "Scan QR codes on crop batches to trace farm origin, harvest date, soil condition, and quality certifications."
+  },
+  'farmer-dashboard': {
+    title: "Farmer Producer Hub & Sales Console | Agrein",
+    description: "Manage your live crop listings, track buyer orders, monitor escrow balances, and withdraw earnings to your Nigerian bank account."
+  },
+  'buyer-dashboard': {
+    title: "Buyer Procurement Hub & Order Tracking | Agrein",
+    description: "Track active orders, coldchain logistics shipments, dispute escrows, and inspect verified farm batches."
+  },
+  'admin-dashboard': {
+    title: "SuperAdmin Moderation & Governance Console | Agrein",
+    description: "Administrative control center for KYC farm audit, dispute adjudication, user directory, and marketplace integrity."
+  },
+  'farmer-verification': {
+    title: "Farmer KYC Verification & Identity Audit | Agrein",
+    description: "Complete your 7-stage farm verification to earn the Verified Producer badge and start selling on Agrein."
+  },
+  'account-settings': {
+    title: "Account Settings & Profile Management | Agrein",
+    description: "Manage your Agrein profile, security credentials, contact details, and bank account payouts."
+  }
+};
+
+function updateDocumentSEO(view) {
+  const seo = SEO_REGISTRY[view] || SEO_REGISTRY['landing'];
+  document.title = seo.title;
+
+  const metaDesc = document.querySelector('meta[name="description"]');
+  if (metaDesc) metaDesc.setAttribute('content', seo.description);
+
+  const ogTitle = document.querySelector('meta[property="og:title"]');
+  if (ogTitle) ogTitle.setAttribute('content', seo.title);
+
+  const ogDesc = document.querySelector('meta[property="og:description"]');
+  if (ogDesc) ogDesc.setAttribute('content', seo.description);
+
+  const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+  if (twitterTitle) twitterTitle.setAttribute('content', seo.title);
+
+  const twitterDesc = document.querySelector('meta[name="twitter:description"]');
+  if (twitterDesc) twitterDesc.setAttribute('content', seo.description);
+
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) {
+    const url = view === 'landing' ? 'https://agrein.ng/' : `https://agrein.ng/#${view}`;
+    canonical.setAttribute('href', url);
+  }
+}
+
 // Application Action Handlers
 const actions = {
   setView(view) {
@@ -181,6 +291,7 @@ const actions = {
     }
 
     state.currentView = view;
+    updateDocumentSEO(view); // Update title, description, and canonical dynamically
     try {
       localStorage.setItem('agrein_current_view', view);
       if (window.location.hash !== '#' + view) {
@@ -344,7 +455,7 @@ const actions = {
 
   logout() {
     try {
-      localStorage.removeItem('agrein_user_session');
+      StorageManager.clearUser(); // ✅ Use StorageManager to clear all user data
       localStorage.removeItem('agrein_current_view');
       window.history.replaceState(null, '', window.location.pathname);
     } catch (e) {}
@@ -371,6 +482,7 @@ const actions = {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    StorageManager.setDarkMode(state.darkMode); // ✅ Save dark mode preference
     renderApp();
   },
 
@@ -791,9 +903,9 @@ const actions = {
       };
       state.activeRole = (state.currentUser.role || 'visitor').toLowerCase();
 
-      try {
-        localStorage.setItem('agrein_user_session', JSON.stringify(state.currentUser));
-      } catch (e) {}
+      // ✅ Save user to localStorage using StorageManager
+      StorageManager.saveUser(state.currentUser);
+      console.log('✅ User account saved to localStorage:', state.currentUser.email);
 
       actions.triggerToast(role === 'FARMER'
         ? '🎉 Email Verified! Complete your farm verification to start selling.'
@@ -813,8 +925,9 @@ const actions = {
       };
       state.activeRole = (state.currentUser.role || 'visitor').toLowerCase();
 
+      // ✅ Save user to localStorage using StorageManager
+      StorageManager.saveUser(state.currentUser);
       try {
-        localStorage.setItem('agrein_user_session', JSON.stringify(state.currentUser));
       } catch (e) {}
 
       actions.triggerToast(role === 'FARMER'
@@ -1523,6 +1636,83 @@ const actions = {
       state.wishlist.push(productId);
       actions.triggerToast('Saved item to your wishlist ❤️');
     }
+    StorageManager.saveWishlist(state.wishlist); // ✅ Save wishlist to localStorage
+    renderApp();
+  },
+
+  toggleWishlistDrawer() {
+    state.wishlistOpen = !state.wishlistOpen;
+    renderApp();
+  },
+
+  openWishlistDrawer() {
+    state.wishlistOpen = true;
+    renderApp();
+  },
+
+  closeWishlistDrawer() {
+    state.wishlistOpen = false;
+    renderApp();
+  },
+
+  moveWishlistToCart(productId) {
+    const product = state.mockData.products.find(p => p.id === productId);
+    if (!product) return;
+
+    const existing = state.cart.find(i => i.id === productId);
+    if (existing) {
+      existing.cartQty += 10;
+    } else {
+      state.cart.push({
+        id: product.id,
+        title: product.title,
+        price: product.price,
+        unit: product.unit || 'kg',
+        cartQty: 10,
+        farmName: product.farmName,
+        originState: product.originState,
+        image: product.image
+      });
+    }
+    StorageManager.saveCart(state.cart);
+    actions.triggerToast(`🛒 Added ${product.title} to cart!`);
+    renderApp();
+  },
+
+  moveAllWishlistToCart() {
+    if (!state.wishlist || state.wishlist.length === 0) return;
+
+    let addedCount = 0;
+    state.wishlist.forEach(productId => {
+      const product = state.mockData.products.find(p => p.id === productId);
+      if (product) {
+        const existing = state.cart.find(i => i.id === productId);
+        if (existing) {
+          existing.cartQty += 10;
+        } else {
+          state.cart.push({
+            id: product.id,
+            title: product.title,
+            price: product.price,
+            unit: product.unit || 'kg',
+            cartQty: 10,
+            farmName: product.farmName,
+            originState: product.originState,
+            image: product.image
+          });
+        }
+        addedCount++;
+      }
+    });
+    StorageManager.saveCart(state.cart);
+    actions.triggerToast(`🛒 Moved ${addedCount} wishlist items to your cart!`);
+    renderApp();
+  },
+
+  clearWishlist() {
+    state.wishlist = [];
+    StorageManager.saveWishlist(state.wishlist);
+    actions.triggerToast('Wishlist cleared.');
     renderApp();
   },
 
@@ -1795,6 +1985,7 @@ const actions = {
     } else {
       state.cart.push({ ...prod, cartQty: prod.minQty });
     }
+    StorageManager.saveCart(state.cart); // ✅ Save cart to localStorage
     actions.triggerToast(`Added ${prod.minQty} ${prod.unit}s of ${prod.title} to cart`);
     renderApp();
   },
@@ -1808,6 +1999,7 @@ const actions = {
     } else {
       state.cart.push({ ...prod, cartQty: qty });
     }
+    StorageManager.saveCart(state.cart); // ✅ Save cart to localStorage
     state.activeModalProductId = null;
     state.cartOpen = true;
     actions.triggerToast(`Added ${qty} ${prod.unit}s to cart`);
@@ -1816,6 +2008,7 @@ const actions = {
 
   removeFromCart(productId) {
     state.cart = state.cart.filter(i => i.id !== productId);
+    StorageManager.saveCart(state.cart); // ✅ Save cart to localStorage
     actions.triggerToast('Item removed from cart');
     renderApp();
   },
@@ -1824,6 +2017,7 @@ const actions = {
     const item = state.cart.find(i => i.id === productId);
     if (item) {
       item.cartQty = Math.max(1, item.cartQty + delta);
+      StorageManager.saveCart(state.cart); // ✅ Save cart to localStorage
       renderApp();
     }
   },
@@ -1860,63 +2054,107 @@ const actions = {
     }, 1200);
   },
 
-  initiateInterswitchCheckout(amount, title) {
-    state.interswitchCheckoutActive = true;
-    state.interswitchCheckoutAmount = amount;
-    state.interswitchItemTitle = title;
-    state.interswitchProcessing = false;
-    state.interswitchSuccess = false;
+  // ═══════════════════════════════════════════════════════════════
+  // SIMPLIFIED CHECKOUT & PAYMENT GATEWAY
+  // ═══════════════════════════════════════════════════════════════
+
+  proceedToPayment(totalAmount) {
+    state.checkoutModalActive = true;
+    state.checkoutTotal = totalAmount;
+    state.checkoutItemCount = state.cart.length;
+    state.checkoutProcessing = false;
+    state.cartOpen = false; // Close cart drawer
     renderApp();
+  },
+
+  closeCheckout() {
+    state.checkoutModalActive = false;
+    renderApp();
+  },
+
+  redirectToPaymentGateway(paymentMethod, amount) {
+    state.checkoutProcessing = true;
+    renderApp();
+
+    // Generate transaction reference
+    const txnRef = `AGR-${Date.now()}`;
+    const cartItems = state.cart.map(item => ({ title: item.title, qty: item.cartQty }));
+
+    setTimeout(() => {
+      // In production, this would redirect to actual payment gateway
+      // For now, simulate the payment gateway URL construction
+      
+      const paymentGatewayUrls = {
+        card: `/payment/card?amount=${amount}&ref=${txnRef}&method=interswitch`,
+        bank: `/payment/bank?amount=${amount}&ref=${txnRef}&method=interswitch`,
+        ussd: `/payment/ussd?amount=${amount}&ref=${txnRef}&method=interswitch`,
+        wallet: `/payment/wallet?amount=${amount}&ref=${txnRef}&method=flutterwave`
+      };
+
+      const redirectUrl = paymentGatewayUrls[paymentMethod] || paymentGatewayUrls.card;
+      
+      // Log the transaction
+      console.log('🔄 Redirecting to payment gateway:', {
+        method: paymentMethod,
+        amount: amount,
+        reference: txnRef,
+        items: cartItems
+      });
+
+      // Store checkout data in sessionStorage for post-payment verification
+      try {
+        sessionStorage.setItem('agrein_checkout_ref', txnRef);
+        sessionStorage.setItem('agrein_checkout_amount', amount);
+        sessionStorage.setItem('agrein_checkout_method', paymentMethod);
+      } catch (e) {}
+
+      // Simulate payment gateway redirect
+      actions.triggerToast(`🔄 Redirecting to ${paymentMethod.toUpperCase()} payment...`);
+      
+      // In production, use: window.location.href = redirectUrl;
+      // For demo, show success after a short delay
+      setTimeout(() => {
+        actions.executePayment(txnRef, amount);
+      }, 800);
+    }, 600);
+  },
+
+  executePayment(txnRef, amount) {
+    state.checkoutProcessing = false;
+    state.checkoutModalActive = false;
+    state.cart = [];
+    state.currentView = 'buyer-dashboard';
+    
+    actions.triggerToast(`✅ Payment successful! Order #${txnRef} confirmed. Farmer notified for dispatch.`);
+    renderApp();
+    
+    // Simulate order confirmation email
+    console.log('📧 Order confirmation sent to buyer');
+    console.log('📧 Dispatch notification sent to farmer');
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // LEGACY INTERSWITCH COMPATIBILITY (Deprecated)
+  // ═══════════════════════════════════════════════════════════════
+
+  initiateInterswitchCheckout(amount, title) {
+    // Redirect to new simplified checkout
+    actions.proceedToPayment(amount);
   },
 
   launchInterswitchInlineSDK(txnRef, amountInKobo) {
-    const samplePaymentRequest = {
-      merchant_code: 'MX179463',
-      pay_item_id: '7974853',
-      pay_item_name: state.interswitchItemTitle || 'Agrein Harvest Produce',
-      txn_ref: txnRef || `AGR-ISW-${Date.now()}`,
-      amount: amountInKobo || Math.round((state.interswitchCheckoutAmount || 0) * 100),
-      currency: 566,
-      cust_name: 'Dr. Anita Okonjo',
-      cust_email: 'buyer@agrein.com',
-      site_redirect_url: window.location.href,
-      mode: 'LIVE',
-      onComplete: function(response) {
-        console.log('Interswitch Live Inline Checkout Response:', response);
-        actions.executeInterswitchPayment();
-      }
-    };
-
-    if (window.webpayCheckout && typeof window.webpayCheckout === 'function') {
-      try {
-        window.webpayCheckout(samplePaymentRequest);
-        actions.triggerToast('💳 Interswitch Inline Checkout Widget launched!');
-      } catch (err) {
-        console.warn('Interswitch SDK popup notice:', err.message);
-        actions.executeInterswitchPayment();
-      }
-    } else {
-      actions.triggerToast('Simulating Interswitch Inline Checkout payment...');
-      actions.executeInterswitchPayment();
-    }
+    // Legacy function - now redirects to card payment
+    actions.redirectToPaymentGateway('card', Math.round(amountInKobo / 100));
   },
 
   closeInterswitchCheckout() {
-    state.interswitchCheckoutActive = false;
-    renderApp();
+    actions.closeCheckout();
   },
 
   executeInterswitchPayment() {
-    state.interswitchProcessing = true;
-    renderApp();
-
-    setTimeout(() => {
-      state.interswitchProcessing = false;
-      state.interswitchSuccess = true;
-      state.cart = [];
-      actions.triggerToast('🎉 Interswitch Payment Approved! Escrow locked. Farmer notified.');
-      renderApp();
-    }, 1500);
+    // Legacy function - now uses new payment flow
+    const txnRef = `AGR-ISW-${Date.now()}`;
+    actions.executePayment(txnRef, state.checkoutTotal);
   },
 
   runAIForecast(crop, st) {
@@ -2093,6 +2331,7 @@ function renderApp() {
 
       <!-- Drawers & Modals -->
       ${renderCartDrawer(state, actions)}
+      ${renderWishlistDrawer(state, actions)}
       ${renderProductModal(state, actions)}
       ${renderCheckoutModal(state, actions)}
       ${renderChatDrawer(state, actions)}
@@ -2255,22 +2494,54 @@ function renderEcosystemNav(state, actions) {
 }
 
 // Initial Boot with Session & View Restoration
+// Loads all user data from localStorage to ensure persistence across page reloads and deployments
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Restore User Login Session from LocalStorage
+  // 1. ✅ Restore User Login Session from LocalStorage using StorageManager
   try {
-    const savedSession = localStorage.getItem('agrein_user_session');
-    if (savedSession) {
-      const user = JSON.parse(savedSession);
-      if (user && user.email) {
-        state.currentUser = user;
-        state.activeRole = (user.role || 'visitor').toLowerCase();
-      }
+    const savedUser = StorageManager.getUser();
+    if (savedUser && savedUser.email) {
+      state.currentUser = savedUser;
+      state.activeRole = (savedUser.role || 'visitor').toLowerCase();
+      console.log('✅ User restored from localStorage:', savedUser.email);
     }
   } catch (e) {
-    console.warn('Session restoration skipped:', e);
+    console.warn('⚠️ Session restoration error:', e);
   }
 
-  // 2. Restore Current View from URL Hash or LocalStorage
+  // 2. ✅ Restore Shopping Cart from LocalStorage
+  try {
+    const savedCart = StorageManager.getCart();
+    if (Array.isArray(savedCart) && savedCart.length > 0) {
+      state.cart = savedCart;
+      console.log('✅ Cart restored from localStorage:', savedCart.length, 'items');
+    }
+  } catch (e) {
+    console.warn('⚠️ Cart restoration error:', e);
+  }
+
+  // 3. ✅ Restore Wishlist from LocalStorage
+  try {
+    const savedWishlist = StorageManager.getWishlist();
+    if (Array.isArray(savedWishlist) && savedWishlist.length > 0) {
+      state.wishlist = savedWishlist;
+      console.log('✅ Wishlist restored from localStorage:', savedWishlist.length, 'items');
+    }
+  } catch (e) {
+    console.warn('⚠️ Wishlist restoration error:', e);
+  }
+
+  // 4. ✅ Restore Dark Mode Preference
+  try {
+    if (StorageManager.isDarkMode()) {
+      state.darkMode = true;
+      document.documentElement.classList.add('dark');
+      console.log('✅ Dark mode restored');
+    }
+  } catch (e) {
+    console.warn('⚠️ Dark mode restoration error:', e);
+  }
+
+  // 5. Restore Current View from URL Hash or LocalStorage
   try {
     // FARMER VERIFICATION LOCK ON BOOT: unverified farmers always go to farmer-verification
     if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
@@ -2297,6 +2568,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   } catch (e) {}
 
+  updateDocumentSEO(state.currentView);
   renderApp();
 
   // 3. Listen to browser Back/Forward & URL Hash changes
@@ -2336,12 +2608,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape') {
       if (state.mobileMenuOpen) { state.mobileMenuOpen = false; renderApp(); }
       if (state.cartOpen) { state.cartOpen = false; renderApp(); }
+      if (state.wishlistOpen) { state.wishlistOpen = false; renderApp(); }
       if (state.chatActive) { state.chatActive = false; renderApp(); }
       if (state.authModalActive) { state.authModalActive = false; renderApp(); }
       if (state.addProductModalActive) { state.addProductModalActive = false; renderApp(); }
       if (state.withdrawalModalActive) { state.withdrawalModalActive = false; renderApp(); }
       if (state.activeModalProductId) { state.activeModalProductId = null; renderApp(); }
       if (state.interswitchCheckoutActive) { state.interswitchCheckoutActive = false; renderApp(); }
+      if (state.checkoutModalActive) { state.checkoutModalActive = false; renderApp(); }
       if (state.disputeModalActive) { state.disputeModalActive = false; renderApp(); }
       if (state.changePasswordModalActive) { state.changePasswordModalActive = false; renderApp(); }
       if (state.navbarMenuOpen) { state.navbarMenuOpen = false; renderApp(); }

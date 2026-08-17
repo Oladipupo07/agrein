@@ -1,94 +1,108 @@
-// Interswitch Inline Checkout Widget Payment Gateway for Agrein
+// Simple Checkout Payment Gateway Component for Agrein
 
 function renderCheckoutModal(state, actions) {
-  const { interswitchCheckoutActive, interswitchCheckoutAmount, interswitchItemTitle, interswitchProcessing, interswitchSuccess } = state;
-  if (!interswitchCheckoutActive) return '';
+  const { checkoutModalActive, checkoutTotal, checkoutItemCount, checkoutProcessing } = state;
+  if (!checkoutModalActive) return '';
 
-  const txnRef = `AGR-ISW-${Date.now()}`;
-  const amountInKobo = Math.round((interswitchCheckoutAmount || 0) * 100);
+  const txnRef = `AGR-${Date.now()}`;
 
   return `
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-      <div class="modal-fullscreen-mobile relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/30 overflow-hidden animate-modal max-h-[92vh] overflow-y-auto">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 xs:p-2 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+      <div class="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl xs:rounded-2xl shadow-2xl border border-emerald-500/30 overflow-hidden animate-modal max-h-[90vh] xs:max-h-[95vh] overflow-y-auto">
         
-        <!-- Interswitch Header -->
-        <div class="bg-gradient-to-r from-red-700 via-emerald-800 to-emerald-900 p-6 text-white text-center relative">
-          <button onclick="actions.closeInterswitchCheckout()" class="absolute top-2 right-2 w-10 h-10 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors" aria-label="Close checkout">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-emerald-700 to-emerald-600 p-6 xs:p-5 text-white text-center relative">
+          <button onclick="actions.closeCheckout()" class="absolute top-3 xs:top-2 right-3 xs:right-2 w-10 h-10 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors" aria-label="Close">
             <i class="fa-solid fa-xmark text-lg"></i>
           </button>
           
-          <div class="flex items-center justify-center space-x-2 mb-2">
-            <div class="w-10 h-10 rounded-2xl bg-white text-red-700 font-extrabold flex items-center justify-center text-lg shadow-lg">
+          <div class="flex items-center justify-center space-x-2 mb-2 xs:mb-1.5">
+            <div class="w-10 h-10 rounded-2xl bg-white text-emerald-700 font-extrabold flex items-center justify-center text-lg xs:text-base shadow-lg">
               <i class="fa-solid fa-credit-card"></i>
             </div>
             <div class="text-left">
-              <div class="text-[11px] font-extrabold tracking-wider uppercase text-amber-300">Secure Checkout</div>
-              <div class="text-[10px] text-gray-200">Agrein Payment Gateway</div>
+              <div class="text-[11px] font-extrabold tracking-wider uppercase text-emerald-100">Secure Checkout</div>
+              <div class="text-[10px] text-emerald-50">Agrein Marketplace</div>
             </div>
           </div>
 
-          <div class="text-3xl font-heading font-extrabold mt-2">₦${interswitchCheckoutAmount.toLocaleString()}</div>
-          <div class="text-xs text-emerald-100 font-medium truncate mt-1">Order: ${interswitchItemTitle}</div>
-
-          <!-- Payment Method Logos -->
-          <div class="flex items-center justify-center space-x-2 mt-3 text-[10px] font-bold text-gray-200">
-            <span class="px-2 py-0.5 rounded bg-white/20"><i class="fa-solid fa-credit-card mr-1"></i>Cards</span>
-            <span class="px-2 py-0.5 rounded bg-white/20"><i class="fa-solid fa-mobile mr-1"></i>USSD</span>
-            <span class="px-2 py-0.5 rounded bg-white/20"><i class="fa-solid fa-landmark mr-1"></i>Transfers</span>
-          </div>
+          <div class="text-3xl xs:text-2xl font-heading font-extrabold mt-3 xs:mt-2">₦${checkoutTotal.toLocaleString()}</div>
+          <div class="text-xs text-emerald-100 font-medium mt-1">Order • ${checkoutItemCount} Item${checkoutItemCount !== 1 ? 's' : ''}</div>
         </div>
 
         <!-- Modal Body -->
-        <div class="p-6 space-y-6">
-          ${interswitchSuccess ? `
-            <div class="text-center py-6 space-y-4">
-              <div class="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 text-3xl flex items-center justify-center mx-auto animate-bounce">
-                <i class="fa-solid fa-circle-check"></i>
-              </div>
-              <h3 class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white">Payment Successful! 🎉</h3>
-              <p class="text-xs text-gray-500">Transaction Reference: <strong class="text-emerald-700 dark:text-emerald-400">${txnRef}</strong></p>
-              <p class="text-xs text-gray-600 dark:text-gray-300">Your order has been confirmed. Escrow locked. Farmer notified for dispatch.</p>
-              <button onclick="actions.closeInterswitchCheckout(); actions.guardView('buyer-dashboard');" class="w-full py-3.5 rounded-2xl bg-emerald-700 text-white font-extrabold text-xs shadow-lg hover:bg-emerald-800 transition-all">
-                View Delivery Timeline
-              </button>
-            </div>
-          ` : (interswitchProcessing ? `
-            <div class="text-center py-10 space-y-4">
-              <div class="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-              <div class="text-sm font-bold text-slate-900 dark:text-white">Processing Payment...</div>
-              <p class="text-xs text-gray-500">Securely processing your payment. Please wait...</p>
+        <div class="p-6 xs:p-5 space-y-5 xs:space-y-4">
+          ${checkoutProcessing ? `
+            <div class="text-center py-12 space-y-4">
+              <div class="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <div class="text-sm font-bold text-slate-900 dark:text-white">Preparing Payment...</div>
+              <p class="text-xs text-gray-500">Redirecting to secure payment gateway</p>
             </div>
           ` : `
-            <div class="space-y-4 text-xs">
-              <div class="p-4 rounded-2xl bg-emerald-50/60 dark:bg-slate-800/60 border border-emerald-500/20 space-y-4">
-                <div class="flex items-center space-x-2 text-emerald-700 dark:text-emerald-300 font-bold">
-                  <i class="fa-solid fa-bolt text-amber-500"></i>
-                  <span>Inline Checkout Widget</span>
+            <!-- Order Summary -->
+            <div class="p-4 xs:p-3 rounded-2xl bg-emerald-50/60 dark:bg-slate-800/60 border border-emerald-500/20 space-y-3 xs:space-y-2">
+              <div class="font-bold text-sm xs:text-[13px] text-slate-900 dark:text-white flex items-center space-x-2">
+                <i class="fa-solid fa-receipt text-emerald-600"></i>
+                <span>Order Summary</span>
+              </div>
+              <div class="space-y-2 text-xs xs:text-[11px] bg-white dark:bg-slate-700 p-3 rounded-lg">
+                <div class="flex justify-between text-gray-600 dark:text-gray-300">
+                  <span>Items (${checkoutItemCount}):</span>
+                  <span class="font-bold text-slate-900 dark:text-white">₦${(checkoutTotal * 0.92).toLocaleString()}</span>
                 </div>
-                <p class="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">
-                  Complete your payment securely. Supports debit cards (Verve, Visa, Mastercard), bank transfers, USSD codes, and mobile wallets. Your payment is protected with 256-bit SSL encryption.
-                </p>
-
-                <div class="bg-white dark:bg-slate-700 p-3 rounded-xl space-y-2 text-[10px]">
-                  <div class="flex justify-between">
-                    <span class="text-gray-600 dark:text-gray-300">Subtotal:</span>
-                    <span class="font-bold text-slate-900 dark:text-white">₦${interswitchCheckoutAmount.toLocaleString()}</span>
-                  </div>
-                  <div class="flex justify-between border-t border-gray-200 dark:border-slate-600 pt-2">
-                    <span class="font-bold text-slate-900 dark:text-white">Total Amount:</span>
-                    <span class="font-extrabold text-emerald-700 dark:text-emerald-400 text-xs">₦${interswitchCheckoutAmount.toLocaleString()}</span>
-                  </div>
+                <div class="flex justify-between text-gray-600 dark:text-gray-300">
+                  <span>Delivery:</span>
+                  <span class="font-bold text-slate-900 dark:text-white">₦${Math.round(checkoutTotal * 0.08).toLocaleString()}</span>
                 </div>
+                <div class="border-t border-gray-200 dark:border-slate-600 pt-2 flex justify-between font-extrabold text-emerald-700 dark:text-emerald-400">
+                  <span>Total:</span>
+                  <span>₦${checkoutTotal.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
 
-                <button onclick="actions.launchInterswitchInlineSDK('${txnRef}', ${amountInKobo})" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-red-700 via-emerald-800 to-emerald-900 text-white font-extrabold text-xs shadow-xl hover:shadow-2xl transition-all flex items-center justify-center space-x-2">
-                  <i class="fa-solid fa-lock text-amber-300"></i>
-                  <span>Proceed to Payment</span>
+            <!-- Payment Methods -->
+            <div class="space-y-3 xs:space-y-2">
+              <div class="font-bold text-sm xs:text-[13px] text-slate-900 dark:text-white">Payment Methods</div>
+              <div class="space-y-2 xs:space-y-1.5 text-xs xs:text-[11px]">
+                <button onclick="actions.redirectToPaymentGateway('card', ${checkoutTotal})" class="w-full p-3 xs:p-2.5 rounded-xl border-2 border-gray-300 dark:border-slate-600 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-slate-800 transition-colors flex items-center space-x-2.5">
+                  <i class="fa-solid fa-credit-card text-lg text-emerald-600"></i>
+                  <div class="text-left">
+                    <div class="font-bold text-slate-900 dark:text-white">Debit/Credit Card</div>
+                    <div class="text-gray-500 text-[10px] xs:text-[9px]">Visa, Mastercard, Verve</div>
+                  </div>
                 </button>
 
-                <p class="text-[10px] text-gray-400 text-center">
-                  <i class="fa-solid fa-shield-check mr-1"></i> Secure transaction powered by Interswitch
-                </p>
+                <button onclick="actions.redirectToPaymentGateway('bank', ${checkoutTotal})" class="w-full p-3 xs:p-2.5 rounded-xl border-2 border-gray-300 dark:border-slate-600 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-slate-800 transition-colors flex items-center space-x-2.5">
+                  <i class="fa-solid fa-landmark text-lg text-emerald-600"></i>
+                  <div class="text-left">
+                    <div class="font-bold text-slate-900 dark:text-white">Bank Transfer</div>
+                    <div class="text-gray-500 text-[10px] xs:text-[9px]">Direct debit from your bank</div>
+                  </div>
+                </button>
+
+                <button onclick="actions.redirectToPaymentGateway('ussd', ${checkoutTotal})" class="w-full p-3 xs:p-2.5 rounded-xl border-2 border-gray-300 dark:border-slate-600 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-slate-800 transition-colors flex items-center space-x-2.5">
+                  <i class="fa-solid fa-mobile text-lg text-emerald-600"></i>
+                  <div class="text-left">
+                    <div class="font-bold text-slate-900 dark:text-white">USSD</div>
+                    <div class="text-gray-500 text-[10px] xs:text-[9px]">Mobile money & bank USSD codes</div>
+                  </div>
+                </button>
+
+                <button onclick="actions.redirectToPaymentGateway('wallet', ${checkoutTotal})" class="w-full p-3 xs:p-2.5 rounded-xl border-2 border-gray-300 dark:border-slate-600 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-slate-800 transition-colors flex items-center space-x-2.5">
+                  <i class="fa-solid fa-wallet text-lg text-emerald-600"></i>
+                  <div class="text-left">
+                    <div class="font-bold text-slate-900 dark:text-white">Digital Wallet</div>
+                    <div class="text-gray-500 text-[10px] xs:text-[9px]">Flutterwave, PayPal & others</div>
+                  </div>
+                </button>
               </div>
+            </div>
+
+            <!-- Security Badge -->
+            <div class="p-3 xs:p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-[10px] xs:text-[9px] text-blue-800 dark:text-blue-300 flex items-start space-x-2">
+              <i class="fa-solid fa-shield-check text-sm flex-shrink-0 mt-0.5"></i>
+              <span><strong>100% Secure & Protected.</strong> Your payment is encrypted with 256-bit SSL. Escrow locks funds until delivery confirmation.</span>
             </div>
           `)}
         </div>

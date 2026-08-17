@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  
+  <!-- Homepage & Hero -->
+  <url>
+    <loc>https://agrein.me/</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Marketplace / Produce Catalog -->
+  <url>
+    <loc>https://agrein.me/#marketplace</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.95</priority>
+  </url>
+
+  <!-- AI Price Predictor & Crop Analytics -->
+  <url>
+    <loc>https://agrein.me/#ai-insights</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Commodity Price Index -->
+  <url>
+    <loc>https://agrein.me/#commodity-index</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Geospatial Nearby Farm Finder -->
+  <url>
+    <loc>https://agrein.me/#nearby-farms</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- B2B Wholesale & Bulk Procurement -->
+  <url>
+    <loc>https://agrein.me/#bulk-b2b</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Reverse RFQ Sourcing Board -->
+  <url>
+    <loc>https://agrein.me/#rfq-board</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Cross-Border Agricultural Export Market -->
+  <url>
+    <loc>https://agrein.me/#export-trade</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <!-- Hyperlocal Agricultural Weather Radar -->
+  <url>
+    <loc>https://agrein.me/#weather</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <!-- AgroDoctor AI Disease Scanner -->
+  <url>
+    <loc>https://agrein.me/#agro-doctor</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <!-- Agricultural Cooperatives -->
+  <url>
+    <loc>https://agrein.me/#cooperatives</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <!-- Community Farmer Forum -->
+  <url>
+    <loc>https://agrein.me/#forum</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.65</priority>
+  </url>
+
+  <!-- Agronomy Learning Center -->
+  <url>
+    <loc>https://agrein.me/#learning-center</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.65</priority>
+  </url>
+
+  <!-- QR Harvest Traceability -->
+  <url>
+    <loc>https://agrein.me/#traceability</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.60</priority>
+  </url>
+
+</urlset>

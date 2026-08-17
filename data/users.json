@@ -1,0 +1,16 @@
+[
+  {
+    "id": "usr-admin-01",
+    "full_name": "Akobe Oladipupo",
+    "email": "akobeoladipupo@gmail.com",
+    "phone_number": "08000000001",
+    "role": "ADMIN",
+    "email_verified": true,
+    "is_verified": true,
+    "verification_status": "APPROVED",
+    "passwordSalt": "0d5f1a5a855eb93c449b39cac7872f9a",
+    "passwordHash": "237dcfc4bb5ef1b7471be1cd3cd9de78e8ab693b8f3d6c487ed880550bc125c1",
+    "created_at": "2026-08-17T10:39:37.222Z",
+    "updated_at": "2026-08-17T10:39:37.223Z"
+  }
+]

@@ -1,6 +1,7 @@
 // User Authentication & Role Controller for Agrein with Email OTP Verification
 const otpService = require('../utils/otpService');
 const passwordService = require('../utils/passwordService');
+const { UserDatabase } = require('../utils/userDatabase'); // ✅ Add persistent storage
 
 // Helper: pre-compute a deterministic-ish password hash pair for seeds.
 // We hash here at module load so the registeredUsers array is a plain literal
@@ -9,25 +10,38 @@ function hashSync(plain) {
   return passwordService.hashPassword(plain);
 }
 
-// In-memory registered user database. Only the admin account is seeded; new
-// farmers and buyers register via /api/auth/register.
-const adminSeed = hashSync('password123');
-
-let registeredUsers = [
-  {
-    id: 'usr-admin-01',
-    full_name: 'Akobe Oladipupo',
-    email: 'akobeoladipupo@gmail.com',
-    phone_number: '08000000001',
-    role: 'ADMIN',
-    email_verified: true,
-    is_verified: true,
-    verification_status: 'APPROVED',
-    passwordSalt: adminSeed.salt,
-    passwordHash: adminSeed.hash,
-    created_at: new Date().toISOString()
+// ✅ Load users from persistent database file
+// Only seed admin if no users exist
+function initializeUsers() {
+  let registeredUsers = UserDatabase.loadAll();
+  
+  // If no users exist, create admin
+  if (registeredUsers.length === 0) {
+    const adminSeed = hashSync('password123');
+    const adminUser = {
+      id: 'usr-admin-01',
+      full_name: 'Akobe Oladipupo',
+      email: 'akobeoladipupo@gmail.com',
+      phone_number: '08000000001',
+      role: 'ADMIN',
+      email_verified: true,
+      is_verified: true,
+      verification_status: 'APPROVED',
+      passwordSalt: adminSeed.salt,
+      passwordHash: adminSeed.hash,
+      created_at: new Date().toISOString()
+    };
+    UserDatabase.upsert(adminUser);
+    registeredUsers = [adminUser];
+    console.log('✅ Admin user created and saved to database');
+  } else {
+    console.log(`✅ Loaded ${registeredUsers.length} users from persistent database`);
   }
-];
+  
+  return registeredUsers;
+}
+
+let registeredUsers = initializeUsers();
 
 // Strip the password material before returning a user record to clients.
 function toClientUser(user) {
@@ -37,9 +51,13 @@ function toClientUser(user) {
   return safe;
 }
 
-// Database helper: synchronize user record to Supabase if connected
+// Database helper: synchronize user record to both Supabase AND local file storage
 async function syncUserToDb(user) {
   try {
+    // ✅ Save to local persistent database (file storage)
+    UserDatabase.upsert(user);
+    
+    // Also sync to Supabase if connected
     const supabase = require('../utils/supabaseClient');
     if (!supabase) return;
     await supabase.from('users').upsert({
@@ -55,6 +73,7 @@ async function syncUserToDb(user) {
     }, { onConflict: 'email' });
   } catch (err) {
     // Non-blocking sync log
+    console.warn('[syncUserToDb] Sync notice:', err.message);
   }
 }
 
@@ -63,6 +82,8 @@ const authController = {
   async getRegisteredUsers(req, res) {
     try {
       const { role, q } = req.query;
+      // ✅ Reload from persistent database on each request
+      registeredUsers = UserDatabase.loadAll();
       let users = [...registeredUsers];
 
       // Query from Supabase if connected
@@ -158,6 +179,9 @@ const authController = {
   // Public Sign Up for BUYER and FARMER -> Triggers Email OTP
   async register(req, res) {
     try {
+      // ✅ Reload from persistent database on each request
+      registeredUsers = UserDatabase.loadAll();
+      
       const { fullName, email, phone, password, role } = req.body;
 
       if (!fullName || !email || !password || !role) {
@@ -231,6 +255,9 @@ const authController = {
   // Verify 6-digit OTP
   async verifyOtp(req, res) {
     try {
+      // ✅ Reload from persistent database on each request
+      registeredUsers = UserDatabase.loadAll();
+      
       const { email, otp } = req.body;
       if (!email || !otp) {
         return res.status(400).json({ success: false, message: 'Email and 6-digit verification code are required.' });
@@ -320,6 +347,9 @@ const authController = {
   // User Login — verifies email + password against the seeded/registered records
   async login(req, res) {
     try {
+      // ✅ Reload from persistent database on each request
+      registeredUsers = UserDatabase.loadAll();
+      
       const { email, password } = req.body;
       if (!email || !password) {
         return res.status(400).json({ success: false, message: 'Email and password required.' });
