@@ -1,41 +1,28 @@
 // Agrein Progressive Web App Service Worker
 // Provides offline functionality, caching strategy, and background sync
 
-const CACHE_NAME = 'agrein-v5';
-const APP_SHELL_CACHE = 'agrein-shell-v5';
-const RUNTIME_CACHE = 'agrein-runtime-v5';
-const OFFLINE_URL = '/offline.html';
+const CACHE_NAME = 'agrein-v6';
+const APP_SHELL_CACHE = 'agrein-shell-v6';
+const RUNTIME_CACHE = 'agrein-runtime-v6';
+const OFFLINE_URL = '/public/offline.html';
 
 const APP_SHELL_URLS = [
   '/',
   '/index.html',
-  '/app.js',
+  '/styles.css',
   '/public/styles.css',
   '/public/offline.html',
-  '/client/data/mockData.js',
-  '/client/utils/storageManager.js',
-  '/client/utils/supabaseClient.js',
-  '/client/utils/realtime.js',
-  '/client/components/Navbar.js',
-  '/client/components/Hero.js',
-  '/client/components/ProductCatalog.js',
-  '/client/components/ProductModal.js',
-  '/client/components/CartDrawer.js',
-  '/client/components/Footer.js',
-  '/client/components/PwaInstallBanner.js',
-  '/client/components/SwUpdateToast.js'
+  '/manifest.json'
 ];
 
 // Install Service Worker & Cache Assets
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(APP_SHELL_CACHE).then(cache => {
-      console.log('[SW] Caching app shell v5…');
-      // addAll is atomic — one failure fails the whole install, so we add
-      // files individually and tolerate misses (e.g. during partial deploys).
+      console.log('[SW] Caching app shell v6…');
       return Promise.all(
         APP_SHELL_URLS.map(url => cache.add(url).catch(err => {
-          console.warn('[SW] shell add failed for', url, err.message);
+          console.warn('[SW] shell add skipped for', url, err.message);
         }))
       );
     })
@@ -43,17 +30,14 @@ self.addEventListener('install', event => {
   self.skipWaiting(); // Activate new SW immediately
 });
 
-// Activate Service Worker & Clean Old Caches
+// Activate Service Worker & Clean Old Caches (v5, v4, etc.)
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          // Drop everything except our three named caches. Bumping the v5
-          // suffix on CACHE_NAME above evicts every existing visitor's stale
-          // cache in one shot, per the agrein-sw-stale-cache memory.
           if (cacheName !== APP_SHELL_CACHE && cacheName !== RUNTIME_CACHE) {
-            console.log('[SW] Deleting old cache:', cacheName);
+            console.log('[SW] Deleting old stale cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -62,7 +46,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch Strategy: Network-First for navigations/API, Cache-First for static
+// Fetch Strategy: Network-First for HTML/JS/API to prevent stale cache bugs
 self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
@@ -70,9 +54,7 @@ self.addEventListener('fetch', event => {
   // Only handle GET
   if (request.method !== 'GET') return;
 
-  // ── Navigation requests (the user opens/refreshes a page) ──
-  // Network-first with offline.html fallback so the address bar always
-  // shows the URL but the user lands on a friendly page when offline.
+  // ── Navigation requests (page load / refresh) ──
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -88,7 +70,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ── API requests ──
+  // ── API requests: Network-First ──
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request)
@@ -109,18 +91,17 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ── Static assets: cache-first with background revalidate ──
+  // ── JavaScript, CSS & Static assets: Network-First with cache fallback ──
   event.respondWith(
-    caches.match(request).then(cached => {
-      const networkFetch = fetch(request).then(response => {
-        if (response && response.status === 200 && response.type !== 'error') {
+    fetch(request)
+      .then(response => {
+        if (response && response.status === 200) {
           const clone = response.clone();
           caches.open(RUNTIME_CACHE).then(cache => cache.put(request, clone));
         }
         return response;
-      }).catch(() => null);
-      return cached || networkFetch || caches.match('/index.html');
-    })
+      })
+      .catch(() => caches.match(request))
   );
 });
 
