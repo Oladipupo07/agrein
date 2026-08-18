@@ -59,6 +59,7 @@ const state = {
   // Authentication & Email OTP State
   authModalActive: false,
   authModalMode: 'login', // 'login', 'register', 'verify-otp'
+  authTrigger: null, // 'add-to-cart' | 'dashboard' | 'session-expired' | null
   authRegisterRole: 'BUYER', // 'BUYER', 'FARMER'
   otpEmail: '',
   otpRole: 'BUYER',
@@ -487,9 +488,10 @@ const actions = {
   },
 
   // Auth Actions
-  openAuthModal(mode = 'login') {
+  openAuthModal(mode = 'login', opts = {}) {
     state.authModalActive = true;
     state.authModalMode = mode;
+    state.authTrigger = (opts && opts.trigger) || null;
     // Reset the OTP flow when opening any auth view — registration is the default.
     state.otpFlow = 'register';
     renderApp();
@@ -1628,6 +1630,10 @@ const actions = {
   },
 
   toggleWishlist(productId) {
+    if (!state.currentUser) {
+      actions.openAuthModal('login', { trigger: 'add-to-cart' });
+      return;
+    }
     const idx = state.wishlist.indexOf(productId);
     if (idx >= 0) {
       state.wishlist.splice(idx, 1);
@@ -1656,6 +1662,10 @@ const actions = {
   },
 
   moveWishlistToCart(productId) {
+    if (!state.currentUser) {
+      actions.openAuthModal('login', { trigger: 'add-to-cart' });
+      return;
+    }
     const product = state.mockData.products.find(p => p.id === productId);
     if (!product) return;
 
@@ -1680,6 +1690,10 @@ const actions = {
   },
 
   moveAllWishlistToCart() {
+    if (!state.currentUser) {
+      actions.openAuthModal('login', { trigger: 'add-to-cart' });
+      return;
+    }
     if (!state.wishlist || state.wishlist.length === 0) return;
 
     let addedCount = 0;
@@ -1977,6 +1991,10 @@ const actions = {
   },
 
   addToCart(productId) {
+    if (!state.currentUser) {
+      actions.openAuthModal('login', { trigger: 'add-to-cart' });
+      return;
+    }
     const prod = state.mockData.products.find(p => p.id === productId);
     if (!prod) return;
     const existing = state.cart.find(i => i.id === productId);
@@ -1991,6 +2009,10 @@ const actions = {
   },
 
   addToCartFromModal(productId, qty) {
+    if (!state.currentUser) {
+      actions.openAuthModal('login', { trigger: 'add-to-cart' });
+      return;
+    }
     const prod = state.mockData.products.find(p => p.id === productId);
     if (!prod) return;
     const existing = state.cart.find(i => i.id === productId);
@@ -2059,6 +2081,10 @@ const actions = {
   // ═══════════════════════════════════════════════════════════════
 
   proceedToPayment(totalAmount) {
+    if (!state.currentUser) {
+      actions.openAuthModal('login', { trigger: 'add-to-cart' });
+      return;
+    }
     state.checkoutModalActive = true;
     state.checkoutTotal = totalAmount;
     state.checkoutItemCount = state.cart.length;
@@ -2073,6 +2099,10 @@ const actions = {
   },
 
   redirectToPaymentGateway(paymentMethod, amount) {
+    if (!state.currentUser) {
+      actions.openAuthModal('login', { trigger: 'add-to-cart' });
+      return;
+    }
     state.checkoutProcessing = true;
     renderApp();
 
@@ -2213,12 +2243,15 @@ function renderApp() {
       break;
     case 'farmer-dashboard':
       bodyContent = renderFarmerDashboard(state, actions);
+      loadFarmerDashboard(state, actions);
       break;
     case 'buyer-dashboard':
       bodyContent = renderBuyerDashboard(state, actions);
+      loadBuyerDashboard(state, actions);
       break;
     case 'admin-dashboard':
       bodyContent = renderAdminDashboard(state, actions);
+      loadAdminDashboard(state, actions);
       break;
 
     // === ECOSYSTEM & VERIFICATION VIEWS ===
@@ -2803,3 +2836,209 @@ function renderWithdrawalModal(state, actions) {
     </div>
   `;
 }
+
+// ============================================================
+//  Phase D — realtime wiring + apiFetch wrapper
+// ============================================================
+
+// apiFetch attaches the user's JWT (and legacy x-user-* headers during the
+// transition) and surfaces 401 by triggering a re-login modal.
+window.apiFetch = async (path, opts) => {
+  opts = opts || {};
+  const headers = new Headers(opts.headers || {});
+  const u = state.currentUser;
+  if (u && u.token) headers.set('Authorization', 'Bearer ' + u.token);
+  if (u) {
+    if (u.id) headers.set('x-user-id', u.id);
+    if (u.role) headers.set('x-user-role', u.role);
+    if (u.email) headers.set('x-user-email', u.email);
+    if (u.verification_status) headers.set('x-verification-status', u.verification_status);
+  }
+  const res = await fetch(path, Object.assign({}, opts, { headers }));
+  if (res.status === 401) {
+    try {
+      // Bounce the visitor back to login.
+      if (typeof actions.logout === 'function') actions.logout();
+    } catch (_) { /* ignore */ }
+    return res;
+  }
+  return res;
+};
+
+// Refetch dispatcher: each realtime channel calls this with a slice name. The
+// slice handlers perform an apiFetch and merge the result back into state.
+window.__AGREIN_REALTIME_REFETCH__ = function (slice) {
+  try {
+    if (slice === 'products') {
+      apiFetch('/api/products').then(r => r.json()).then(j => {
+        if (j && j.success && Array.isArray(j.data)) {
+          state.catalogProducts = j.data;
+          renderApp();
+        }
+      });
+    } else if (slice === 'orders') {
+      const role = state.currentUser && state.currentUser.role === 'FARMER' ? 'farmer' : 'buyer';
+      apiFetch('/api/orders/list?role=' + role).then(r => r.json()).then(j => {
+        if (j && j.success) {
+          if (role === 'farmer') {
+            if (state.farmerDashboard) state.farmerDashboard.incomingOrders = j.data || [];
+          } else if (state.buyerDashboard) {
+            state.buyerDashboard.pastOrders = j.data || [];
+          }
+          renderApp();
+        }
+      });
+    } else if (slice === 'wallet') {
+      apiFetch('/api/wallet').then(r => r.json()).then(j => {
+        if (j && j.success && state.walletSnapshot) {
+          Object.assign(state.walletSnapshot, j.wallet || {});
+          renderApp();
+        }
+      });
+    } else if (slice === 'rfqs' || slice === 'rfqBids') {
+      apiFetch('/api/rfqs').then(r => r.json()).then(j => {
+        if (j && j.success) {
+          state.rfqList = j.data || [];
+          renderApp();
+        }
+      });
+    } else if (slice === 'disputes') {
+      apiFetch('/api/disputes?role=admin&status=OPEN').then(r => r.json()).then(j => {
+        if (j && j.success && state.adminDashboard) {
+          state.adminDashboard.openDisputesCount = (j.disputes || []).length;
+          renderApp();
+        }
+      });
+    } else if (slice === 'verificationQueue' || slice === 'verification') {
+      apiFetch('/api/admin/farmer-verifications?status=PENDING_REVIEW').then(r => r.json()).then(j => {
+        if (j && j.success && state.adminDashboard) {
+          state.adminDashboard.pendingVerifications = (j.applications || []).length;
+          renderApp();
+        }
+      });
+    } else if (slice === 'registeredUsers') {
+      apiFetch('/api/admin/users').then(r => r.json()).then(j => {
+        if (j && j.success) {
+          state.registeredUsersList = j.users || [];
+          if (j.counts) state.registeredUsersCounts = j.counts;
+          renderApp();
+        }
+      });
+    } else if (slice === 'notifications' || slice === 'adminNotifications') {
+      // Future: surface a toast; for now just re-render.
+      renderApp();
+    }
+  } catch (err) {
+    console.warn('[realtime] slice', slice, 'failed:', err.message);
+  }
+};
+
+// Realtime lifecycle helper — call after login, on view change, and tear down on logout.
+function _agreinRealtimeRefresh() {
+  try {
+    if (!window.realtime) return;
+    if (state.currentUser && state.currentUser.id) {
+      window.realtime.subscribe(state.currentUser, state.currentView);
+    } else {
+      window.realtime.teardown();
+    }
+  } catch (e) {
+    console.warn('[agrein] realtime refresh failed:', e.message);
+  }
+}
+
+// Hook into renderApp so every view change re-arms subscriptions.
+const _origRenderApp = renderApp;
+renderApp = function () {
+  const ret = _origRenderApp.apply(this, arguments);
+  _agreinRealtimeRefresh();
+  return ret;
+};
+
+// Patch logout so realtime tears down immediately.
+const _origLogout = actions.logout;
+actions.logout = function () {
+  const ret = _origLogout.apply(this, arguments);
+  try { window.realtime && window.realtime.teardown(); } catch (_) { /* ignore */ }
+  return ret;
+};
+
+// Patch actions.setView so login + view changes refresh subscriptions.
+const _origSetView = actions.setView;
+actions.setView = function (view) {
+  const ret = _origSetView.apply(this, arguments);
+  _agreinRealtimeRefresh();
+  return ret;
+};
+
+// ----------------------------------------------------------
+//  Phase F — dashboard KPI loaders (real data, not literals)
+// ----------------------------------------------------------
+
+function _kobo(v) { return Number(v || 0); }
+
+function loadFarmerDashboard(state, actions) {
+  if (!state.currentUser) return;
+  if (!state.farmerDashboard) state.farmerDashboard = {};
+  Promise.all([
+    apiFetch('/api/wallet').then(r => r.json()),
+    apiFetch('/api/orders/list?role=farmer').then(r => r.json()),
+    apiFetch('/api/orders/list?role=farmer&status=RELEASED').then(r => r.json()),
+    apiFetch('/api/products?owner=me').then(r => r.json()),
+    apiFetch('/api/farmers/trust-score').then(r => r.json())
+  ]).then(([wallet, inEscrow, released, products, trust]) => {
+    if (wallet && wallet.wallet) {
+      state.farmerDashboard.availableBalance = _kobo(wallet.wallet.availableBalance);
+      state.farmerDashboard.escrowBalance = _kobo(wallet.wallet.escrowHeldBalance);
+    }
+    if (inEscrow && inEscrow.data) state.farmerDashboard.incomingOrders = inEscrow.data;
+    if (released && released.data) {
+      state.farmerDashboard.lifetimeRevenue = released.total_amount || released.data.reduce((s, o) => s + _kobo(o.total_amount), 0);
+    }
+    if (products && products.data) state.farmerDashboard.activeCrops = products.data.length;
+    if (trust && trust.success) state.farmerDashboard.trustScore = trust.score;
+    renderApp();
+  }).catch(err => console.warn('[farmer dashboard load] failed:', err.message));
+}
+
+function loadBuyerDashboard(state, actions) {
+  if (!state.currentUser) return;
+  if (!state.buyerDashboard) state.buyerDashboard = {};
+  Promise.all([
+    apiFetch('/api/orders/list?role=buyer').then(r => r.json()),
+    apiFetch('/api/wallet').then(r => r.json()),
+    apiFetch('/api/rfqs?owner=me').then(r => r.json()),
+    apiFetch('/api/disputes?role=buyer&status=OPEN').then(r => r.json())
+  ]).then(([orders, wallet, rfqs, disputes]) => {
+    const list = (orders && orders.data) || [];
+    state.buyerDashboard.totalSpent = orders.total_amount || list.reduce((s, o) => s + _kobo(o.total_amount), 0);
+    state.buyerDashboard.activeOrders = list.filter(o => o.escrow_status === 'IN_ESCROW' || o.escrow_status === 'PENDING' || o.escrow_status === 'SHIPPED').length;
+    state.buyerDashboard.delivered = list.filter(o => o.escrow_status === 'DELIVERED' || o.escrow_status === 'RELEASED').length;
+    state.buyerDashboard.pastOrders = list;
+    if (wallet && wallet.wallet) state.buyerDashboard.escrowHeld = _kobo(wallet.wallet.escrowHeldBalance);
+    state.buyerDashboard.myRfqs = rfqs && rfqs.data ? rfqs.data.length : 0;
+    state.buyerDashboard.inDispute = disputes && disputes.disputes ? disputes.disputes.length : 0;
+    renderApp();
+  }).catch(err => console.warn('[buyer dashboard load] failed:', err.message));
+}
+
+function loadAdminDashboard(state, actions) {
+  if (!state.currentUser || state.currentUser.role !== 'ADMIN') return;
+  if (!state.adminDashboard) state.adminDashboard = {};
+  Promise.all([
+    apiFetch('/api/admin/users').then(r => r.json()),
+    apiFetch('/api/admin/farmer-verifications?status=PENDING_REVIEW').then(r => r.json()),
+    apiFetch('/api/disputes?role=admin&status=OPEN').then(r => r.json()),
+    apiFetch('/api/admin/metrics/gmv').then(r => r.json())
+  ]).then(([users, verifs, disputes, gmv]) => {
+    if (users && users.users) {
+      state.registeredUsersList = users.users;
+      if (users.counts) state.registeredUsersCounts = users.counts;
+    }
+    if (verifs && verifs.applications) state.adminDashboard.pendingVerifications = verifs.applications.length;
+    if (disputes && disputes.disputes) state.adminDashboard.openDisputesCount = disputes.disputes.length;
+    if (gmv && gmv.success) state.adminDashboard.gmv30d = gmv.gmv;
+    renderApp();
+  }).catch(err => console.warn('[admin dashboard load] failed:', err.message));
+}
+

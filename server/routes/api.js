@@ -32,8 +32,8 @@ router.post('/auth/cancel-deletion', authenticateFromHeader, authController.canc
 router.post('/admin/users/create-admin', authenticateToken, requireRole(['ADMIN']), authController.createAdminAccount);
 
 // ===== ADMIN ACCOUNT DELETION & USER DIRECTORY =====
-router.get('/admin/users', authController.getRegisteredUsers);
-router.post('/admin/users/update-verification', authController.updateUserVerificationStatus);
+router.get('/admin/users', authenticateToken, requireRole(['ADMIN']), authController.getRegisteredUsers);
+router.post('/admin/users/update-verification', authenticateToken, requireRole(['ADMIN']), authController.updateUserVerificationStatus);
 router.get('/admin/deletion-requests', authenticateToken, requireRole(['ADMIN']), authController.adminGetDeletionQueue);
 router.post('/admin/deletion-requests/:id/resolve', authenticateToken, requireRole(['ADMIN']), authController.adminResolveDeletionRequest);
 
@@ -70,6 +70,50 @@ router.delete('/products/:id', authenticateToken, requireApprovedFarmer, product
 // ===== ORDER & PAYMENT =====
 router.post('/orders', authenticateToken, orderController.createOrder);
 router.get('/orders/verify/:reference/:amount', orderController.verifyOrderPayment);
+router.get('/orders/list', authenticateToken, orderController.listOrders);
+
+// Trust-score lookup used by the farmer dashboard tile.
+router.get('/farmers/trust-score', authenticateToken, async (req, res) => {
+  try {
+    const farmerId = req.user && req.user.id;
+    if (!farmerId) return res.status(401).json({ success: false, message: 'Login required.' });
+    const { data, error } = await supabaseAdmin()
+      .from('farmer_trust_scores')
+      .select('*')
+      .eq('farmer_id', farmerId)
+      .maybeSingle();
+    if (error) throw error;
+    return res.json({
+      success: true,
+      score: data ? Number(data.score) : 50,
+      star_rating: data ? Number(data.star_rating) : 0,
+      review_count: data ? Number(data.review_count || 0) : 0,
+      order_completion_rate: data ? Number(data.order_completion_rate || 0) : 0
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Admin: GMV over the last 30 days. Sums public.orders.total_amount for paid orders.
+router.get('/admin/metrics/gmv', authenticateToken, requireRole(['ADMIN']), async (req, res) => {
+  try {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabaseAdmin()
+      .from('orders')
+      .select('total_amount, escrow_status, created_at')
+      .gte('created_at', since);
+    if (error) throw error;
+    const gmv = (data || [])
+      .filter((o) => ['IN_ESCROW', 'SHIPPED', 'DELIVERED', 'RELEASED'].includes(o.escrow_status))
+      .reduce((s, o) => s + Number(o.total_amount || 0), 0);
+    return res.json({ success: true, gmv, order_count: (data || []).length });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+function supabaseAdmin() { return require('../utils/supabaseClient'); }
 
 // ===== AI ROUTES =====
 router.post('/ai/predict-price', aiController.predictPriceTrend);

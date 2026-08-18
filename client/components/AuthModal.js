@@ -11,6 +11,20 @@ function renderAuthModal(state, actions) {
   const selectedRole = state.authRegisterRole || 'BUYER';
   const email = state.otpEmail || 'user@example.com';
 
+  // Trigger-aware header copy. Picks the right text for the reason the modal
+  // was opened so the visitor knows why they're being asked to log in.
+  let headerTitle = null, headerSubtitle = null;
+  if (isLogin && authTrigger === 'add-to-cart') {
+    headerTitle = 'Login to add items to your cart';
+    headerSubtitle = 'Your cart is reserved. Sign in to finish adding your produce.';
+  } else if (isLogin && authTrigger === 'dashboard') {
+    headerTitle = 'Login required';
+    headerSubtitle = 'Sign in to access your dashboard.';
+  } else if (isLogin && authTrigger === 'session-expired') {
+    headerTitle = 'Your session expired';
+    headerSubtitle = 'Please sign in again to continue.';
+  }
+
   return `
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
       <div class="modal-fullscreen-mobile relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/20 overflow-hidden animate-modal max-h-[92vh] overflow-y-auto">
@@ -26,10 +40,10 @@ function renderAuthModal(state, actions) {
             <i class="fa-solid ${isOtpView ? 'fa-envelope-circle-check' : (isForgotEmail ? 'fa-key' : (isForgotReset ? 'fa-lock' : (isLogin ? 'fa-right-to-bracket' : 'fa-user-plus')))} text-xl text-amber-300"></i>
           </div>
           <h2 class="text-xl font-heading font-extrabold">
-            ${isOtpView ? 'Verify Your Email' : (isForgotEmail ? 'Reset Your Password' : (isForgotReset ? 'Set a New Password' : (isLogin ? 'Welcome Back to Agrein' : 'Create your Agrein Account')))}
+            ${headerTitle || (isOtpView ? 'Verify Your Email' : (isForgotEmail ? 'Reset Your Password' : (isForgotReset ? 'Set a New Password' : (isLogin ? 'Welcome Back to Agrein' : 'Create your Agrein Account'))))}
           </h2>
           <p class="text-xs text-emerald-200 mt-1">
-            ${isOtpView ? `We've sent a 6-digit verification code to <strong class="text-amber-300">${email}</strong>.` : (isForgotEmail ? 'Enter your email and we will send a 6-digit reset code' : (isForgotReset ? `Email verified. Choose a new password for <strong class="text-amber-300">${email}</strong>.` : (isLogin ? 'Log in to access your marketplace' : 'Join Africa\'s trusted agricultural marketplace')))}
+            ${headerSubtitle || (isOtpView ? `We've sent a 6-digit verification code to <strong class="text-amber-300">${email}</strong>.` : (isForgotEmail ? 'Enter your email and we will send a 6-digit reset code' : (isForgotReset ? `Email verified. Choose a new password for <strong class="text-amber-300">${email}</strong>.` : (isLogin ? 'Log in to access your marketplace' : 'Join Africa\'s trusted agricultural marketplace'))))}
           </p>
         </div>
 

@@ -9,12 +9,24 @@ function renderFarmerDashboard(state, actions) {
   const verificationStatus = (state.mockData.farmerVerificationApp || {}).status || 'NOT_STARTED';
   const isApproved = verificationStatus === 'APPROVED';
 
-  const incomingOrders = [];
+  const incomingOrders = (state.farmerDashboard && state.farmerDashboard.incomingOrders) || [];
   const notifications = [];
   const farmerProducts = (state.mockData.products || []).filter(p => p.farmerName === user.full_name || p.farmerId === user.id);
-  const availableBalance = state.mockData.farmerProfile?.availableBalance || 0;
-  const escrowPending = state.mockData.farmerProfile?.escrowPending || 0;
-  const totalLifetimeEarnings = state.mockData.farmerProfile?.totalLifetimeEarnings || 0;
+  const availableBalance = (state.farmerDashboard && state.farmerDashboard.availableBalance != null)
+    ? state.farmerDashboard.availableBalance
+    : (state.mockData.farmerProfile && state.mockData.farmerProfile.availableBalance) || 0;
+  const escrowPending = (state.farmerDashboard && state.farmerDashboard.escrowBalance != null)
+    ? state.farmerDashboard.escrowBalance
+    : (state.mockData.farmerProfile && state.mockData.farmerProfile.escrowPending) || 0;
+  const totalLifetimeEarnings = (state.farmerDashboard && state.farmerDashboard.lifetimeRevenue != null)
+    ? state.farmerDashboard.lifetimeRevenue
+    : (state.mockData.farmerProfile && state.mockData.farmerProfile.totalLifetimeEarnings) || 0;
+  const trustScore = (state.farmerDashboard && state.farmerDashboard.trustScore != null)
+    ? state.farmerDashboard.trustScore
+    : 98;
+  const activeCrops = (state.farmerDashboard && state.farmerDashboard.activeCrops != null)
+    ? state.farmerDashboard.activeCrops
+    : farmerProducts.length;
 
   return `
     <div class="py-8 bg-slate-50/50 dark:bg-slate-900/50 min-h-screen space-y-8">
@@ -108,7 +120,7 @@ function renderFarmerDashboard(state, actions) {
               <span>Active Crops</span>
               <i class="fa-solid fa-wheat-awn text-emerald-600 text-base"></i>
             </div>
-            <div class="text-xl sm:text-2xl font-heading font-extrabold text-slate-900 dark:text-white">${farmerProducts.length}</div>
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-slate-900 dark:text-white">${activeCrops}</div>
             <div class="text-[10px] text-gray-500 font-semibold">Listed in marketplace</div>
           </div>
           <div class="glass-card p-3 sm:p-5 rounded-2xl space-y-1.5 sm:space-y-2">
@@ -124,7 +136,7 @@ function renderFarmerDashboard(state, actions) {
               <span>Trust Score</span>
               <i class="fa-solid fa-star text-amber-500 text-base"></i>
             </div>
-            <div class="text-xl sm:text-2xl font-heading font-extrabold text-slate-900 dark:text-white">98%</div>
+            <div class="text-xl sm:text-2xl font-heading font-extrabold text-slate-900 dark:text-white">${trustScore}%</div>
             <div class="text-[10px] text-amber-500 font-semibold">Verified producer</div>
           </div>
         </div>

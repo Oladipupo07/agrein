@@ -1,37 +1,94 @@
 // Agrein Digital Wallet & Escrow Controller
+// Phase C: backed by public.wallets + public.wallet_transactions.
 
-let mockWallet = {
-  userId: 'usr-farmer-01',
-  availableBalance: 1485000,
-  escrowHeldBalance: 320000,
-  currency: 'NGN',
-  transactions: [
-    { id: 'txn-991', type: 'escrow_release', amount: 1350000, desc: 'Release for Order #AGR-61029 (Kano Grains)', date: '2026-08-01', status: 'completed' },
-    { id: 'txn-992', type: 'deposit', amount: 500000, desc: 'Interswitch Webpay Direct Deposit', date: '2026-08-03', status: 'completed' },
-    { id: 'txn-993', type: 'withdrawal', amount: 365000, desc: 'Payout to First Bank (Acc: 3048912044)', date: '2026-08-06', status: 'completed' }
-  ]
-};
+const supabase = require('../utils/supabaseClient');
 
-exports.getWalletBalance = (req, res) => {
-  res.json({ success: true, wallet: mockWallet });
-};
+async function loadOrCreateWallet(userId) {
+  // Upsert a zero-balance wallet so reads always succeed on first contact.
+  await supabase.from('wallets').upsert({ user_id: userId }, { onConflict: 'user_id' });
+  const { data } = await supabase
+    .from('wallets')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  return data;
+}
 
-exports.requestWithdrawal = (req, res) => {
-  const { amount, bankName, accountNumber } = req.body;
-  if (amount > mockWallet.availableBalance) {
-    return res.status(400).json({ success: false, message: 'Insufficient available wallet balance' });
+exports.getWalletBalance = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) return res.status(401).json({ success: false, message: 'Login required.' });
+
+    const wallet = await loadOrCreateWallet(req.user.id);
+    const { data: txns } = await supabase
+      .from('wallet_transactions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    const filteredTxns = (txns || []).filter((t) => t.wallet_id === (wallet && wallet.id));
+    return res.json({
+      success: true,
+      wallet: {
+        userId: req.user.id,
+        availableBalance: Number(wallet ? wallet.available_balance : 0),
+        escrowHeldBalance: Number(wallet ? wallet.escrow_held_balance : 0),
+        currency: (wallet && wallet.currency) || 'NGN',
+        transactions: filteredTxns.map((t) => ({
+          id: t.id,
+          type: t.type,
+          amount: Number(t.amount),
+          desc: t.description,
+          date: (t.created_at || '').slice(0, 10),
+          status: t.status
+        }))
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
   }
+};
 
-  mockWallet.availableBalance -= amount;
-  const newTxn = {
-    id: `txn-${Date.now()}`,
-    type: 'withdrawal',
-    amount,
-    desc: `Interswitch Payout to ${bankName} (${accountNumber})`,
-    date: new Date().toISOString().split('T')[0],
-    status: 'completed'
-  };
-  mockWallet.transactions.unshift(newTxn);
+exports.requestWithdrawal = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) return res.status(401).json({ success: false, message: 'Login required.' });
 
-  res.json({ success: true, message: 'Interswitch instant payout processed', wallet: mockWallet });
+    const { amount, bankName, accountNumber } = req.body || {};
+    const amountNum = Number(amount);
+    if (!amountNum || amountNum <= 0) {
+      return res.status(400).json({ success: false, message: 'amount must be a positive number.' });
+    }
+
+    const wallet = await loadOrCreateWallet(req.user.id);
+    if (!wallet || Number(wallet.available_balance) < amountNum) {
+      return res.status(400).json({ success: false, message: 'Insufficient available wallet balance.' });
+    }
+
+    const reference = `WDL-${Date.now()}`;
+    await supabase.from('wallets')
+      .update({ available_balance: Number(wallet.available_balance) - amountNum })
+      .eq('id', wallet.id);
+    await supabase.from('wallet_transactions').insert({
+      wallet_id: wallet.id,
+      type: 'withdrawal',
+      amount: amountNum,
+      reference,
+      description: `Payout to ${bankName || 'bank'} (${accountNumber || '—'})`,
+      status: 'pending'
+    });
+
+    const updated = await loadOrCreateWallet(req.user.id);
+    return res.json({
+      success: true,
+      message: 'Payout submitted',
+      wallet: {
+        userId: req.user.id,
+        availableBalance: Number(updated.available_balance),
+        escrowHeldBalance: Number(updated.escrow_held_balance),
+        currency: updated.currency || 'NGN',
+        transactions: []
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
 };

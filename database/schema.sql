@@ -174,3 +174,236 @@ ALTER TABLE public.buyer_disputes ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public profiles visible to authenticated users" ON public.profiles FOR SELECT USING (true);
 
+-- ============================================================================
+-- Phase A — Realtime, Real Auth, Gated Dashboards
+-- ============================================================================
+-- Run this section in the Supabase SQL editor. All statements are idempotent
+-- (CREATE / ALTER ... IF NOT EXISTS / DO blocks). Safe to re-run.
+
+-- A.2. Add columns that controllers expect but the original schema omits.
+--      phone_number already exists on profiles; only verification_status is new.
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS verification_status VARCHAR(30) DEFAULT 'APPROVED';
+
+-- A.1. New tables: products, orders, rfqs, rfq_bids, chat_messages.
+
+CREATE TABLE IF NOT EXISTS public.products (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    farmer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    crop_name VARCHAR(120) NOT NULL,
+    description TEXT,
+    price_per_unit NUMERIC(12, 2) NOT NULL,
+    unit VARCHAR(30) NOT NULL DEFAULT 'kg',
+    available_qty NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    images TEXT[] DEFAULT '{}',
+    state VARCHAR(100),
+    lga VARCHAR(100),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS products_farmer_id_idx ON public.products(farmer_id);
+CREATE INDEX IF NOT EXISTS products_is_active_idx ON public.products(is_active);
+
+CREATE TABLE IF NOT EXISTS public.orders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_code VARCHAR(60) UNIQUE NOT NULL,
+    buyer_id UUID NOT NULL REFERENCES public.profiles(id),
+    farmer_id UUID NOT NULL REFERENCES public.profiles(id),
+    product_id UUID REFERENCES public.products(id),
+    quantity NUMERIC(12, 2) NOT NULL,
+    total_amount NUMERIC(12, 2) NOT NULL,
+    escrow_status VARCHAR(30) DEFAULT 'PENDING' CHECK (escrow_status IN
+        ('PENDING','PAID','IN_ESCROW','SHIPPED','DELIVERED','RELEASED','REFUNDED','CANCELLED')),
+    payment_reference VARCHAR(120),
+    shipping_address TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS orders_buyer_id_idx ON public.orders(buyer_id);
+CREATE INDEX IF NOT EXISTS orders_farmer_id_idx ON public.orders(farmer_id);
+CREATE INDEX IF NOT EXISTS orders_escrow_status_idx ON public.orders(escrow_status);
+
+CREATE TABLE IF NOT EXISTS public.rfqs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    buyer_id UUID NOT NULL REFERENCES public.profiles(id),
+    crop_name VARCHAR(120) NOT NULL,
+    quantity NUMERIC(12, 2) NOT NULL,
+    target_price NUMERIC(12, 2),
+    delivery_state VARCHAR(100),
+    notes TEXT,
+    status VARCHAR(30) DEFAULT 'OPEN' CHECK (status IN
+        ('OPEN','AWAITING_BIDS','CLOSED','AWARDED','CANCELLED')),
+    winning_bid_id UUID,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS rfqs_buyer_id_idx ON public.rfqs(buyer_id);
+CREATE INDEX IF NOT EXISTS rfqs_status_idx ON public.rfqs(status);
+
+CREATE TABLE IF NOT EXISTS public.rfq_bids (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    rfq_id UUID NOT NULL REFERENCES public.rfqs(id) ON DELETE CASCADE,
+    farmer_id UUID NOT NULL REFERENCES public.profiles(id),
+    bid_price NUMERIC(12, 2) NOT NULL,
+    message TEXT,
+    status VARCHAR(30) DEFAULT 'SUBMITTED' CHECK (status IN
+        ('SUBMITTED','ACCEPTED','REJECTED','WITHDRAWN')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS rfq_bids_rfq_id_idx ON public.rfq_bids(rfq_id);
+CREATE INDEX IF NOT EXISTS rfq_bids_farmer_id_idx ON public.rfq_bids(farmer_id);
+
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES public.profiles(id),
+    body TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS chat_messages_order_id_idx ON public.chat_messages(order_id);
+
+-- A.3. Realtime publication. Supabase Realtime ignores tables without a PK
+--      and tables not in the publication; both conditions are satisfied below.
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+END$$;
+
+-- Add tables idempotently. We DO block ignores already-present errors.
+DO $$
+DECLARE
+  t TEXT;
+  tables_to_add TEXT[] := ARRAY[
+    'profiles',
+    'products',
+    'product_quality_details',
+    'orders',
+    'wallets',
+    'wallet_transactions',
+    'buyer_disputes',
+    'farmer_verifications',
+    'notifications',
+    'rfqs',
+    'rfq_bids',
+    'chat_messages'
+  ];
+BEGIN
+  FOREACH t IN ARRAY tables_to_add LOOP
+    BEGIN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
+    EXCEPTION WHEN duplicate_object THEN
+      -- already in the publication; ignore
+      NULL;
+    END;
+  END LOOP;
+END$$;
+
+-- A.4. Row Level Security for the new tables. Service-role key bypasses RLS
+--      on the backend; these policies only constrain client-side Supabase.
+
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.rfqs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.rfq_bids ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wallets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wallet_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- Public can browse active products and open RFQs (marketplace UX).
+DROP POLICY IF EXISTS "Public read active products" ON public.products;
+CREATE POLICY "Public read active products" ON public.products
+  FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Farmers manage own products" ON public.products;
+CREATE POLICY "Farmers manage own products" ON public.products
+  FOR ALL USING (auth.uid() = farmer_id)
+  WITH CHECK (auth.uid() = farmer_id);
+
+DROP POLICY IF EXISTS "Public read open RFQs" ON public.rfqs;
+CREATE POLICY "Public read open RFQs" ON public.rfqs
+  FOR SELECT USING (status = 'OPEN' OR status = 'AWAITING_BIDS');
+
+DROP POLICY IF EXISTS "Buyers manage own RFQs" ON public.rfqs;
+CREATE POLICY "Buyers manage own RFQs" ON public.rfqs
+  FOR ALL USING (auth.uid() = buyer_id)
+  WITH CHECK (auth.uid() = buyer_id);
+
+DROP POLICY IF EXISTS "Public read bids on open RFQs" ON public.rfq_bids;
+CREATE POLICY "Public read bids on open RFQs" ON public.rfq_bids
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.rfqs r
+      WHERE r.id = rfq_id
+        AND (r.status = 'OPEN' OR r.status = 'AWAITING_BIDS')
+    )
+  );
+
+DROP POLICY IF EXISTS "Farmers submit bids" ON public.rfq_bids;
+CREATE POLICY "Farmers submit bids" ON public.rfq_bids
+  FOR INSERT WITH CHECK (auth.uid() = farmer_id);
+
+DROP POLICY IF EXISTS "Participants see their orders" ON public.orders;
+CREATE POLICY "Participants see their orders" ON public.orders
+  FOR SELECT USING (
+    auth.uid() = buyer_id
+    OR auth.uid() = farmer_id
+    OR EXISTS (SELECT 1 FROM public.profiles p
+               WHERE p.id = auth.uid() AND UPPER(p.role) = 'ADMIN')
+  );
+
+DROP POLICY IF EXISTS "Buyers insert own orders" ON public.orders;
+CREATE POLICY "Buyers insert own orders" ON public.orders
+  FOR INSERT WITH CHECK (auth.uid() = buyer_id);
+
+DROP POLICY IF EXISTS "Order status updates" ON public.orders;
+CREATE POLICY "Order status updates" ON public.orders
+  FOR UPDATE USING (
+    auth.uid() = buyer_id
+    OR auth.uid() = farmer_id
+    OR EXISTS (SELECT 1 FROM public.profiles p
+               WHERE p.id = auth.uid() AND UPPER(p.role) = 'ADMIN')
+  );
+
+DROP POLICY IF EXISTS "Participants read chat" ON public.chat_messages;
+CREATE POLICY "Participants read chat" ON public.chat_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.orders o
+      WHERE o.id = order_id
+        AND (o.buyer_id = auth.uid() OR o.farmer_id = auth.uid())
+    )
+    OR EXISTS (SELECT 1 FROM public.profiles p
+               WHERE p.id = auth.uid() AND UPPER(p.role) = 'ADMIN')
+  );
+
+DROP POLICY IF EXISTS "Participants send chat" ON public.chat_messages;
+CREATE POLICY "Participants send chat" ON public.chat_messages
+  FOR INSERT WITH CHECK (
+    auth.uid() = sender_id
+    AND EXISTS (
+      SELECT 1 FROM public.orders o
+      WHERE o.id = order_id
+        AND (o.buyer_id = auth.uid() OR o.farmer_id = auth.uid())
+    )
+  );
+
+DROP POLICY IF EXISTS "Owner reads wallet" ON public.wallets;
+CREATE POLICY "Owner reads wallet" ON public.wallets
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Owner reads transactions" ON public.wallet_transactions;
+CREATE POLICY "Owner reads transactions" ON public.wallet_transactions
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.wallets w
+            WHERE w.id = wallet_id AND w.user_id = auth.uid())
+  );
+
+DROP POLICY IF EXISTS "Owner reads own notifications" ON public.notifications;
+CREATE POLICY "Owner reads own notifications" ON public.notifications
+  FOR SELECT USING (auth.uid() = user_id);
+

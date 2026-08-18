@@ -88,6 +88,9 @@
   <!-- Font Awesome 6 — UI icons (fa-solid, fa-brands, etc.) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 
+  <!-- Supabase JS (UMD) — live marketplace + dashboard channel subscriptions -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.min.js"></script>
+
   <!-- PWA Manifest & Icons -->
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23059669'/><text x='32' y='46' font-size='40' text-anchor='middle' fill='white'>🌾</text></svg>">
@@ -100,6 +103,8 @@
 
   <!-- Utilities & Storage -->
   <script src="./client/utils/storageManager.js"></script>
+  <script src="./client/utils/supabaseClient.js"></script>
+  <script src="./client/utils/realtime.js"></script>
 
   <!-- Client Data Script -->
   <script src="./client/data/mockData.js"></script>

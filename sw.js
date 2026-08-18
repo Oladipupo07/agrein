@@ -1,13 +1,16 @@
 // Agrein Progressive Web App Service Worker
 // Provides offline functionality, caching strategy, and background sync
 
-const CACHE_NAME = 'agrein-v3';
+const CACHE_NAME = 'agrein-v4';
 const urlsToCache = [
   '/',
   '/index.html',
   '/app.js',
   '/public/styles.css',
   '/client/data/mockData.js',
+  '/client/utils/storageManager.js',
+  '/client/utils/supabaseClient.js',
+  '/client/utils/realtime.js',
   '/client/components/Navbar.js',
   '/client/components/Hero.js',
   '/client/components/ProductCatalog.js',

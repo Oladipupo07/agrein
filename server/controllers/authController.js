@@ -2,6 +2,21 @@
 const otpService = require('../utils/otpService');
 const passwordService = require('../utils/passwordService');
 const { UserDatabase } = require('../utils/userDatabase'); // ✅ Add persistent storage
+const jwt = require('jsonwebtoken');
+const { expiresIn } = require('../middleware/auth');
+
+function mintToken(user) {
+  return jwt.sign(
+    {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      vs: user.verification_status || 'APPROVED'
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: expiresIn() }
+  );
+}
 
 // Helper: pre-compute a deterministic-ish password hash pair for seeds.
 // We hash here at module load so the registeredUsers array is a plain literal
@@ -60,7 +75,7 @@ async function syncUserToDb(user) {
     // Also sync to Supabase if connected
     const supabase = require('../utils/supabaseClient');
     if (!supabase) return;
-    await supabase.from('users').upsert({
+    await supabase.from('profiles').upsert({
       id: user.id,
       full_name: user.full_name,
       email: user.email,
@@ -90,7 +105,7 @@ const authController = {
       try {
         const supabase = require('../utils/supabaseClient');
         if (supabase) {
-          const { data: dbUsers, error } = await supabase.from('users').select('*');
+          const { data: dbUsers, error } = await supabase.from('profiles').select('*');
           if (!error && dbUsers && dbUsers.length > 0) {
             dbUsers.forEach(dbU => {
               const exists = users.find(u => u.email.toLowerCase() === (dbU.email || '').toLowerCase());
@@ -306,7 +321,7 @@ const authController = {
         email_verified: true,
         user: {
           ...toClientUser(user),
-          token: `AGREIN_JWT_TOKEN_${Date.now()}`
+          token: mintToken(user)
         },
         redirectView
       });
@@ -382,7 +397,7 @@ const authController = {
         message: 'Login successful',
         user: {
           ...toClientUser(user),
-          token: `AGREIN_JWT_TOKEN_${Date.now()}`
+          token: mintToken(user)
         }
       });
     } catch (error) {
