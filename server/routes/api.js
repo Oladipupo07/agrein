@@ -18,6 +18,7 @@ const cooperativeController = require('../controllers/cooperativeController');
 const traceabilityController = require('../controllers/traceabilityController');
 const authController = require('../controllers/authController');
 const disputeController = require('../controllers/disputeController');
+const farmController = require('../controllers/farmController');
 
 // ===== AUTHENTICATION & OTP ROUTES =====
 router.post('/auth/register', authController.register);
@@ -135,6 +136,8 @@ router.post('/logistics/calculate-cost', logisticsController.calculateShippingCo
 router.get('/cooperatives', cooperativeController.getAllCooperatives);
 router.post('/cooperatives', authenticateToken, cooperativeController.createCooperative);
 router.post('/cooperatives/join', authenticateToken, cooperativeController.joinCooperative);
+
+router.get('/farms/nearby', farmController.getNearbyFarms);
 
 router.get('/traceability/:batchId', traceabilityController.getBatchTrace);
 router.post('/traceability/generate-qr', traceabilityController.generateQRCode);

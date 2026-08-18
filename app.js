@@ -98,7 +98,18 @@ const state = {
   showIosInstallHint: false,
   showAndroidInstallPrompt: false,
   swUpdateAvailable: false,
-  pwaHintDismissed: false
+  pwaHintDismissed: false,
+
+  // Nearby farms map runtime state
+  nearbyFarms: [],
+  nearbyFarmsLoading: false,
+  nearbyFarmsError: null,
+  nearbyUserLocation: null,
+  nearbyMapInstance: null,
+  nearbyMapMarkersLayer: null,
+  nearbyMapInitialized: false,
+  nearbyPollerId: null,
+  nearbyRadiusKm: 250,
 
   // Document Upload Progress Tracking
   documentUploads: {}, // { 'government_id': { progress: 45, fileName: 'id.pdf', isUploading: true }, ... }
@@ -310,8 +321,172 @@ const actions = {
     if (view === 'admin-dashboard') {
       actions.fetchRegisteredUsers();
     }
+    if (view === 'nearby-farms') {
+      actions.refreshNearbyFarms();
+      actions.startNearbyFarmsPolling();
+    } else {
+      actions.stopNearbyFarmsPolling();
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
     renderApp();
+  },
+
+  refreshNearbyFarms() {
+    const hasLocation = state.nearbyUserLocation && Number.isFinite(state.nearbyUserLocation.lat) && Number.isFinite(state.nearbyUserLocation.lng);
+    if (hasLocation) {
+      actions.fetchNearbyFarms(state.nearbyUserLocation.lat, state.nearbyUserLocation.lng);
+    } else {
+      actions.fetchNearbyFarms();
+    }
+  },
+
+  useNearbyMapMyLocation() {
+    if (!navigator.geolocation) {
+      actions.triggerToast('⚠️ Geolocation is not supported on this browser.');
+      return;
+    }
+    actions.triggerToast('📡 Detecting your location...');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = Number(position.coords.latitude);
+        const lng = Number(position.coords.longitude);
+        state.nearbyUserLocation = { lat, lng };
+        actions.fetchNearbyFarms(lat, lng);
+      },
+      () => {
+        actions.triggerToast('⚠️ Could not access your location. Showing all verified farms instead.');
+        actions.fetchNearbyFarms();
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  },
+
+  fetchNearbyFarms(lat, lng) {
+    state.nearbyFarmsLoading = true;
+    state.nearbyFarmsError = null;
+    renderApp();
+
+    const params = new URLSearchParams();
+    params.set('radius', String(state.nearbyRadiusKm || 250));
+    params.set('limit', '150');
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      params.set('lat', String(lat));
+      params.set('lng', String(lng));
+    }
+
+    const req = window.apiFetch ? window.apiFetch('/api/farms/nearby?' + params.toString()) : fetch('/api/farms/nearby?' + params.toString());
+    Promise.resolve(req)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.success && Array.isArray(data.data)) {
+          state.nearbyFarms = data.data;
+          state.nearbyFarmsLoading = false;
+          state.nearbyFarmsError = null;
+          renderApp();
+          actions.renderNearbyMap();
+        } else {
+          state.nearbyFarms = [];
+          state.nearbyFarmsLoading = false;
+          state.nearbyFarmsError = (data && data.message) || 'Could not load nearby farms.';
+          renderApp();
+        }
+      })
+      .catch(() => {
+        state.nearbyFarms = [];
+        state.nearbyFarmsLoading = false;
+        state.nearbyFarmsError = 'Could not load nearby farms right now. Please try again.';
+        renderApp();
+      });
+  },
+
+  renderNearbyMap() {
+    if (state.currentView !== 'nearby-farms') return;
+    if (!window.L) return;
+    const mapEl = document.getElementById('nearbyFarmsMap');
+    if (!mapEl) return;
+
+    if (state.nearbyMapInstance && typeof state.nearbyMapInstance.getContainer === 'function') {
+      const existingContainer = state.nearbyMapInstance.getContainer();
+      if (existingContainer !== mapEl) {
+        try { state.nearbyMapInstance.remove(); } catch (_) { /* noop */ }
+        state.nearbyMapInstance = null;
+        state.nearbyMapMarkersLayer = null;
+        state.nearbyMapInitialized = false;
+      }
+    }
+
+    if (!state.nearbyMapInstance) {
+      state.nearbyMapInstance = window.L.map(mapEl, { zoomControl: true }).setView([9.0820, 8.6753], 6);
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(state.nearbyMapInstance);
+      state.nearbyMapMarkersLayer = window.L.layerGroup().addTo(state.nearbyMapInstance);
+      state.nearbyMapInitialized = true;
+    }
+
+    if (state.nearbyMapMarkersLayer) {
+      state.nearbyMapMarkersLayer.clearLayers();
+    }
+
+    const farms = Array.isArray(state.nearbyFarms) ? state.nearbyFarms : [];
+    const points = [];
+
+    farms.forEach((farm) => {
+      const lat = Number(farm.gps_latitude);
+      const lng = Number(farm.gps_longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      points.push([lat, lng]);
+      const popup = `
+        <div style="min-width:220px;font-family:Arial,sans-serif;">
+          <div style="font-weight:800;color:#0f172a;">${farm.farm_name || 'Verified Farm'}</div>
+          <div style="font-size:12px;color:#475569;margin-top:4px;">Farmer: ${farm.farmer_name || 'Verified Farmer'}</div>
+          <div style="font-size:12px;color:#475569;">Location: ${(farm.farm_state || 'Nigeria')}${farm.farm_lga ? ', ' + farm.farm_lga : ''}</div>
+          <div style="font-size:12px;color:#047857;margin-top:6px;font-weight:700;">${farm.distance_km == null ? '' : farm.distance_km + ' km away'}</div>
+        </div>
+      `;
+      window.L.marker([lat, lng]).bindPopup(popup).addTo(state.nearbyMapMarkersLayer);
+    });
+
+    if (state.nearbyUserLocation && Number.isFinite(state.nearbyUserLocation.lat) && Number.isFinite(state.nearbyUserLocation.lng)) {
+      const here = [state.nearbyUserLocation.lat, state.nearbyUserLocation.lng];
+      points.push(here);
+      window.L.circleMarker(here, {
+        radius: 7,
+        color: '#065f46',
+        weight: 2,
+        fillColor: '#10b981',
+        fillOpacity: 0.95
+      }).bindPopup('You are here').addTo(state.nearbyMapMarkersLayer);
+    }
+
+    if (points.length > 0) {
+      state.nearbyMapInstance.fitBounds(points, { padding: [28, 28], maxZoom: 13 });
+    } else {
+      state.nearbyMapInstance.setView([9.0820, 8.6753], 6);
+    }
+
+    setTimeout(() => {
+      if (state.nearbyMapInstance) state.nearbyMapInstance.invalidateSize();
+    }, 50);
+  },
+
+  startNearbyFarmsPolling() {
+    if (state.nearbyPollerId) return;
+    state.nearbyPollerId = setInterval(() => {
+      if (state.currentView !== 'nearby-farms') {
+        actions.stopNearbyFarmsPolling();
+        return;
+      }
+      actions.refreshNearbyFarms();
+    }, 30000);
+  },
+
+  stopNearbyFarmsPolling() {
+    if (state.nearbyPollerId) {
+      clearInterval(state.nearbyPollerId);
+      state.nearbyPollerId = null;
+    }
   },
 
   // Admin Registered Users Directory Actions
@@ -2516,6 +2691,14 @@ function renderApp() {
 
     </div>
   `;
+
+  if (state.currentView === 'nearby-farms') {
+    setTimeout(() => {
+      if (actions && typeof actions.renderNearbyMap === 'function') {
+        actions.renderNearbyMap();
+      }
+    }, 0);
+  }
 }
 
 // Admin Decision Note Modal Component
@@ -3169,6 +3352,10 @@ window.__AGREIN_REALTIME_REFETCH__ = function (slice) {
           renderApp();
         }
       });
+    } else if (slice === 'nearbyFarms') {
+      if (state.currentView === 'nearby-farms') {
+        actions.refreshNearbyFarms();
+      }
     } else if (slice === 'notifications' || slice === 'adminNotifications') {
       // Future: surface a toast; for now just re-render.
       renderApp();
@@ -3204,6 +3391,15 @@ renderApp = function () {
 const _origLogout = actions.logout;
 actions.logout = function () {
   const ret = _origLogout.apply(this, arguments);
+  try { actions.stopNearbyFarmsPolling && actions.stopNearbyFarmsPolling(); } catch (_) { /* ignore */ }
+  try {
+    if (state.nearbyMapInstance && typeof state.nearbyMapInstance.remove === 'function') {
+      state.nearbyMapInstance.remove();
+    }
+    state.nearbyMapInstance = null;
+    state.nearbyMapMarkersLayer = null;
+    state.nearbyMapInitialized = false;
+  } catch (_) { /* ignore */ }
   try { window.realtime && window.realtime.teardown(); } catch (_) { /* ignore */ }
   return ret;
 };

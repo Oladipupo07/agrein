@@ -10,6 +10,14 @@
     <priority>1.0</priority>
   </url>
 
+  <!-- Legal: Privacy Policy -->
+  <url>
+    <loc>https://agrein.me/privacy-policy.html</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.40</priority>
+  </url>
+
   <!-- Marketplace / Produce Catalog -->
   <url>
     <loc>https://agrein.me/#marketplace</loc>

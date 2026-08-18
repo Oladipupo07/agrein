@@ -173,7 +173,6 @@ const mailer = {
       return { delivered: false, reason: 'NOT_CONFIGURED' };
     }
 
-    // 1. Primary: Use Brevo HTTPS API (Works 100% on Render.com)
     if (process.env.BREVO_API_KEY) {
       try {
         const result = await sendViaBrevoApi(email, code);
@@ -184,7 +183,6 @@ const mailer = {
       }
     }
 
-    // 2. Fallback: SMTP via Nodemailer
     const transporter = getSmtpTransporter();
     if (transporter) {
       try {
@@ -216,7 +214,8 @@ const mailer = {
     }
 
     return { delivered: false, reason: 'ALL_PROVIDERS_FAILED' };
-  }
+  },
+
 };
 
 module.exports = mailer;

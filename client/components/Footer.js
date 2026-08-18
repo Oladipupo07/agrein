@@ -58,7 +58,8 @@ function renderFooter(state, actions) {
 
         <div class="pt-6 sm:pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4 sm:gap-0">
           <div class="text-center sm:text-left">© 2026 Agrein Agricultural Marketplace. All rights reserved.</div>
-          <div class="flex space-x-4">
+          <div class="flex flex-wrap items-center justify-center gap-4">
+            <a href="/privacy-policy.html" class="hover:text-emerald-400 font-semibold">Privacy Policy</a>
             <a href="#" class="hover:text-emerald-400" aria-label="Twitter"><i class="fa-brands fa-twitter text-base"></i></a>
             <a href="#" class="hover:text-emerald-400" aria-label="Facebook"><i class="fa-brands fa-facebook text-base"></i></a>
             <a href="#" class="hover:text-emerald-400" aria-label="LinkedIn"><i class="fa-brands fa-linkedin text-base"></i></a>

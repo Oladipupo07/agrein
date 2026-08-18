@@ -154,7 +154,7 @@ const verificationController = {
       const {
         nin, bvn, adminNotes,
         farmName, farmLocation, farmSize, farmType, cropsProduced, yearsExperience,
-        state, lga, address
+        state, lga, address, farmState, farmLga, gpsLatitude, gpsLongitude
       } = req.body || {};
       if (!nin || nin.length !== 11) return res.status(400).json({ success: false, message: '11-digit NIN required.' });
       if (!bvn || bvn.length !== 11) return res.status(400).json({ success: false, message: '11-digit BVN required.' });
@@ -165,6 +165,26 @@ const verificationController = {
         lga: lga || null,
         address: address || null
       }).eq('id', farmerId);
+
+      // Persist the farmer map profile so Nearby Farms can render real GPS points.
+      await supabase.from('farmer_profiles').upsert({
+        user_id: farmerId,
+        farm_name: farmName || 'Agrein Verified Farm',
+        farm_location: farmLocation || address || 'Nigeria',
+        farm_state: farmState || state || 'Unknown',
+        farm_lga: farmLga || lga || 'Unknown',
+        farm_size_acres: Number(farmSize || 0),
+        farm_type: farmType || 'Crop',
+        crops_produced: Array.isArray(cropsProduced)
+          ? cropsProduced
+          : String(cropsProduced || '').split(',').map((x) => x.trim()).filter(Boolean),
+        years_experience: Number(yearsExperience || 0),
+        gps_latitude: gpsLatitude != null && gpsLatitude !== '' ? Number(gpsLatitude) : null,
+        gps_longitude: gpsLongitude != null && gpsLongitude !== '' ? Number(gpsLongitude) : null,
+        intended_products: Array.isArray(cropsProduced)
+          ? cropsProduced.join(', ')
+          : (cropsProduced || null)
+      }, { onConflict: 'user_id' });
 
       // Upsert a verification row in PENDING_REVIEW.
       const { data: row, error } = await supabase.from('farmer_verifications').upsert({

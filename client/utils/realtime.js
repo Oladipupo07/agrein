@@ -36,10 +36,17 @@
 
   function subscribe(user, view) {
     teardown();
-    if (!user || !user.id) return;
 
-    // Public marketplace product listings (everyone listening — no user filter).
+    // Public marketplace product listings (anonymous and logged-in users).
     bind('products', '*', null, 'products', 'products-public');
+
+    // Public nearby farms map feed.
+    if (view === 'nearby-farms') {
+      bind('farmer_profiles', '*', null, 'nearbyFarms', 'nearby-farmer-profiles');
+      bind('profiles', '*', null, 'nearbyFarms', 'nearby-profiles');
+    }
+
+    if (!user || !user.id) return;
 
     // Per-user orders: participant where filter would need an OR. Supabase JS
     // doesn't support OR filters directly in postgres_changes client-side, so
