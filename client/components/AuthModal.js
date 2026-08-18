@@ -14,13 +14,13 @@ function renderAuthModal(state, actions) {
   // Trigger-aware header copy. Picks the right text for the reason the modal
   // was opened so the visitor knows why they're being asked to log in.
   let headerTitle = null, headerSubtitle = null;
-  if (isLogin && authTrigger === 'add-to-cart') {
+  if (isLogin && state.authTrigger === 'add-to-cart') {
     headerTitle = 'Login to add items to your cart';
     headerSubtitle = 'Your cart is reserved. Sign in to finish adding your produce.';
-  } else if (isLogin && authTrigger === 'dashboard') {
+  } else if (isLogin && state.authTrigger === 'dashboard') {
     headerTitle = 'Login required';
     headerSubtitle = 'Sign in to access your dashboard.';
-  } else if (isLogin && authTrigger === 'session-expired') {
+  } else if (isLogin && state.authTrigger === 'session-expired') {
     headerTitle = 'Your session expired';
     headerSubtitle = 'Please sign in again to continue.';
   }

@@ -81,7 +81,14 @@ function renderHero(state, actions) {
           <!-- Right Column: Interactive Visual Banner & Feature Glass Card -->
           <div class="lg:col-span-5 relative">
             <div class="relative rounded-3xl overflow-hidden shadow-2xl border border-emerald-500/20 group">
-              <img src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1000&q=80" alt="Fresh Nigerian Agricultural Farm Harvest" class="hero-banner w-full h-56 sm:h-80 md:h-[440px] object-cover group-hover:scale-105 transition-transform duration-700">
+              <img
+                src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=800&q=70"
+                srcset="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=480&q=60 480w, https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=800&q=70 800w, https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=75 1200w"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 60vw, 50vw"
+                loading="eager" fetchpriority="high"
+                decoding="async"
+                alt="Fresh Nigerian Agricultural Farm Harvest"
+                class="hero-banner w-full h-56 sm:h-80 md:h-[440px] object-cover group-hover:scale-105 transition-transform duration-700">
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"></div>
               
               <!-- Floating Glass Badge 1: Escrow Protection -->

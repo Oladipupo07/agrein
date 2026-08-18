@@ -12,5 +12,38 @@
     "passwordHash": "237dcfc4bb5ef1b7471be1cd3cd9de78e8ab693b8f3d6c487ed880550bc125c1",
     "created_at": "2026-08-17T10:39:37.222Z",
     "updated_at": "2026-08-17T10:39:37.223Z"
+  },
+  {
+    "id": "usr-1787043912356",
+    "full_name": "Updated Profile User",
+    "email": "profile.user@example.com",
+    "phone_number": "09099999999",
+    "role": "BUYER",
+    "email_verified": false,
+    "is_verified": false,
+    "verification_status": "APPROVED",
+    "passwordSalt": "b61d534ed8205c8ba91e787f4ee46c28",
+    "passwordHash": "4014f88b027f5664ddbabafc9d67d83e728030ec004d36bc7c7821687b33bdc0",
+    "created_at": "2026-08-18T09:05:12.356Z",
+    "updated_at": "2026-08-18T09:28:31.207Z",
+    "state": "Lagos",
+    "lga": "Ikeja",
+    "city": "Ikeja",
+    "address": "12 Market Road",
+    "marketing_consent": true
+  },
+  {
+    "id": "usr-1787043912831",
+    "full_name": "Delete User",
+    "email": "delete.user@example.com",
+    "phone_number": "08022222222",
+    "role": "FARMER",
+    "email_verified": false,
+    "is_verified": false,
+    "verification_status": "NOT_STARTED",
+    "passwordSalt": "873a0d9c7e5dc09876e853f2f29b080a",
+    "passwordHash": "a2fa65227dda10055a0de9b5d98cd1836cfd56c41023664310510315e9eff4fa",
+    "created_at": "2026-08-18T09:05:12.831Z",
+    "updated_at": "2026-08-18T09:28:31.228Z"
   }
 ]

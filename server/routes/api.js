@@ -26,6 +26,7 @@ router.post('/auth/verify-otp', authController.verifyOtp);
 router.post('/auth/resend-otp', authController.resendOtp);
 router.post('/auth/forgot-password', authController.forgotPassword);
 router.post('/auth/reset-password', authController.resetPassword);
+router.put('/auth/profile', authenticateFromHeader, authController.updateProfile);
 router.post('/auth/change-password', authenticateFromHeader, authController.changePassword);
 router.post('/auth/request-deletion', authenticateFromHeader, authController.requestAccountDeletion);
 router.post('/auth/cancel-deletion', authenticateFromHeader, authController.cancelAccountDeletion);

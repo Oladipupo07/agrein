@@ -2,12 +2,13 @@
 <html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes, maximum-scale=5">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes, maximum-scale=5, interactive-widget=resizes-content">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Agrein">
   <meta name="theme-color" content="#059669">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#022c22">
   <!-- Primary SEO Meta Tags -->
   <title>Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade</title>
   <meta name="title" content="Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade">
@@ -18,6 +19,13 @@
   <meta name="publisher" content="Agrein Technologies">
   <link rel="canonical" href="https://agrein.ng/">
 
+  <!-- Performance: warm DNS + TLS to third-party origins we always hit -->
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+  <link rel="dns-prefetch" href="https://images.unsplash.com">
+
   <!-- Open Graph / Facebook / WhatsApp / LinkedIn Meta Tags -->
   <meta property="og:type" content="website">
   <meta property="og:locale" content="en_NG">
@@ -25,7 +33,7 @@
   <meta property="og:site_name" content="Agrein Marketplace">
   <meta property="og:title" content="Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade">
   <meta property="og:description" content="Direct agricultural trade across 36 Nigerian states. Connect with 14,800+ verified farmers, 100% Interswitch escrow protection, and AI harvest price analytics.">
-  <meta property="og:image" content="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=80">
+  <meta property="og:image" content="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=75">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Agrein Agricultural Marketplace Fresh Harvest">
@@ -37,7 +45,7 @@
   <meta name="twitter:url" content="https://agrein.ng/">
   <meta name="twitter:title" content="Agrein — Connecting Farmers to Buyers, One Harvest at a Time">
   <meta name="twitter:description" content="Direct agricultural trade across 36 Nigerian states. Zero middleman exploitation, 100% escrow protection, and AI harvest price forecasting.">
-  <meta name="twitter:image" content="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=80">
+  <meta name="twitter:image" content="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=75">
 
   <!-- JSON-LD Structured Data: Organization & WebSite -->
   <script type="application/ld+json">
@@ -86,10 +94,14 @@
   <link rel="stylesheet" href="/styles.css">
 
   <!-- Font Awesome 6 — UI icons (fa-solid, fa-brands, etc.) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <!-- Non-blocking load: tell browser this CSS isn't critical for first paint, swap media once fetched -->
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" as="style" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"></noscript>
 
   <!-- Supabase JS (UMD) — live marketplace + dashboard channel subscriptions -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.min.js"></script>
+  <!-- Deferred so it doesn't block parsing; first paint can show hero while this streams -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.min.js"></script>
 
   <!-- PWA Manifest & Icons -->
   <link rel="manifest" href="/manifest.json">
@@ -102,106 +114,62 @@
   <div id="app"></div>
 
   <!-- Utilities & Storage -->
-  <script src="./client/utils/storageManager.js"></script>
-  <script src="./client/utils/supabaseClient.js"></script>
-  <script src="./client/utils/realtime.js"></script>
+  <script defer src="./client/utils/storageManager.js"></script>
+  <script defer src="./client/utils/supabaseClient.js"></script>
+  <script defer src="./client/utils/realtime.js"></script>
 
   <!-- Client Data Script -->
-  <script src="./client/data/mockData.js"></script>
+  <script defer src="./client/data/mockData.js"></script>
 
   <!-- Modular Components -->
-  <script src="./client/components/Navbar.js"></script>
-  <script src="./client/components/Hero.js"></script>
-  <script src="./client/components/ProductCatalog.js"></script>
-  <script src="./client/components/ProductModal.js"></script>
-  <script src="./client/components/FarmerDashboard.js"></script>
-  <script src="./client/components/BuyerDashboard.js"></script>
-  <script src="./client/components/AdminDashboard.js"></script>
-  <script src="./client/components/AIPredictor.js"></script>
-  <script src="./client/components/NearbyFarms.js"></script>
-  <script src="./client/components/CheckoutModal.js"></script>
-  <script src="./client/components/ChatDrawer.js"></script>
-  <script src="./client/components/CartDrawer.js"></script>
-  <script src="./client/components/WishlistDrawer.js"></script>
-  <script src="./client/components/Footer.js"></script>
+  <script defer src="./client/components/Navbar.js"></script>
+  <script defer src="./client/components/Hero.js"></script>
+  <script defer src="./client/components/ProductCatalog.js"></script>
+  <script defer src="./client/components/ProductModal.js"></script>
+  <script defer src="./client/components/FarmerDashboard.js"></script>
+  <script defer src="./client/components/BuyerDashboard.js"></script>
+  <script defer src="./client/components/AdminDashboard.js"></script>
+  <script defer src="./client/components/AIPredictor.js"></script>
+  <script defer src="./client/components/NearbyFarms.js"></script>
+  <script defer src="./client/components/CheckoutModal.js"></script>
+  <script defer src="./client/components/ChatDrawer.js"></script>
+  <script defer src="./client/components/CartDrawer.js"></script>
+  <script defer src="./client/components/WishlistDrawer.js"></script>
+  <script defer src="./client/components/Footer.js"></script>
 
   <!-- Ecosystem Expansion Components -->
-  <script src="./client/components/VerifiedBadge.js"></script>
-  <script src="./client/components/FarmerTrustScoreCard.js"></script>
-  <script src="./client/components/AuthModal.js"></script>
-  <script src="./client/components/FarmerVerificationView.js"></script>
-  <script src="./client/components/FarmerPendingApprovalView.js"></script>
-  <script src="./client/components/AdminVerificationDashboard.js"></script>
-  <script src="./client/components/AdminReviewScreen.js"></script>
-  <script src="./client/components/BuyerDisputeModal.js"></script>
-  <script src="./client/components/ChangePasswordModal.js"></script>
-  <script src="./client/components/AccountSettings.js"></script>
-  <script src="./client/components/VerificationModal.js"></script>
-  <script src="./client/components/ReverseMarketplace.js"></script>
-  <script src="./client/components/SmartLogistics.js"></script>
-  <script src="./client/components/Cooperatives.js"></script>
-  <script src="./client/components/CommodityIndex.js"></script>
-  <script src="./client/components/BulkB2B.js"></script>
-  <script src="./client/components/DigitalWallet.js"></script>
-  <script src="./client/components/SubscriptionPlans.js"></script>
-  <script src="./client/components/WeatherDashboard.js"></script>
-  <script src="./client/components/LearningCenter.js"></script>
-  <script src="./client/components/ExportMarketplace.js"></script>
-  <script src="./client/components/CommunityForum.js"></script>
-  <script src="./client/components/AgroDoctorAI.js"></script>
-  <script src="./client/components/TraceabilityModal.js"></script>
+  <script defer src="./client/components/VerifiedBadge.js"></script>
+  <script defer src="./client/components/FarmerTrustScoreCard.js"></script>
+  <script defer src="./client/components/AuthModal.js"></script>
+  <script defer src="./client/components/FarmerVerificationView.js"></script>
+  <script defer src="./client/components/FarmerPendingApprovalView.js"></script>
+  <script defer src="./client/components/AdminVerificationDashboard.js"></script>
+  <script defer src="./client/components/AdminReviewScreen.js"></script>
+  <script defer src="./client/components/BuyerDisputeModal.js"></script>
+  <script defer src="./client/components/ChangePasswordModal.js"></script>
+  <script defer src="./client/components/AccountSettings.js"></script>
+  <script defer src="./client/components/VerificationModal.js"></script>
+  <script defer src="./client/components/ReverseMarketplace.js"></script>
+  <script defer src="./client/components/SmartLogistics.js"></script>
+  <script defer src="./client/components/Cooperatives.js"></script>
+  <script defer src="./client/components/CommodityIndex.js"></script>
+  <script defer src="./client/components/BulkB2B.js"></script>
+  <script defer src="./client/components/DigitalWallet.js"></script>
+  <script defer src="./client/components/SubscriptionPlans.js"></script>
+  <script defer src="./client/components/WeatherDashboard.js"></script>
+  <script defer src="./client/components/LearningCenter.js"></script>
+  <script defer src="./client/components/ExportMarketplace.js"></script>
+  <script defer src="./client/components/CommunityForum.js"></script>
+  <script defer src="./client/components/AgroDoctorAI.js"></script>
+  <script defer src="./client/components/TraceabilityModal.js"></script>
+  <script defer src="./client/components/PwaInstallBanner.js"></script>
+  <script defer src="./client/components/SwUpdateToast.js"></script>
 
   <!-- App Orchestrator -->
-  <script src="./app.js"></script>
+  <script defer src="./app.js"></script>
 
-  <!-- PWA Service Worker Registration -->
-  <script>
-    // Register Service Worker for PWA functionality
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(registration => {
-            console.log('✅ Service Worker registered:', registration.scope);
-            // Check for updates periodically
-            setInterval(() => {
-              registration.update();
-            }, 60000); // Check every minute
-          })
-          .catch(error => console.warn('⚠️ Service Worker registration failed:', error));
-      });
-
-      // Listen for updates to the service worker
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('🔄 New Service Worker activated');
-        // Optionally show a notification to the user about app update
-      });
-    }
-
-    // Request notification permission for push updates
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-
-    // Add to Home Screen prompt handling
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', e => {
-      e.preventDefault();
-      deferredPrompt = e;
-      console.log('💾 Install prompt ready');
-    });
-
-    // Expose install function globally for app to use
-    window.installApp = () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(choiceResult => {
-          if (choiceResult.outcome === 'accepted') {
-            console.log('✅ App installed');
-          }
-          deferredPrompt = null;
-        });
-      }
-    };
-  </script>
+  <!-- PWA wiring (SW register + beforeinstallprompt + notification permission)
+       lives in app.js's DOMContentLoaded bootstrap, which keeps everything in
+       one place and avoids duplicate listeners. -->
 </body>
 </html>

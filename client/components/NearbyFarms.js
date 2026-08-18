@@ -29,7 +29,13 @@ function renderNearbyFarms(state, actions) {
 
         <!-- Interactive Map Placeholder -->
         <div class="relative h-72 sm:h-96 rounded-3xl overflow-hidden glass-card border border-emerald-500/20 shadow-xl bg-slate-900">
-          <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1200&q=80" class="w-full h-full object-cover opacity-40">
+          <img
+            src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=600&q=60"
+            srcset="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=400&q=55 400w, https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=65 800w"
+            sizes="(max-width: 640px) 100vw, 80vw"
+            loading="lazy"
+            decoding="async"
+            class="w-full h-full object-cover opacity-40">
           <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/40"></div>
           <div class="absolute inset-0 flex items-center justify-center">
             <div class="text-center text-white max-w-sm px-6">

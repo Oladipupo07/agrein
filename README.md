@@ -1,195 +1,245 @@
-# Agrein 🌾
+# Agrein
 
-> **Connecting Farmers to Buyers, One Harvest at a Time.**
+Agrein is a full-stack agricultural marketplace prototype for connecting farmers, buyers, and admins in a single platform. The app is designed around direct farm-to-market trade in Nigeria, with farmer verification, produce listing, order checkout, escrow-style payment flows, and AI-assisted market insights.
 
-Agrein is a modern agricultural marketplace platform designed to bridge the gap between farmers and consumers/bulk buyers across Africa. The platform enables farmers to showcase and sell their agricultural produce directly to buyers at fair market prices, while providing buyers with transparent access to organic, freshly harvested crops backed by escrow protection and temperature-controlled logistics.
+This repo contains:
+- a static frontend SPA served from the project root
+- a Node.js + Express API in the `server/` folder
+- Supabase/PostgreSQL-ready database schema in `database/schema.sql`
+- PWA metadata, deployment config, and demo marketplace logic
 
----
+## Overview
 
-## 💳 Payment Integration
+Agrein includes:
+- product browsing and catalog filtering
+- buyer cart and checkout flow
+- farmer dashboard for listings and sales
+- admin verification and moderation screens
+- role-based access to dashboards
+- OTP-based authentication
+- Interswitch payment integration hooks
+- AI price prediction and agronomy diagnosis interfaces
+- logistics, cooperative, traceability, and wallet modules
 
-Agrein uses **Interswitch** as its primary payment gateway to provide secure and seamless transactions between buyers and farmers.
+## Tech stack
 
-### Supported Payment Methods
-* **Debit/Credit Cards**: Verve, Visa, Mastercard
-* **Bank Transfers**: Direct Interswitch Bank Settlement
-* **USSD Payments**: USSD shortcodes across major Nigerian banks (*737#, *901#, *894#, etc.)
-* **QR Payments**: Quickteller QR code scan
-* **Verve Cards**: Full native Verve card support
+- Frontend: HTML, JavaScript, Tailwind CSS
+- Backend: Node.js, Express
+- Database: PostgreSQL / Supabase
+- Auth: JWT + email OTP flow
+- Payments: Interswitch integration utilities
+- Email: Brevo API with SMTP fallback
+- Deployment: Render config included in `render.yaml`
 
-### Interswitch Authentication Mechanisms
-Agrein supports both Interswitch authentication protocols:
-
-1. **OAuth 2.0 Authentication (Passport API)**:
-   - Concatenates `CLIENT_ID:SECRET_KEY` and encodes into Base64 format.
-   - Obtains Bearer Access Token via `POST /passport/oauth/token?grant_type=client_credentials` header `Authorization: Basic <Base64>`.
-   - Attaches `Authorization: Bearer <access_token>` to all transaction & re-query endpoints.
-
-2. **InterswitchAuth (Legacy HMAC Signatures)**:
-   - Calculates request `Nonce` (32-char hex string) and `Timestamp` (Unix epoch seconds).
-   - Base64 encodes `CLIENT_ID` for header `Authorization: InterswitchAuth <Base64(CLIENT_ID)>`.
-   - Computes SHA-1 Signature: `SHA1(httpMethod & urlencode(endpoint) & timestamp & nonce & clientId & secretKey)`.
-   - Attaches `SignatureMethod: SHA1`, `Signature`, `Nonce`, and `Timestamp` headers.
-
-### Payment Flow
-```
-Buyer ──► Adds Products to Cart ──► Checkout ──► Interswitch Gateway (OAuth 2.0 / InterswitchAuth) ──► Payment Verification ──► Order Confirmation ──► Farmer Receives Notification ──► Delivery Process Begins
-```
-
----
-
-## 🌟 Key Features
-
-### 🚜 Farmer Features
-* **User & Profile Management**: Complete farmer onboarding with farm location, size in hectares, and bank verification.
-* **Product Listing & Management**: List crops with unit pricing (kg, bag, tuber, ton), harvest date, organic tags, and available inventory.
-* **Sales Analytics & Revenue Dashboard**: Track monthly revenue trends, active listings, and escrow clearances.
-* **Interswitch Instant Withdrawals**: Directly request payouts to local bank accounts with full transaction history.
-* **AI Price Advisor**: Receive AI-driven recommendations on whether to hold crop inventory or sell based on seasonal demand forecasts.
-
-### 🛒 Buyer Features
-* **Interactive Marketplace Catalog**: Search, filter by state, category, or organic verification status.
-* **Dynamic Cart & Order Calculator**: Automatically compute produce subtotal and coldchain freight fees.
-* **Interswitch Payment Gateway**: Securely check out using Card (Verve/Visa/Mastercard), Bank Transfer, USSD, or QR code under 256-bit SSL encryption with 100% Escrow Protection.
-* **Live Order & ColdChain Tracking**: Real-time 5-stage progress timeline (Order Placed -> Farm Quality Packaging -> Dispatched -> In Transit -> Delivered) with direct driver contact.
-* **Wishlist & Re-ordering**: Save favorite harvests and re-order in one click.
-
-### 🛡️ Admin Features
-* **Platform GMV & Analytics**: Monitor platform sales metrics across 36 states.
-* **Farmer Verification Queue**: Audit and verify smallholder farmer identities and farm land sizes.
-* **Escrow Dispute Center**: Resolve buyer-seller disputes with hold and release escrow controls.
-
-### 🤖 AI & Future Innovations
-* **AI Crop Price Predictor**: Forecast crop commodity prices up to 6 months out with a 94%+ confidence score.
-* **Geospatial Farm Finder**: Map local farms nearby with active crop inventory.
-* **Buyer-Farmer Direct Chat**: In-app messaging for contract negotiations.
-
----
-
-## 🏗️ Tech Stack
-
-| Category | Technology |
-|---|---|
-| **Frontend** | HTML5, JavaScript (ES6+), Tailwind CSS v3, FontAwesome Icons |
-| **Backend** | Node.js, Express.js |
-| **Database** | PostgreSQL / Supabase |
-| **Authentication** | Supabase Auth / JWT |
-| **Primary Payment Gateway** | Interswitch Webpay |
-| **Logistics** | Agrein ColdChain Logistics API |
-
----
-
-## 📂 Project Structure
+## Project structure
 
 ```bash
-agrein/
+.
+├── app.js                     # main client-side app orchestrator
+├── index.html                 # SPA entry point and script loading
+├── manifest.json              # PWA manifest
+├── public/
+│   └── styles.css             # compiled Tailwind CSS
+├── src/
+│   ├── custom.css
+│   └── tailwind.css
 ├── client/
 │   ├── components/
-│   │   ├── Navbar.js             # Navigation, dark mode toggle, role portal switcher
-│   │   ├── Hero.js               # Tagline, CTAs, live market price ticker, stats
-│   │   ├── ProductCatalog.js     # Search, state filter, category tabs, harvest grid
-│   │   ├── ProductModal.js       # Detailed crop view, specs, dynamic price calculator
-│   │   ├── FarmerDashboard.js    # Revenue metrics, sales chart, inventory, withdrawals
-│   │   ├── BuyerDashboard.js     # Active ColdChain order tracker timeline, order history
-│   │   ├── AdminDashboard.js     # GMV analytics, farmer verification, dispute escrow
-│   │   ├── AIPredictor.js        # AI Crop Price Forecasting engine
-│   │   ├── NearbyFarms.js        # Geospatial farm discovery tool
-│   │   ├── CheckoutModal.js      # Interswitch Webpay payment gateway simulator
-│   │   ├── ChatDrawer.js         # Buyer-Farmer messaging overlay
-│   │   ├── CartDrawer.js         # Slide-over procurement cart
-│   │   └── Footer.js             # Platform links, newsletter, compliance badges
-│   └── data/
-│       └── mockData.js           # Mock crop dataset, farmer & buyer profiles, market index
-│
+│   ├── data/
+│   └── utils/
 ├── server/
 │   ├── controllers/
-│   │   ├── productController.js  # CRUD endpoints for agricultural products
-│   │   ├── orderController.js    # Order processing & Interswitch initialization
-│   │   └── aiController.js       # Commodity price prediction endpoint
+│   ├── middleware/
 │   ├── routes/
-│   │   └── api.js                # Express API routes
 │   ├── utils/
-│   │   └── interswitch.js        # Interswitch Webpay helper methods
-│   ├── index.js                  # Main Express server file
-│   └── package.json              # Backend dependencies
-│
+│   ├── index.js               # Express app entry point
+│   └── package.json
 ├── database/
-│   └── schema.sql                # PostgreSQL database schema & Supabase RLS policies
-│
-├── index.html                    # Single Page Web App entry point
-├── styles.css                    # Design system, glassmorphic styles, custom dark mode
-├── app.js                        # Client state orchestrator & event handler
-└── README.md
+│   └── schema.sql             # database schema and related SQL
+├── render.yaml                # Render deployment config
+├── sw.js                      # service worker
+├── tailwind.config.js
+├── postcss.config.js
+├── robots.txt
+├── sitemap.xml
+├── README.md
+└── server.ps1
 ```
 
----
+## Features
 
-## 🚀 Quick Start & Local Setup
+### Buyer experience
+- catalog browsing with search and state/category filters
+- add-to-cart and checkout flow
+- wallet and order tracking screens
+- dispute management for order issues
+- secure payment flow using Interswitch hooks
 
-### 1. View Frontend Web Application
-Simply open `index.html` in any web browser or use a live server extension.
+### Farmer experience
+- profile and farm onboarding
+- product listing management
+- sales dashboard
+- verification workflow
+- trust score and approval status tracking
 
-### 2. Backend Server Setup
+### Admin experience
+- user directory and role filtering
+- farmer verification review
+- dispute resolution
+- account deletion queue and moderation tools
+
+### Business modules included
+- AI price prediction
+- crop health diagnosis
+- logistics partner view
+- cooperative marketplace
+- reverse RFQ/offer flow
+- traceability and QR batch references
+- subscription plans and digital wallet
+
+## Running locally
+
+### Prerequisites
+- Node.js 18+
+- npm
+- a Supabase project (optional for demo mode; some flows degrade gracefully without it)
+
+### 1. Install backend dependencies
+
 ```bash
-# Navigate to server directory
 cd server
-
-# Install dependencies
 npm install
-
-# Start development server
-npm run dev
 ```
 
----
+### 2. Create environment variables
 
-## 💳 Interswitch Payment Gateway Setup
+Create a `server/.env` file with the variables below:
 
-Set your Interswitch merchant credentials in `server/.env`:
 ```env
-INTERSWITCH_MERCHANT_CODE=MX104928
-INTERSWITCH_PAY_ITEM_ID=101
-INTERSWITCH_SECRET_KEY=your_interswitch_secret_key
-INTERSWITCH_ENV=test
 PORT=5000
-```
+JWT_SECRET=your_jwt_secret
+DATABASE_URL=your_postgres_connection_string
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
-The server initializes transactions using Interswitch Webpay collections and verifies payments against Interswitch Re-query APIs.
+INTERSWITCH_ENV=sandbox
+INTERSWITCH_MERCHANT_CODE=your_merchant_code
+INTERSWITCH_PAY_ITEM_ID=your_pay_item_id
+INTERSWITCH_CLIENT_ID=your_client_id
+INTERSWITCH_SECRET_KEY=your_secret_key
 
----
-
-## 📧 Transactional Email (OTP Delivery)
-
-The registration and password-reset flows send a 6-digit OTP code to the user's email.
-
-### Production / Render (recommended)
-Agrein uses [Brevo](https://www.brevo.com) for transactional email. Brevo's HTTPS API listens on port 443, which **Render's free tier does not block** — unlike SMTP ports 25/465/587, which is why Gmail SMTP "works locally but never delivers on Render".
-
-Sign up at https://app.brevo.com, get an API key at **Settings → SMTP & API → API Keys**, then:
-```env
-BREVO_API_KEY=xkeysib-...
-MAIL_FROM_ADDRESS=akobeoladipupo@gmail.com
+BREVO_API_KEY=your_brevo_api_key
+MAIL_FROM_ADDRESS=your@email.com
 MAIL_FROM_NAME=Agrein Market
 ```
 
-Free tier: 300 emails / day.
+> The app reads these variables in the backend at runtime. If some keys are missing, the server still starts in a demo-friendly mode, but payment or database-backed flows may behave differently.
 
-### Local Development Fallback
-For local dev, Gmail SMTP via App Passwords still works (no Render network restrictions). The mailer auto-detects which path is configured.
+### 3. Start the backend
 
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=465
-SMTP_USER=akobeoladipupo@gmail.com
-SMTP_PASS=your_gmail_app_password
+```bash
+cd server
+npm run dev
 ```
 
-Generate a Gmail App Password at https://myaccount.google.com/apppasswords (requires 2-Step Verification on the Gmail account).
+The Express app will serve the frontend root and expose the API under `/api`.
 
----
+### 4. Open the app
 
-## 📜 License
+Open this in a browser:
 
-This project is licensed under the [MIT License](LICENSE).
+```text
+http://localhost:5000/
+```
 
-Built with ❤️ to empower smallholder farmers and transform agricultural commerce across Africa.
+The backend serves static assets from the project root, so the frontend is accessible via the same app server.
+
+## Available scripts
+
+From `server/`:
+
+```bash
+npm run dev
+npm run build
+npm start
+```
+
+`npm run build` compiles the Tailwind styles into `public/styles.css`.
+
+## API status
+
+The backend exposes a health check at:
+
+```text
+http://localhost:5000/api/status
+```
+
+Example response:
+
+```json
+{
+  "status": "online",
+  "name": "Agrein Marketplace API",
+  "version": "1.0.0",
+  "tagline": "Connecting Farmers to Buyers, One Harvest at a Time."
+}
+```
+
+## Authentication and user flow
+
+The app uses a JWT-based backend flow with OTP email verification for registration and password resets.
+
+Routes include:
+- `/api/auth/register`
+- `/api/auth/login`
+- `/api/auth/verify-otp`
+- `/api/auth/resend-otp`
+- `/api/auth/forgot-password`
+- `/api/auth/reset-password`
+- `/api/auth/change-password`
+
+The role system includes:
+- `BUYER`
+- `FARMER`
+- `ADMIN`
+
+## Database and persistence
+
+The project includes a comprehensive SQL schema in `database/schema.sql` for:
+- profiles
+- farmer profiles
+- farmer verification records
+- wallet and transaction tables
+- orders and products
+- RFQs and bids
+- dispute records
+- notifications
+- chat message tables
+
+The app is built to use Supabase in production, while also keeping a local fallback data layer in the backend for demo or offline-friendly usage.
+
+## Deployment
+
+A Render deployment configuration is already provided in `render.yaml`.
+
+Key runtime settings include:
+- Node runtime
+- backend root at `server/`
+- `PORT=10000`
+- production environment variables for JWT, Supabase, Interswitch, and Brevo
+- health check at `/api/status`
+
+## Notes
+
+- This project is a product/demo-oriented marketplace frontend and backend scaffold rather than a strict enterprise monorepo.
+- A number of sections are intentionally UI-driven and rely on demo data or mock state for presentation.
+- Payment, verification, and database-backed features are wired to real external services when keys are configured.
+
+## License
+
+This project is distributed under the MIT license.
+
+## Project intent
+
+Agrein is intended to show a realistic agricultural commerce experience for Nigerian smallholder farmers and buyers, with a focus on trust, traceability, sell-through efficiency, and digital financial access.

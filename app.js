@@ -93,6 +93,13 @@ const state = {
   scrollY: 0,              // last scroll position; reserved for v2 top-bar compress
   sellSheetOpen: false,    // raised Sell button opens this bottom sheet
 
+  // PWA install / update / offline state
+  isOnline: typeof navigator === 'undefined' ? true : navigator.onLine,
+  showIosInstallHint: false,
+  showAndroidInstallPrompt: false,
+  swUpdateAvailable: false,
+  pwaHintDismissed: false
+
   // Document Upload Progress Tracking
   documentUploads: {}, // { 'government_id': { progress: 45, fileName: 'id.pdf', isUploading: true }, ... }
 
@@ -1918,6 +1925,65 @@ const actions = {
 
   // ===== end ACCOUNT SETTINGS / DELETION =====
 
+  updateUserProfile(profileData) {
+    if (!state.currentUser) {
+      actions.openAuthModal('login');
+      return;
+    }
+
+    const payload = {
+      fullName: String(profileData.fullName || state.currentUser.full_name || '').trim(),
+      phone: String(profileData.phone || '').trim(),
+      state: String(profileData.state || '').trim(),
+      lga: String(profileData.lga || '').trim(),
+      city: String(profileData.city || '').trim(),
+      address: String(profileData.address || '').trim(),
+      marketingConsent: typeof profileData.marketingConsent === 'boolean' ? profileData.marketingConsent : Boolean(profileData.marketingConsent)
+    };
+
+    if (!payload.fullName) {
+      actions.triggerToast('❌ Full name is required.');
+      return;
+    }
+
+    fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-email': state.currentUser.email
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json().then(body => ({ status: res.status, body })))
+    .then(({ status, body }) => {
+      if (status === 200 && body.success) {
+        const updatedUser = body.user || {};
+        state.currentUser = {
+          ...state.currentUser,
+          full_name: updatedUser.full_name || payload.fullName,
+          phone_number: updatedUser.phone_number || payload.phone,
+          state: updatedUser.state || payload.state,
+          lga: updatedUser.lga || payload.lga,
+          city: updatedUser.city || payload.city,
+          address: updatedUser.address || payload.address,
+          updated_at: updatedUser.updated_at || new Date().toISOString()
+        };
+
+        try {
+          localStorage.setItem('agrein_user_session', JSON.stringify(state.currentUser));
+        } catch (e) {}
+
+        actions.triggerToast('✅ Profile updated successfully.');
+        renderApp();
+      } else {
+        actions.triggerToast(`❌ ${body.message || 'Could not update profile.'}`);
+      }
+    })
+    .catch(() => {
+      actions.triggerToast('❌ Could not reach the server. Check your connection and try again.');
+    });
+  },
+
   submitChangePassword(currentPassword, newPassword, confirmPassword) {
     if (!state.currentUser) {
       actions.triggerToast('❌ You must be logged in to change your password.');
@@ -2219,6 +2285,71 @@ const actions = {
       state.toastMessage = null;
       renderApp();
     }, 3500);
+  },
+
+  // ── PWA: install / offline / service-worker update ──
+  // These helpers are the seam between the SW, the network state, and the UI.
+  // They keep their logic in one place so the renderers stay simple.
+
+  // Toggle the offline ribbon. Wired to navigator.onLine at startup and to
+  // 'online' / 'offline' window events from _pwaInit().
+  setOnlineStatus(online) {
+    if (state.isOnline === online) return;
+    state.isOnline = online;
+    renderApp();
+  },
+
+  // iOS path — Safari never fires beforeinstallprompt. We show our own sheet.
+  showIosInstallHint() {
+    if (state.pwaHintDismissed) return;
+    state.showIosInstallHint = true;
+    renderApp();
+  },
+
+  // Android path — uses the deferredPrompt the browser stashed in
+  // window._agreinInstallPrompt via _pwaInit().
+  showAndroidInstallPrompt() {
+    if (state.pwaHintDismissed) return;
+    if (!window._agreinInstallPrompt) return;
+    state.showAndroidInstallPrompt = true;
+    renderApp();
+  },
+
+  dismissPwaHint() {
+    state.pwaHintDismissed = true;
+    state.showIosInstallHint = false;
+    state.showAndroidInstallPrompt = false;
+    try { localStorage.setItem('agrein_pwa_hint_dismissed', '1'); } catch (e) {}
+    renderApp();
+  },
+
+  promptAndroidInstall() {
+    const prompt = window._agreinInstallPrompt;
+    state.showAndroidInstallPrompt = false;
+    if (!prompt) {
+      renderApp();
+      return;
+    }
+    prompt.prompt();
+    prompt.userChoice.then(choice => {
+      try {
+        if (choice && choice.outcome === 'accepted') {
+          actions.triggerToast('✅ Agrein installed. Open it from your home screen.');
+        }
+      } catch (e) {}
+      window._agreinInstallPrompt = null;
+      renderApp();
+    }).catch(() => { renderApp(); });
+  },
+
+  applySwUpdate() {
+    // Hard reload to swap to the new SW's cached bundles
+    window.location.reload();
+  },
+
+  dismissSwUpdate() {
+    state.swUpdateAvailable = false;
+    renderApp();
   }
 };
 
@@ -2374,6 +2505,11 @@ function renderApp() {
       ${renderAdminActionModal(state, actions)}
       ${renderAddProductModal(state, actions)}
       ${renderWithdrawalModal(state, actions)}
+
+      <!-- PWA banners: offline ribbon, iOS install sheet, Android install sheet, SW-update toast -->
+      ${typeof renderOfflineRibbon === 'function' ? renderOfflineRibbon(state) : ''}
+      ${typeof renderPwaInstallSheet === 'function' ? renderPwaInstallSheet(state, actions) : ''}
+      ${typeof renderSwUpdateToast === 'function' ? renderSwUpdateToast(state, actions) : ''}
 
       <!-- Footer (hidden for locked farmers — standalone onboarding page) -->
       ${state.isFarmerLocked() ? '' : renderFooter(state, actions)}
@@ -2667,6 +2803,115 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(() => {});
 
   actions.fetchRegisteredUsers();
+
+  // ──────────────────────────────────────────────────────────
+  // PWA bootstrap: service-worker updates, online/offline
+  // detection, iOS-vs-Android install affordances.
+  // ──────────────────────────────────────────────────────────
+
+  // Restore the user's "don't show the install hint again" choice.
+  try {
+    if (localStorage.getItem('agrein_pwa_hint_dismissed') === '1') {
+      state.pwaHintDismissed = true;
+    }
+  } catch (e) {}
+
+  // Track online/offline so the offline ribbon appears and disappears.
+  state.isOnline = navigator.onLine;
+  window.addEventListener('online', () => actions.setOnlineStatus(true));
+  window.addEventListener('offline', () => actions.setOnlineStatus(false));
+
+  // Service-worker lifecycle. Register first (no-op if already registered),
+  // then attach update listeners so we can surface a toast on a fresh deploy.
+  // Without the register() call, first-time visitors never get a SW.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(registration => {
+      // If a new SW is already waiting on first load (e.g. fresh deploy + reload),
+      // prompt the user to reload into the fresh cached bundle.
+
+      const promptWaiting = () => {
+        if (registration.waiting) {
+          state.swUpdateAvailable = true;
+          renderApp();
+        }
+      };
+
+      // SW already waiting on first load (e.g. fresh deploy + reload).
+      promptWaiting();
+
+      // SW registered but not yet controlling this page — claim it.
+      if (registration.active && !navigator.serviceWorker.controller) {
+        registration.update();
+      }
+
+      // On any subsequent update, wait for the new worker.
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            promptWaiting();
+          }
+        });
+      });
+
+      // When the controller flips (new SW took over), trigger an automatic
+      // update on next reload via a one-shot flag.
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.__AGREIN_SW_UPDATED__ = true;
+      });
+
+      // Check for updates once per page life + on visibility return.
+      registration.update().catch(() => {});
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) registration.update().catch(() => {});
+      });
+    }).catch(() => {});
+
+    // Listen for SW messages — currently only SKIP_WAITING acknowledgements.
+    navigator.serviceWorker.addEventListener('message', event => {
+      if (event && event.data && event.data.type === 'SW_UPDATED') {
+        state.swUpdateAvailable = true;
+        renderApp();
+      }
+    });
+  }
+
+  // Android install: stash the deferredPrompt so a button can fire it later.
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    window._agreinInstallPrompt = event;
+  });
+
+  // Already-running standalone app (user already installed) — no hint needed.
+  const isAlreadyInstalled =
+    window.matchMedia && window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  // iOS detection: iPhone/iPad/iPod, but NOT already installed in standalone.
+  const isIosLike = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPad 13+
+  if (isIosLike && !isAlreadyInstalled && !state.pwaHintDismissed) {
+    // Show the iOS hint after a short delay so it doesn't hijack first-render.
+    setTimeout(() => { actions.showIosInstallHint(); }, 4000);
+  }
+
+  // Surface an "Install App" affordance in the Android UI when the browser
+  // has actually given us a prompt. We just expose a global helper so any
+  // future button or onboarding step can call it.
+  window.installAgreinApp = () => {
+    if (isAlreadyInstalled) {
+      actions.triggerToast('✅ Agrein is already installed on this device.');
+      return;
+    }
+    if (window._agreinInstallPrompt) {
+      actions.showAndroidInstallPrompt();
+    } else if (isIosLike) {
+      actions.showIosInstallHint();
+    } else {
+      actions.triggerToast('📲 Use your browser menu to install Agrein to your home screen.');
+    }
+  };
 });
 
 // Live Crop Listing Modal Component

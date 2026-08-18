@@ -706,6 +706,48 @@ const authController = {
     }
   },
 
+  // Authenticated profile update — caller identified by x-user-email header
+  async updateProfile(req, res) {
+    try {
+      const { fullName, phone, state, lga, city, address, marketingConsent } = req.body || {};
+      const email = (req.user && req.user.email) || (req.headers['x-user-email'] || '').toLowerCase();
+      if (!email) {
+        return res.status(401).json({ success: false, message: 'Authentication required.' });
+      }
+
+      const user = registeredUsers.find(u => u.email.toLowerCase() === email);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'Account not found.' });
+      }
+
+      const nextFullName = (fullName || user.full_name || '').trim();
+      if (!nextFullName) {
+        return res.status(400).json({ success: false, message: 'Full name is required.' });
+      }
+
+      user.full_name = nextFullName;
+      user.phone_number = phone || user.phone_number || '';
+      user.state = state || user.state || '';
+      user.lga = lga || user.lga || '';
+      user.city = city || user.city || '';
+      user.address = address || user.address || '';
+      if (typeof marketingConsent !== 'undefined') {
+        user.marketing_consent = Boolean(marketingConsent === true || marketingConsent === 'true' || marketingConsent === 'yes' || marketingConsent === 'YES' || marketingConsent === 1 || marketingConsent === '1');
+      }
+      user.updated_at = new Date().toISOString();
+
+      syncUserToDb(user);
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully.',
+        user: toClientUser(user)
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
   // Authenticated password change — caller identified by x-user-email header
   async changePassword(req, res) {
     try {

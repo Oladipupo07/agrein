@@ -110,6 +110,76 @@ function renderAccountSettings(state, actions) {
           </div>
         </div>
 
+        <!-- Profile Details Panel -->
+        <div class="glass-card rounded-3xl p-6 sm:p-8 space-y-4">
+          <h2 class="text-sm font-heading font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+            <i class="fa-solid fa-user-pen text-emerald-500 mr-1"></i> Profile Details
+          </h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="block text-[11px] font-bold uppercase tracking-wide text-gray-500">
+              Full Name
+              <input id="accountFullName" value="${(user.full_name || '').replace(/"/g, '&quot;')}" class="mt-1 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500" />
+            </label>
+            <label class="block text-[11px] font-bold uppercase tracking-wide text-gray-500">
+              Phone Number
+              <input id="accountPhone" value="${(user.phone_number || '').replace(/"/g, '&quot;')}" class="mt-1 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500" />
+            </label>
+            <label class="block text-[11px] font-bold uppercase tracking-wide text-gray-500">
+              State
+              <input id="accountState" value="${(user.state || '').replace(/"/g, '&quot;')}" class="mt-1 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500" />
+            </label>
+            <label class="block text-[11px] font-bold uppercase tracking-wide text-gray-500">
+              LGA
+              <input id="accountLga" value="${(user.lga || '').replace(/"/g, '&quot;')}" class="mt-1 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500" />
+            </label>
+            <label class="block text-[11px] font-bold uppercase tracking-wide text-gray-500 sm:col-span-2">
+              City
+              <input id="accountCity" value="${(user.city || '').replace(/"/g, '&quot;')}" class="mt-1 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500" />
+            </label>
+            <label class="block text-[11px] font-bold uppercase tracking-wide text-gray-500 sm:col-span-2">
+              Address
+              <textarea id="accountAddress" rows="3" class="mt-1 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">${(user.address || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+            </label>
+          </div>
+          <div class="flex justify-end">
+            <button onclick="actions.updateUserProfile({ fullName: document.getElementById('accountFullName').value, phone: document.getElementById('accountPhone').value, state: document.getElementById('accountState').value, lga: document.getElementById('accountLga').value, city: document.getElementById('accountCity').value, address: document.getElementById('accountAddress').value })" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white text-xs font-extrabold shadow-md transition-all">
+              Save Changes
+            </button>
+          </div>
+        </div>
+
+        <!-- Marketing Communications Panel -->
+        <div class="glass-card rounded-3xl p-6 sm:p-8 space-y-4">
+          <h2 class="text-sm font-heading font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+            <i class="fa-solid fa-bullhorn text-emerald-500 mr-1"></i> Marketing &amp; Promotional Communications
+          </h2>
+          <div class="space-y-3">
+            <p class="text-xs text-gray-500">Select whether we may send you marketing or promotional communications.</p>
+            <div class="flex flex-col sm:flex-row gap-3">
+              <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200">
+                <input id="marketingConsentYes" type="radio" name="marketingConsent" value="yes" ${user.marketing_consent ? 'checked' : ''} />
+                <span>Yes</span>
+              </label>
+              <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200">
+                <input id="marketingConsentNo" type="radio" name="marketingConsent" value="no" ${!user.marketing_consent ? 'checked' : ''} />
+                <span>No</span>
+              </label>
+            </div>
+            <div class="rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-[11px] text-amber-900 dark:text-amber-200">
+              <div class="font-extrabold mb-1">How users can unsubscribe</div>
+              <ul class="list-disc pl-4 space-y-1">
+                <li>Click the unsubscribe link at the bottom of our marketing emails.</li>
+                <li>Text “STOP” or “UNSUBSCRIBE” to opt out of promotional messages.</li>
+              </ul>
+            </div>
+            <div class="flex justify-end">
+              <button onclick="actions.updateUserProfile({ fullName: document.getElementById('accountFullName').value, phone: document.getElementById('accountPhone').value, state: document.getElementById('accountState').value, lga: document.getElementById('accountLga').value, city: document.getElementById('accountCity').value, address: document.getElementById('accountAddress').value, marketingConsent: document.getElementById('marketingConsentYes').checked })" class="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold shadow-md transition-all">
+                Save Consent
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Security Panel -->
         <div class="glass-card rounded-3xl p-6 sm:p-8 space-y-4">
           <h2 class="text-sm font-heading font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
