@@ -74,6 +74,10 @@ router.delete('/products/:id', authenticateToken, requireApprovedFarmer, product
 
 // ===== ORDER & PAYMENT =====
 router.post('/orders', authenticateToken, orderController.createOrder);
+router.post('/orders/payment-response', orderController.handlePaymentResponse);
+router.get('/orders/payment-response', orderController.handlePaymentResponse);
+router.post('/payment/callback', orderController.handlePaymentResponse);
+router.get('/payment/callback', orderController.handlePaymentResponse);
 router.get('/orders/verify/:reference/:amount', orderController.verifyOrderPayment);
 router.get('/orders/list', authenticateToken, orderController.listOrders);
 

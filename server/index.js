@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Serve compiled CSS from public/ first (overrides any repo-root styles.css)
 app.use(express.static(path.join(__dirname, '..', 'public')));

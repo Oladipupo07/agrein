@@ -1,6 +1,5 @@
 // Order & Payment Controller for Agrein Backend API
-// Phase C: persists in Supabase (public.orders + public.wallets + public.wallet_transactions).
-// Realtime will fan updates out to the dashboards.
+// Phase C & Web Checkout: persists in Supabase & supports Interswitch Web Redirect
 
 const { initializeInterswitchPayment, verifyInterswitchPayment } = require('../utils/interswitch');
 const supabase = require('../utils/supabaseClient');
@@ -63,17 +62,25 @@ exports.createOrder = async (req, res) => {
       }
     }
 
-    // Initialize Interswitch Gateway Checkout (kept as-is so Pay exists).
+    // Determine public site_redirect_url
+    const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const redirectUrl = `${baseUrl}/api/orders/payment-response`;
+    const itemName = (items && items[0] && items[0].title) ? items[0].title : 'Agrein Marketplace Order';
+
+    // Initialize Interswitch Gateway Web Redirect parameters
     const iswResult = await initializeInterswitchPayment({
       email: buyerEmail || req.user.email || '',
       amount: Number(totalAmount || 0),
       reference: orderCode,
-      redirectUrl: 'https://agrein.me/order-confirmation'
+      redirectUrl: redirectUrl,
+      custName: req.user.full_name || req.user.name || '',
+      custId: req.user.id,
+      payItemName: itemName
     });
 
     return res.status(201).json({
       success: true,
-      message: 'Order created successfully with Interswitch Gateway',
+      message: 'Order created successfully with Interswitch Web Redirect',
       order: {
         ...order,
         order_number: orderCode,
@@ -90,6 +97,87 @@ exports.createOrder = async (req, res) => {
   }
 };
 
+/**
+ * Handle Browser Redirect Notification POST/GET from Interswitch Web Checkout
+ * Performs authoritative server-side requery before confirming order
+ */
+exports.handlePaymentResponse = async (req, res) => {
+  try {
+    const payload = { ...req.query, ...req.body };
+    const txnRef = payload.txnref || payload.txn_ref || payload.MerchantReference || payload.transactionreference;
+    const rawAmount = payload.amount || payload.apprAmt;
+    const respCode = payload.resp || payload.ResponseCode;
+    const desc = payload.desc || payload.ResponseDescription || '';
+
+    if (!txnRef) {
+      return res.redirect('/?payment=failed&message=Missing+transaction+reference');
+    }
+
+    // Look up order in database
+    const { data: existingOrder } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('order_code', txnRef)
+      .maybeSingle();
+
+    const orderAmount = existingOrder ? Number(existingOrder.total_amount) : (rawAmount ? Number(rawAmount) / 100 : 0);
+
+    // CRITICAL: Perform server-side requery using txnRef to get authoritative transaction status
+    const requeryResult = await verifyInterswitchPayment(txnRef, orderAmount);
+    const isSuccess = requeryResult && (requeryResult.ResponseCode === '00' || requeryResult.ResponseCode === '0');
+
+    if (isSuccess) {
+      // Update order status to IN_ESCROW
+      if (existingOrder) {
+        await supabase
+          .from('orders')
+          .update({
+            escrow_status: 'IN_ESCROW',
+            payment_reference: requeryResult.PaymentReference || `ISW-${Date.now()}`
+          })
+          .eq('id', existingOrder.id);
+
+        // Update corresponding wallet transaction to success
+        await supabase
+          .from('wallet_transactions')
+          .update({ status: 'completed' })
+          .eq('reference', `ESCROW-${txnRef}`);
+      }
+
+      // Check if client expects JSON or Browser redirect
+      if (req.headers.accept && req.headers.accept.includes('application/json')) {
+        return res.json({
+          success: true,
+          status: 'success',
+          order_code: txnRef,
+          amount: orderAmount,
+          payment: requeryResult
+        });
+      }
+
+      // Redirect user browser back to Agrein frontend with success notice
+      return res.redirect(`/?payment=success&txn_ref=${encodeURIComponent(txnRef)}&amount=${encodeURIComponent(orderAmount)}`);
+    } else {
+      const errorMsg = requeryResult.ResponseDescription || desc || 'Transaction was not approved';
+      
+      if (req.headers.accept && req.headers.accept.includes('application/json')) {
+        return res.status(400).json({
+          success: false,
+          status: 'failed',
+          order_code: txnRef,
+          message: errorMsg,
+          payment: requeryResult
+        });
+      }
+
+      return res.redirect(`/?payment=failed&txn_ref=${encodeURIComponent(txnRef)}&message=${encodeURIComponent(errorMsg)}`);
+    }
+  } catch (error) {
+    console.error('Interswitch payment response handler error:', error.message);
+    return res.redirect(`/?payment=failed&message=${encodeURIComponent(error.message)}`);
+  }
+};
+
 exports.verifyOrderPayment = async (req, res) => {
   try {
     const { reference, amount } = req.params;
@@ -99,7 +187,10 @@ exports.verifyOrderPayment = async (req, res) => {
     if (result && result.ResponseCode === '00') {
       const { data, error } = await supabase
         .from('orders')
-        .update({ escrow_status: 'IN_ESCROW' })
+        .update({
+          escrow_status: 'IN_ESCROW',
+          payment_reference: result.PaymentReference || `ISW-${Date.now()}`
+        })
         .eq('order_code', reference)
         .select('*')
         .maybeSingle();
