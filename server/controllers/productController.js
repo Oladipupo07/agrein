@@ -6,12 +6,17 @@ const supabase = require('../utils/supabaseClient');
 
 // List products. Default scope: marketplace-facing ("is_active = true") so the
 // catalog reflects only what buyers can see.
-// True when Supabase reports the join can't be resolved (no FK in schema cache).
-// We fall back to two separate queries rather than 500-ing the marketplace.
+// True when the embedded join can't be resolved (no FK in schema cache,
+// PostgREST permission flip after a constraint was added, etc.). We fall
+// back to two separate queries rather than 500-ing the marketplace.
+//
+// IMPORTANT: when in doubt, fall through. The join is an optimization; the
+// separate-query path always works as long as the service_role can read
+// `products` and `product_quality_details` directly.
 function isRelationshipError(err) {
   if (!err) return false;
   const msg = (err.message || '') + ' ' + (err.details || '') + ' ' + (err.hint || '');
-  return /relationship|schema cache|could not find/i.test(msg);
+  return /relationship|schema cache|could not find|permission denied|permission_denied|42501|42P01/i.test(msg);
 }
 
 exports.getAllProducts = async (req, res) => {
@@ -33,7 +38,12 @@ exports.getAllProducts = async (req, res) => {
       if (error) throw error;
       rows = data;
     } catch (e) {
-      if (!isRelationshipError(e)) throw e;
+      // Any failure on the embedded join falls through to the separate-query
+      // path. The join is an optimization; the fallback always works as long
+      // as the service_role can read the two tables directly. This guards
+      // against PostgREST schema-cache mismatches, FK regressions, and
+      // permission flips after constraint changes.
+      console.warn('[productController] joined select failed, falling back:', e && (e.message || e.code || e));
       joinedErr = e;
     }
 
