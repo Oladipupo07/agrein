@@ -3356,8 +3356,15 @@ window.__AGREIN_REALTIME_REFETCH__ = function (slice) {
         actions.refreshNearbyFarms();
       }
     } else if (slice === 'notifications' || slice === 'adminNotifications') {
-      // Future: surface a toast; for now just re-render.
-      renderApp();
+      // Debounce: Supabase fires multiple notification events as a fresh channel
+      // settles right after login. Without this, each event calls renderApp()
+      // → full innerHTML rebuild → visible page blink. Collapse a burst into
+      // a single re-render ~1.5s after the last event.
+      if (state._notifRenderTimer) clearTimeout(state._notifRenderTimer);
+      state._notifRenderTimer = setTimeout(() => {
+        state._notifRenderTimer = null;
+        renderApp();
+      }, 1500);
     }
   } catch (err) {
     console.warn('[realtime] slice', slice, 'failed:', err.message);
