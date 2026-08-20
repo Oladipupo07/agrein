@@ -45,6 +45,9 @@ router.post('/farmers/verification', authenticateToken, verificationController.s
 router.put('/farmers/verification', authenticateToken, verificationController.resubmitVerification);
 router.post('/farmers/documents', authenticateToken, verificationController.uploadDocuments);
 router.get('/farmers/verification/status', authenticateToken, verificationController.getVerificationStatus);
+// Public (by email) — used by the farmer verification-status polling loop
+// from non-admin sessions. Returns only verification_status + role, no PII.
+router.get('/farmers/verification-status-public', verificationController.getPublicVerificationStatus);
 router.post('/verification/verify-identity', verificationController.verifyFarmerIdentity);
 
 // ===== ADMIN VERIFICATION MANAGEMENT =====

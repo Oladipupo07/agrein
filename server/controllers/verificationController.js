@@ -100,6 +100,34 @@ const verificationController = {
     }
   },
 
+  // Public-by-email lookup used by the farmer verification-status polling
+  // loop. Returns ONLY the verification_status (and role) — no PII. This
+  // replaces the previous approach of calling /api/admin/users every 10s
+  // from a non-admin farmer, which 401'd on every poll.
+  async getPublicVerificationStatus(req, res) {
+    try {
+      const email = String((req.query && req.query.email) || '').trim().toLowerCase();
+      if (!email || !email.includes('@')) {
+        return res.status(400).json({ success: false, message: 'Valid email required.' });
+      }
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role, verification_status')
+        .eq('email', email)
+        .maybeSingle();
+      if (error) throw error;
+      if (!profile) return res.json({ success: true, found: false, verification_status: null });
+      return res.json({
+        success: true,
+        found: true,
+        role: (profile.role || '').toUpperCase(),
+        verification_status: profile.verification_status || 'NOT_STARTED'
+      });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  },
+
   async uploadDocuments(req, res) {
     try {
       if (!req.user || !req.user.id) return res.status(401).json({ success: false, message: 'Login required.' });

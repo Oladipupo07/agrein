@@ -599,30 +599,24 @@ const actions = {
         state._farmerVerifPollId = null;
         return;
       }
-      fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: state.currentUser.email, password: '__STATUS_CHECK__' })
-      }).catch(() => {});
-      // Also check via the users endpoint
-      fetch(`/api/admin/users?q=${encodeURIComponent(state.currentUser.email)}`)
+      // Poll the public status endpoint (no auth required; returns just
+      // verification_status). Replaces the previous /api/admin/users call
+      // which 401'd for every non-admin farmer.
+      fetch(`/api/farmers/verification-status-public?email=${encodeURIComponent(state.currentUser.email)}`)
         .then(r => r.json())
         .then(data => {
-          if (data && data.success && Array.isArray(data.users)) {
-            const me = data.users.find(u => u.email.toLowerCase() === state.currentUser.email.toLowerCase());
-            if (me && me.verification_status === 'APPROVED') {
-              state.currentUser.verification_status = 'APPROVED';
-              state.currentUser.is_verified = true;
-              try { localStorage.setItem('agrein_user_session', JSON.stringify(state.currentUser)); } catch (e) {}
-              clearInterval(state._farmerVerifPollId);
-              state._farmerVerifPollId = null;
-              actions.triggerToast('🎉 Your farm has been verified! Welcome to your Farmer Dashboard.');
-              // Auto-redirect after a small delay to show the toast
-              setTimeout(() => {
-                actions.setView('farmer-dashboard');
-                renderApp();
-              }, 800);
-            }
+          if (data && data.success && data.found && data.verification_status === 'APPROVED') {
+            state.currentUser.verification_status = 'APPROVED';
+            state.currentUser.is_verified = true;
+            try { localStorage.setItem('agrein_user_session', JSON.stringify(state.currentUser)); } catch (e) {}
+            clearInterval(state._farmerVerifPollId);
+            state._farmerVerifPollId = null;
+            actions.triggerToast('🎉 Your farm has been verified! Welcome to your Farmer Dashboard.');
+            // Auto-redirect after a small delay to show the toast
+            setTimeout(() => {
+              actions.setView('farmer-dashboard');
+              renderApp();
+            }, 800);
           }
         })
         .catch(() => {});
@@ -2974,18 +2968,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Sync live products and registered users from backend
+  // Sync live products from backend
   fetch('/api/products')
     .then(r => r.json())
     .then(data => {
-      if (data && data.success && Array.isArray(data.products) && data.products.length > 0) {
-        state.mockData.products = data.products;
+      // /api/products returns { success, count, data: [...] }
+      if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+        state.mockData.products = data.data;
         renderApp();
       }
     })
     .catch(() => {});
 
-  actions.fetchRegisteredUsers();
+  // Admin directory is admin-only — skip the call for everyone else to keep
+  // the console clean (the endpoint 401s for non-admins).
+  if (state.currentUser && (state.currentUser.role || '').toUpperCase() === 'ADMIN') {
+    actions.fetchRegisteredUsers();
+  }
 
   // ──────────────────────────────────────────────────────────
   // PWA bootstrap: service-worker updates, online/offline

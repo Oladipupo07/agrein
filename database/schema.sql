@@ -115,6 +115,20 @@ CREATE TABLE IF NOT EXISTS public.product_quality_details (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- FK for PostgREST: enables the joined `products` + `product_quality_details`
+-- select used by /api/products. Without this relationship, embedded selects
+-- return "Could not find a relationship ... in the schema cache" (HTTP 500).
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'product_quality_details_product_id_fkey'
+    ) THEN
+        ALTER TABLE public.product_quality_details
+            ADD CONSTRAINT product_quality_details_product_id_fkey
+            FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE;
+    END IF;
+END$$;
+
 -- 8. Buyer Protection Disputes Table
 CREATE TABLE IF NOT EXISTS public.buyer_disputes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

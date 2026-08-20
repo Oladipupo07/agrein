@@ -6,22 +6,57 @@ const supabase = require('../utils/supabaseClient');
 
 // List products. Default scope: marketplace-facing ("is_active = true") so the
 // catalog reflects only what buyers can see.
+// True when Supabase reports the join can't be resolved (no FK in schema cache).
+// We fall back to two separate queries rather than 500-ing the marketplace.
+function isRelationshipError(err) {
+  if (!err) return false;
+  const msg = (err.message || '') + ' ' + (err.details || '') + ' ' + (err.hint || '');
+  return /relationship|schema cache|could not find/i.test(msg);
+}
+
 exports.getAllProducts = async (req, res) => {
   try {
     const { category, state, organic, search, owner } = req.query;
-    let query = supabase
-      .from('products')
-      .select('*, product_quality_details(*)');
+    const scopeFilter = (q) => (owner === 'me' && req.user && req.user.id)
+      ? q.eq('farmer_id', req.user.id)
+      : q.eq('is_active', true);
 
-    // Owner filter is used by the farmer dashboard to fetch "my products".
-    if (owner === 'me' && req.user && req.user.id) {
-      query = query.eq('farmer_id', req.user.id);
-    } else {
-      query = query.eq('is_active', true);
+    // Path 1: joined select (fast — single round-trip). Requires a FK from
+    // product_quality_details.product_id -> products.id in the schema cache.
+    let rows = null;
+    let joinedErr = null;
+    try {
+      const joinedQuery = scopeFilter(
+        supabase.from('products').select('*, product_quality_details(*)')
+      );
+      const { data, error } = await joinedQuery;
+      if (error) throw error;
+      rows = data;
+    } catch (e) {
+      if (!isRelationshipError(e)) throw e;
+      joinedErr = e;
     }
 
-    const { data: rows, error } = await query;
-    if (error) throw error;
+    // Path 2: fallback — separate queries merged in JS. Used until the FK
+    // relationship is added to the live DB (see database/schema.sql).
+    if (rows === null) {
+      console.warn('[productController] joined select unavailable, using fallback:', joinedErr && joinedErr.message);
+      const productsQuery = scopeFilter(supabase.from('products').select('*'));
+      const { data: prodRows, error: prodErr } = await productsQuery;
+      if (prodErr) throw prodErr;
+
+      const { data: qdRows, error: qdErr } = await supabase
+        .from('product_quality_details')
+        .select('*');
+      if (qdErr) throw qdErr;
+      const qdByProductId = new Map();
+      (qdRows || []).forEach((q) => qdByProductId.set(q.product_id, q));
+
+      rows = (prodRows || []).map((p) => ({
+        ...p,
+        product_quality_details: qdByProductId.get(p.id) ? [qdByProductId.get(p.id)] : []
+      }));
+    }
 
     // Normalize to the field names the client uses. The seed UI and the
     // dashboards read `title`, `farm_name`, `origin_state`, etc.
