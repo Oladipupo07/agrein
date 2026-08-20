@@ -26,7 +26,13 @@ body {
   overflow-x: hidden;
 }
 
-h1, h2, h3, h4, h5, h6, .font-heading {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-heading {
   font-family: var(--font-heading);
 }
 
@@ -92,8 +98,13 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 
 /* Ticker Scroll Animation */
 @keyframes ticker {
-  0% { transform: translate3d(0, 0, 0); }
-  100% { transform: translate3d(-50%, 0, 0); }
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
 }
 
 .animate-ticker {
@@ -121,6 +132,7 @@ h1, h2, h3, h4, h5, h6, .font-heading {
     opacity: 0;
     transform: translateY(20px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -136,40 +148,64 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.05);
 }
+
 .dark ::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.05);
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(16, 185, 129, 0.4);
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(4, 120, 87, 0.7);
 }
 
 /* Shimmer Loading Effect */
 .shimmer {
-  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 255, 255, 0) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 /* Hide scrollbar utility */
-.scrollbar-hide::-webkit-scrollbar { display: none; }
-.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
 
 /* Fade-in animation */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out forwards;
 }
@@ -185,26 +221,38 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   z-index: 1;
   pointer-events: none;
 }
+
 .ecosystem-nav-gradient::before {
   left: 0;
-  background: linear-gradient(to right, rgba(248,250,252,1) 0%, transparent 100%);
+  background: linear-gradient(to right, rgba(248, 250, 252, 1) 0%, transparent 100%);
 }
+
 .ecosystem-nav-gradient::after {
   right: 0;
-  background: linear-gradient(to left, rgba(248,250,252,1) 0%, transparent 100%);
+  background: linear-gradient(to left, rgba(248, 250, 252, 1) 0%, transparent 100%);
 }
+
 .dark .ecosystem-nav-gradient::before {
-  background: linear-gradient(to right, rgba(2,6,23,1) 0%, transparent 100%);
+  background: linear-gradient(to right, rgba(2, 6, 23, 1) 0%, transparent 100%);
 }
+
 .dark .ecosystem-nav-gradient::after {
-  background: linear-gradient(to left, rgba(2,6,23,1) 0%, transparent 100%);
+  background: linear-gradient(to left, rgba(2, 6, 23, 1) 0%, transparent 100%);
 }
 
 /* Progress bar animation */
 @keyframes progressPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
 }
+
 .animate-progress-pulse {
   animation: progressPulse 2s ease-in-out infinite;
 }
@@ -214,6 +262,7 @@ h1, h2, h3, h4, h5, h6, .font-heading {
    ============================================ */
 
 @media (max-width: 640px) {
+
   /* Force modals to full-screen on phones */
   .modal-fullscreen-mobile {
     border-radius: 0 !important;
@@ -253,15 +302,22 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 .safe-area-top {
   padding-top: env(safe-area-inset-top);
 }
+
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Mobile drawer slide-in animation */
 @keyframes drawerSlideIn {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
 }
+
 .animate-drawer {
   animation: drawerSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -272,14 +328,21 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 }
 
 /* Mobile top bar — smooth height transition (reserved for v2 compress-on-scroll) */
-.topbar { transition: height 200ms ease, padding 200ms ease; }
+.topbar {
+  transition: height 200ms ease, padding 200ms ease;
+}
 
 /* Bottom-sheet slide-up animation (used by sell sheet) */
 @keyframes sheetUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
+
 .animate-sheet-up {
   animation: sheetUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-
