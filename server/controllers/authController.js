@@ -3,7 +3,12 @@ const otpService = require('../utils/otpService');
 const passwordService = require('../utils/passwordService');
 const { UserDatabase } = require('../utils/userDatabase'); // ✅ Add persistent storage
 const jwt = require('jsonwebtoken');
-const { expiresIn } = require('../middleware/auth');
+
+// Inline the JWT expiry so this module doesn't depend on the middleware's
+// export shape. The middleware exports a function; some deploys have seen
+// `expiresIn is not a function` if that import was reshaped — keeping the
+// value here makes the contract local and unmissable.
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '12h';
 
 function mintToken(user) {
   return jwt.sign(
@@ -14,7 +19,7 @@ function mintToken(user) {
       vs: user.verification_status || 'APPROVED'
     },
     process.env.JWT_SECRET,
-    { expiresIn: expiresIn() }
+    { expiresIn: JWT_EXPIRES_IN }
   );
 }
 
