@@ -3378,12 +3378,15 @@ function _agreinRealtimeRefresh() {
   }
 }
 
-// Hook into renderApp so every view change re-arms subscriptions.
+// Hook into renderApp. IMPORTANT: do NOT call _agreinRealtimeRefresh() here.
+// Realtime teardown/resubscribe on every renderApp() call created a loop —
+// each toggle re-rendered → re-subscribed → fired a postgres_changes event →
+// re-rendered again, which looked like page blinking. The correct re-arm
+// points are login/logout (already covered by actions.logout teardown) and
+// actions.setView (see the patch below), not every render.
 const _origRenderApp = renderApp;
 renderApp = function () {
-  const ret = _origRenderApp.apply(this, arguments);
-  _agreinRealtimeRefresh();
-  return ret;
+  return _origRenderApp.apply(this, arguments);
 };
 
 // Patch logout so realtime tears down immediately.
