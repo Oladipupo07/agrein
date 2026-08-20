@@ -2448,10 +2448,18 @@ const actions = {
   },
 
   triggerToast(msg) {
+    // Avoid back-to-back re-renders. If the same toast is already on screen,
+    // reset the dismiss timer instead of re-painting the whole tree.
+    if (state._toastTimer) {
+      clearTimeout(state._toastTimer);
+      state._toastTimer = null;
+    }
+    const isNewToast = state.toastMessage !== msg;
     state.toastMessage = msg;
-    renderApp();
-    setTimeout(() => {
+    if (isNewToast) renderApp();
+    state._toastTimer = setTimeout(() => {
       state.toastMessage = null;
+      state._toastTimer = null;
       renderApp();
     }, 3500);
   },
@@ -2526,6 +2534,36 @@ const actions = {
 function renderApp() {
   const appContainer = document.getElementById('app');
   if (!appContainer) return;
+
+  // Coalesce rapid back-to-back renders. The full innerHTML rebuild below
+  // destroys and recreates every DOM node; on slow networks each rebuild
+  // produces a visible blink. When two renderApp() calls happen within
+  // ~16ms (one frame) AND produce the same surface-state key, skip the
+  // rebuild — the second call was a no-op. Real changes always escape
+  // the key, so user-visible state is never lost.
+  if (state._lastRenderKey === undefined) state._lastRenderKey = null;
+  if (state._lastRenderAt === undefined) state._lastRenderAt = 0;
+  const now = Date.now();
+  const renderKey = state.currentView + '|' +
+    (state.toastMessage || '') + '|' +
+    state.cartOpen + '|' + state.wishlistOpen + '|' +
+    state.mobileMenuOpen + '|' + state.cart.length + '|' +
+    state.wishlist.length + '|' + state.authModalActive + '|' +
+    state.authModalMode + '|' + state.checkoutModalActive + '|' +
+    (state.activeModalProductId || '') + '|' +
+    state.chatActive + '|' + state.disputeModalActive + '|' +
+    state.changePasswordModalActive + '|' + state.adminActionModalActive + '|' +
+    state.addProductModalActive + '|' + state.withdrawalModalActive + '|' +
+    state.interswitchCheckoutActive + '|' + state.sellSheetOpen + '|' +
+    state.navbarMenuOpen + '|' + state.showIosInstallHint + '|' +
+    state.showAndroidInstallPrompt + '|' + state.swUpdateAvailable + '|' +
+    (state.currentUser ? state.currentUser.id : '') + '|' +
+    (state.currentUser ? state.currentUser.role : '') + '|' +
+    (state.currentUser ? state.currentUser.verification_status : '') + '|' +
+    state.darkMode + '|' + (state.isFarmerLocked() ? '1' : '0');
+  if (renderKey === state._lastRenderKey && (now - state._lastRenderAt) < 50) return;
+  state._lastRenderKey = renderKey;
+  state._lastRenderAt = now;
 
   let bodyContent = '';
   switch (state.currentView) {
