@@ -297,6 +297,21 @@ function updateDocumentSEO(view) {
 }
 
 // Application Action Handlers
+
+// HTML-escape strings before they go into innerHTML. The app renders many
+// surfaces (toasts, error messages, server-validated form fields) by template
+// interpolation. Any backend-supplied string could otherwise carry `<script>`
+// or event-handler markup. Use this on every dynamic value that lands in HTML.
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const actions = {
   setView(view) {
     // ── FARMER VERIFICATION LOCK ──
@@ -318,9 +333,26 @@ const actions = {
       }
     } catch (e) {}
 
-    if (view === 'admin-dashboard') {
+    if (view === 'farmer-dashboard') {
+      if (typeof loadFarmerDashboard === 'function') loadFarmerDashboard(state, actions);
+    } else if (view === 'buyer-dashboard') {
+      if (typeof loadBuyerDashboard === 'function') loadBuyerDashboard(state, actions);
+    } else if (view === 'admin-dashboard') {
+      if (typeof loadAdminDashboard === 'function') loadAdminDashboard(state, actions);
       actions.fetchRegisteredUsers();
     }
+
+    if (view === 'farmer-verification' || view === 'farmer-pending-approval') {
+      if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
+        actions.startFarmerVerificationPolling();
+      }
+    } else {
+      if (state._farmerVerifPollId) {
+        clearInterval(state._farmerVerifPollId);
+        state._farmerVerifPollId = null;
+      }
+    }
+
     if (view === 'nearby-farms') {
       actions.refreshNearbyFarms();
       actions.startNearbyFarmsPolling();
@@ -2488,8 +2520,11 @@ const actions = {
       clearTimeout(state._toastTimer);
       state._toastTimer = null;
     }
-    const isNewToast = state.toastMessage !== msg;
-    state.toastMessage = msg;
+    // Escape HTML — toasts are rendered via template interpolation and may
+    // carry server-supplied text that we don't control.
+    const safeMsg = escapeHtml(msg);
+    const isNewToast = state.toastMessage !== safeMsg;
+    state.toastMessage = safeMsg;
     if (isNewToast) renderApp();
     state._toastTimer = setTimeout(() => {
       state.toastMessage = null;
@@ -2564,40 +2599,104 @@ const actions = {
   }
 };
 
-// Render Main App
-function renderApp() {
+// Lightweight, robust zero-dependency DOM reconciliation engine
+function morphDOM(target, source) {
+  if (!target || !source) return;
+
+  // If node types or tag names don't match, replace the node entirely
+  if (target.nodeType !== source.nodeType || target.nodeName !== source.nodeName) {
+    target.parentNode.replaceChild(source.cloneNode(true), target);
+    return;
+  }
+
+  // 1. Text and Comment nodes
+  if (target.nodeType === Node.TEXT_NODE || target.nodeType === Node.COMMENT_NODE) {
+    if (target.nodeValue !== source.nodeValue) {
+      target.nodeValue = source.nodeValue;
+    }
+    return;
+  }
+
+  // 2. Element nodes
+  if (target.nodeType === Node.ELEMENT_NODE) {
+    const isFocused = document.activeElement === target;
+
+    // Sync attributes: add/update attributes from source
+    const targetAttrs = target.attributes;
+    const sourceAttrs = source.attributes;
+
+    for (let i = 0; i < sourceAttrs.length; i++) {
+      const attr = sourceAttrs[i];
+      if (target.getAttribute(attr.name) !== attr.value) {
+        target.setAttribute(attr.name, attr.value);
+      }
+    }
+
+    // Remove attributes not in source
+    for (let i = targetAttrs.length - 1; i >= 0; i--) {
+      const attr = targetAttrs[i];
+      if (!source.hasAttribute(attr.name)) {
+        target.removeAttribute(attr.name);
+      }
+    }
+
+    // Sync input/textarea/select values without disturbing active user input
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+      if (!isFocused) {
+        if (target.value !== source.value) {
+          target.value = source.value;
+        }
+      }
+      if (target.tagName === 'INPUT' && (target.type === 'checkbox' || target.type === 'radio')) {
+        if (target.checked !== source.checked) {
+          target.checked = source.checked;
+        }
+      }
+    }
+
+    // Protect third-party initialized DOM components (e.g. Leaflet map)
+    if (target.id === 'nearbyFarmsMap' && target.childNodes.length > 0) {
+      return;
+    }
+
+    // 3. Children reconciliation
+    const targetChildren = Array.from(target.childNodes);
+    const sourceChildren = Array.from(source.childNodes);
+
+    // Fast-path: single text node child
+    if (targetChildren.length === 1 && sourceChildren.length === 1 &&
+        targetChildren[0].nodeType === Node.TEXT_NODE && sourceChildren[0].nodeType === Node.TEXT_NODE) {
+      if (targetChildren[0].nodeValue !== sourceChildren[0].nodeValue) {
+        targetChildren[0].nodeValue = sourceChildren[0].nodeValue;
+      }
+      return;
+    }
+
+    const minLen = Math.min(targetChildren.length, sourceChildren.length);
+    for (let i = 0; i < minLen; i++) {
+      morphDOM(targetChildren[i], sourceChildren[i]);
+    }
+
+    // Append extra source children
+    if (sourceChildren.length > targetChildren.length) {
+      for (let i = targetChildren.length; i < sourceChildren.length; i++) {
+        target.appendChild(sourceChildren[i].cloneNode(true));
+      }
+    }
+    // Remove extra target children
+    else if (targetChildren.length > sourceChildren.length) {
+      for (let i = targetChildren.length - 1; i >= sourceChildren.length; i--) {
+        target.removeChild(targetChildren[i]);
+      }
+    }
+  }
+}
+
+let _renderScheduled = false;
+
+function renderAppImmediate() {
   const appContainer = document.getElementById('app');
   if (!appContainer) return;
-
-  // Coalesce rapid back-to-back renders. The full innerHTML rebuild below
-  // destroys and recreates every DOM node; on slow networks each rebuild
-  // produces a visible blink. When two renderApp() calls happen within
-  // ~16ms (one frame) AND produce the same surface-state key, skip the
-  // rebuild — the second call was a no-op. Real changes always escape
-  // the key, so user-visible state is never lost.
-  if (state._lastRenderKey === undefined) state._lastRenderKey = null;
-  if (state._lastRenderAt === undefined) state._lastRenderAt = 0;
-  const now = Date.now();
-  const renderKey = state.currentView + '|' +
-    (state.toastMessage || '') + '|' +
-    state.cartOpen + '|' + state.wishlistOpen + '|' +
-    state.mobileMenuOpen + '|' + state.cart.length + '|' +
-    state.wishlist.length + '|' + state.authModalActive + '|' +
-    state.authModalMode + '|' + state.checkoutModalActive + '|' +
-    (state.activeModalProductId || '') + '|' +
-    state.chatActive + '|' + state.disputeModalActive + '|' +
-    state.changePasswordModalActive + '|' + state.adminActionModalActive + '|' +
-    state.addProductModalActive + '|' + state.withdrawalModalActive + '|' +
-    state.interswitchCheckoutActive + '|' + state.sellSheetOpen + '|' +
-    state.navbarMenuOpen + '|' + state.showIosInstallHint + '|' +
-    state.showAndroidInstallPrompt + '|' + state.swUpdateAvailable + '|' +
-    (state.currentUser ? state.currentUser.id : '') + '|' +
-    (state.currentUser ? state.currentUser.role : '') + '|' +
-    (state.currentUser ? state.currentUser.verification_status : '') + '|' +
-    state.darkMode + '|' + (state.isFarmerLocked() ? '1' : '0');
-  if (renderKey === state._lastRenderKey && (now - state._lastRenderAt) < 50) return;
-  state._lastRenderKey = renderKey;
-  state._lastRenderAt = now;
 
   let bodyContent = '';
   switch (state.currentView) {
@@ -2615,31 +2714,20 @@ function renderApp() {
       break;
     case 'farmer-dashboard':
       bodyContent = renderFarmerDashboard(state, actions);
-      loadFarmerDashboard(state, actions);
       break;
     case 'buyer-dashboard':
       bodyContent = renderBuyerDashboard(state, actions);
-      loadBuyerDashboard(state, actions);
       break;
     case 'admin-dashboard':
       bodyContent = renderAdminDashboard(state, actions);
-      loadAdminDashboard(state, actions);
       break;
 
     // === ECOSYSTEM & VERIFICATION VIEWS ===
     case 'farmer-verification':
       bodyContent = renderFarmerVerificationView(state, actions);
-      // Start polling for verification approval if farmer is unverified
-      if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
-        actions.startFarmerVerificationPolling();
-      }
       break;
     case 'farmer-pending-approval':
       bodyContent = renderFarmerPendingApprovalView(state, actions);
-      // Start polling for verification approval
-      if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
-        actions.startFarmerVerificationPolling();
-      }
       break;
     case 'admin-verification':
       bodyContent = renderAdminVerificationDashboard(state, actions);
@@ -2696,7 +2784,7 @@ function renderApp() {
       bodyContent = renderHero(state, actions) + renderProductCatalog(state, actions);
   }
 
-  appContainer.innerHTML = `
+  const newHtml = `
     <div class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-gray-100 transition-colors">
       
       <!-- Toast Notification Bar -->
@@ -2758,6 +2846,19 @@ function renderApp() {
     </div>
   `;
 
+  if (!appContainer.firstElementChild) {
+    appContainer.innerHTML = newHtml;
+  } else {
+    const template = document.createElement('template');
+    template.innerHTML = newHtml.trim();
+    const newRoot = template.content.firstElementChild;
+    if (newRoot) {
+      morphDOM(appContainer.firstElementChild, newRoot);
+    } else {
+      appContainer.innerHTML = newHtml;
+    }
+  }
+
   if (state.currentView === 'nearby-farms') {
     setTimeout(() => {
       if (actions && typeof actions.renderNearbyMap === 'function') {
@@ -2765,6 +2866,21 @@ function renderApp() {
       }
     }, 0);
   }
+}
+
+// Batched render scheduler to prevent micro-flickers and blinking
+function renderApp(sync = false) {
+  if (sync) {
+    _renderScheduled = false;
+    renderAppImmediate();
+    return;
+  }
+  if (_renderScheduled) return;
+  _renderScheduled = true;
+  requestAnimationFrame(() => {
+    _renderScheduled = false;
+    renderAppImmediate();
+  });
 }
 
 // Admin Decision Note Modal Component
@@ -3396,83 +3512,94 @@ window.apiFetch = async (path, opts) => {
   return res;
 };
 
-// Refetch dispatcher: each realtime channel calls this with a slice name. The
-// slice handlers perform an apiFetch and merge the result back into state.
+// Refetch dispatcher: each realtime channel calls this with a slice name.
+// Slice handlers perform an apiFetch with debouncing and merge results back into state.
+const _refetchDebounceTimers = {};
 window.__AGREIN_REALTIME_REFETCH__ = function (slice) {
-  try {
-    if (slice === 'products') {
-      apiFetch('/api/products').then(r => r.json()).then(j => {
-        if (j && j.success && Array.isArray(j.data)) {
-          state.catalogProducts = j.data;
-          renderApp();
-        }
-      });
-    } else if (slice === 'orders') {
-      const role = state.currentUser && state.currentUser.role === 'FARMER' ? 'farmer' : 'buyer';
-      apiFetch('/api/orders/list?role=' + role).then(r => r.json()).then(j => {
-        if (j && j.success) {
-          if (role === 'farmer') {
-            if (state.farmerDashboard) state.farmerDashboard.incomingOrders = j.data || [];
-          } else if (state.buyerDashboard) {
-            state.buyerDashboard.pastOrders = j.data || [];
-          }
-          renderApp();
-        }
-      });
-    } else if (slice === 'wallet') {
-      apiFetch('/api/wallet').then(r => r.json()).then(j => {
-        if (j && j.success && state.walletSnapshot) {
-          Object.assign(state.walletSnapshot, j.wallet || {});
-          renderApp();
-        }
-      });
-    } else if (slice === 'rfqs' || slice === 'rfqBids') {
-      apiFetch('/api/rfqs').then(r => r.json()).then(j => {
-        if (j && j.success) {
-          state.rfqList = j.data || [];
-          renderApp();
-        }
-      });
-    } else if (slice === 'disputes') {
-      apiFetch('/api/disputes?role=admin&status=OPEN').then(r => r.json()).then(j => {
-        if (j && j.success && state.adminDashboard) {
-          state.adminDashboard.openDisputesCount = (j.disputes || []).length;
-          renderApp();
-        }
-      });
-    } else if (slice === 'verificationQueue' || slice === 'verification') {
-      apiFetch('/api/admin/farmer-verifications?status=PENDING_REVIEW').then(r => r.json()).then(j => {
-        if (j && j.success && state.adminDashboard) {
-          state.adminDashboard.pendingVerifications = (j.applications || []).length;
-          renderApp();
-        }
-      });
-    } else if (slice === 'registeredUsers') {
-      apiFetch('/api/admin/users').then(r => r.json()).then(j => {
-        if (j && j.success) {
-          state.registeredUsersList = j.users || [];
-          if (j.counts) state.registeredUsersCounts = j.counts;
-          renderApp();
-        }
-      });
-    } else if (slice === 'nearbyFarms') {
-      if (state.currentView === 'nearby-farms') {
-        actions.refreshNearbyFarms();
-      }
-    } else if (slice === 'notifications' || slice === 'adminNotifications') {
-      // Debounce: Supabase fires multiple notification events as a fresh channel
-      // settles right after login. Without this, each event calls renderApp()
-      // → full innerHTML rebuild → visible page blink. Collapse a burst into
-      // a single re-render ~1.5s after the last event.
-      if (state._notifRenderTimer) clearTimeout(state._notifRenderTimer);
-      state._notifRenderTimer = setTimeout(() => {
-        state._notifRenderTimer = null;
-        renderApp();
-      }, 1500);
-    }
-  } catch (err) {
-    console.warn('[realtime] slice', slice, 'failed:', err.message);
+  if (_refetchDebounceTimers[slice]) {
+    clearTimeout(_refetchDebounceTimers[slice]);
   }
+  _refetchDebounceTimers[slice] = setTimeout(() => {
+    delete _refetchDebounceTimers[slice];
+    try {
+      if (slice === 'products') {
+        apiFetch('/api/products').then(r => r.json()).then(j => {
+          if (j && j.success && Array.isArray(j.data)) {
+            state.mockData.products = j.data;
+            state.catalogProducts = j.data;
+            renderApp();
+          }
+        }).catch(() => {});
+      } else if (slice === 'orders') {
+        const role = state.currentUser && state.currentUser.role === 'FARMER' ? 'farmer' : 'buyer';
+        apiFetch('/api/orders/list?role=' + role).then(r => r.json()).then(j => {
+          if (j && j.success) {
+            if (role === 'farmer') {
+              if (state.farmerDashboard) state.farmerDashboard.incomingOrders = j.data || [];
+            } else if (state.buyerDashboard) {
+              state.buyerDashboard.pastOrders = j.data || [];
+            }
+            renderApp();
+          }
+        }).catch(() => {});
+      } else if (slice === 'wallet') {
+        apiFetch('/api/wallet').then(r => r.json()).then(j => {
+          if (j && j.success) {
+            if (state.walletSnapshot) Object.assign(state.walletSnapshot, j.wallet || {});
+            if (state.farmerDashboard && j.wallet) {
+              state.farmerDashboard.availableBalance = _kobo(j.wallet.availableBalance);
+              state.farmerDashboard.escrowBalance = _kobo(j.wallet.escrowHeldBalance);
+            }
+            if (state.buyerDashboard && j.wallet) {
+              state.buyerDashboard.escrowHeld = _kobo(j.wallet.escrowHeldBalance);
+            }
+            renderApp();
+          }
+        }).catch(() => {});
+      } else if (slice === 'rfqs' || slice === 'rfqBids') {
+        apiFetch('/api/rfqs').then(r => r.json()).then(j => {
+          if (j && j.success) {
+            state.rfqList = j.data || [];
+            if (state.buyerDashboard) state.buyerDashboard.myRfqs = (j.data || []).length;
+            renderApp();
+          }
+        }).catch(() => {});
+      } else if (slice === 'disputes') {
+        const role = (state.currentUser && state.currentUser.role) || 'BUYER';
+        const url = role === 'ADMIN' ? '/api/disputes?role=admin&status=OPEN' : `/api/disputes?role=${role.toLowerCase()}&status=OPEN`;
+        apiFetch(url).then(r => r.json()).then(j => {
+          if (j && j.success) {
+            if (state.adminDashboard) state.adminDashboard.openDisputesCount = (j.disputes || []).length;
+            if (state.buyerDashboard) state.buyerDashboard.inDispute = (j.disputes || []).length;
+            renderApp();
+          }
+        }).catch(() => {});
+      } else if (slice === 'verificationQueue' || slice === 'verification') {
+        apiFetch('/api/admin/farmer-verifications?status=PENDING_REVIEW').then(r => r.json()).then(j => {
+          if (j && j.success && state.adminDashboard) {
+            state.adminDashboard.pendingVerifications = (j.applications || []).length;
+            renderApp();
+          }
+        }).catch(() => {});
+      } else if (slice === 'registeredUsers') {
+        apiFetch('/api/admin/users').then(r => r.json()).then(j => {
+          if (j && j.success) {
+            state.registeredUsersList = j.users || [];
+            if (j.counts) state.registeredUsersCounts = j.counts;
+            renderApp();
+          }
+        }).catch(() => {});
+      } else if (slice === 'nearbyFarms') {
+        if (state.currentView === 'nearby-farms') {
+          actions.refreshNearbyFarms();
+        }
+      } else if (slice === 'notifications' || slice === 'adminNotifications') {
+        renderApp();
+      }
+    } catch (err) {
+      console.warn('[realtime] slice', slice, 'failed:', err.message);
+    }
+  }, 300);
 };
 
 // Realtime lifecycle helper — call after login, on view change, and tear down on logout.
@@ -3488,17 +3615,6 @@ function _agreinRealtimeRefresh() {
     console.warn('[agrein] realtime refresh failed:', e.message);
   }
 }
-
-// Hook into renderApp. IMPORTANT: do NOT call _agreinRealtimeRefresh() here.
-// Realtime teardown/resubscribe on every renderApp() call created a loop —
-// each toggle re-rendered → re-subscribed → fired a postgres_changes event →
-// re-rendered again, which looked like page blinking. The correct re-arm
-// points are login/logout (already covered by actions.logout teardown) and
-// actions.setView (see the patch below), not every render.
-const _origRenderApp = renderApp;
-renderApp = function () {
-  return _origRenderApp.apply(this, arguments);
-};
 
 // Patch logout so realtime tears down immediately.
 const _origLogout = actions.logout;
@@ -3531,8 +3647,10 @@ actions.setView = function (view) {
 
 function _kobo(v) { return Number(v || 0); }
 
+let _loadingFarmerDashboard = false;
 function loadFarmerDashboard(state, actions) {
-  if (!state.currentUser) return;
+  if (!state.currentUser || _loadingFarmerDashboard) return;
+  _loadingFarmerDashboard = true;
   if (!state.farmerDashboard) state.farmerDashboard = {};
   Promise.all([
     apiFetch('/api/wallet').then(r => r.json()),
@@ -3541,6 +3659,7 @@ function loadFarmerDashboard(state, actions) {
     apiFetch('/api/products?owner=me').then(r => r.json()),
     apiFetch('/api/farmers/trust-score').then(r => r.json())
   ]).then(([wallet, inEscrow, released, products, trust]) => {
+    _loadingFarmerDashboard = false;
     if (wallet && wallet.wallet) {
       state.farmerDashboard.availableBalance = _kobo(wallet.wallet.availableBalance);
       state.farmerDashboard.escrowBalance = _kobo(wallet.wallet.escrowHeldBalance);
@@ -3552,11 +3671,16 @@ function loadFarmerDashboard(state, actions) {
     if (products && products.data) state.farmerDashboard.activeCrops = products.data.length;
     if (trust && trust.success) state.farmerDashboard.trustScore = trust.score;
     renderApp();
-  }).catch(err => console.warn('[farmer dashboard load] failed:', err.message));
+  }).catch(err => {
+    _loadingFarmerDashboard = false;
+    console.warn('[farmer dashboard load] failed:', err.message);
+  });
 }
 
+let _loadingBuyerDashboard = false;
 function loadBuyerDashboard(state, actions) {
-  if (!state.currentUser) return;
+  if (!state.currentUser || _loadingBuyerDashboard) return;
+  _loadingBuyerDashboard = true;
   if (!state.buyerDashboard) state.buyerDashboard = {};
   Promise.all([
     apiFetch('/api/orders/list?role=buyer').then(r => r.json()),
@@ -3564,6 +3688,7 @@ function loadBuyerDashboard(state, actions) {
     apiFetch('/api/rfqs?owner=me').then(r => r.json()),
     apiFetch('/api/disputes?role=buyer&status=OPEN').then(r => r.json())
   ]).then(([orders, wallet, rfqs, disputes]) => {
+    _loadingBuyerDashboard = false;
     const list = (orders && orders.data) || [];
     state.buyerDashboard.totalSpent = orders.total_amount || list.reduce((s, o) => s + _kobo(o.total_amount), 0);
     state.buyerDashboard.activeOrders = list.filter(o => o.escrow_status === 'IN_ESCROW' || o.escrow_status === 'PENDING' || o.escrow_status === 'SHIPPED').length;
@@ -3573,11 +3698,16 @@ function loadBuyerDashboard(state, actions) {
     state.buyerDashboard.myRfqs = rfqs && rfqs.data ? rfqs.data.length : 0;
     state.buyerDashboard.inDispute = disputes && disputes.disputes ? disputes.disputes.length : 0;
     renderApp();
-  }).catch(err => console.warn('[buyer dashboard load] failed:', err.message));
+  }).catch(err => {
+    _loadingBuyerDashboard = false;
+    console.warn('[buyer dashboard load] failed:', err.message);
+  });
 }
 
+let _loadingAdminDashboard = false;
 function loadAdminDashboard(state, actions) {
-  if (!state.currentUser || state.currentUser.role !== 'ADMIN') return;
+  if (!state.currentUser || state.currentUser.role !== 'ADMIN' || _loadingAdminDashboard) return;
+  _loadingAdminDashboard = true;
   if (!state.adminDashboard) state.adminDashboard = {};
   Promise.all([
     apiFetch('/api/admin/users').then(r => r.json()),
@@ -3585,6 +3715,7 @@ function loadAdminDashboard(state, actions) {
     apiFetch('/api/disputes?role=admin&status=OPEN').then(r => r.json()),
     apiFetch('/api/admin/metrics/gmv').then(r => r.json())
   ]).then(([users, verifs, disputes, gmv]) => {
+    _loadingAdminDashboard = false;
     if (users && users.users) {
       state.registeredUsersList = users.users;
       if (users.counts) state.registeredUsersCounts = users.counts;
@@ -3593,6 +3724,9 @@ function loadAdminDashboard(state, actions) {
     if (disputes && disputes.disputes) state.adminDashboard.openDisputesCount = disputes.disputes.length;
     if (gmv && gmv.success) state.adminDashboard.gmv30d = gmv.gmv;
     renderApp();
-  }).catch(err => console.warn('[admin dashboard load] failed:', err.message));
+  }).catch(err => {
+    _loadingAdminDashboard = false;
+    console.warn('[admin dashboard load] failed:', err.message);
+  });
 }
 

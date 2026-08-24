@@ -63,7 +63,11 @@ exports.requestWithdrawal = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Insufficient available wallet balance.' });
     }
 
-    const reference = `WDL-${Date.now()}`;
+    // Reference must be globally unique — schema enforces UNIQUE on
+    // wallet_transactions.reference. Append a random suffix to avoid races
+    // between two withdrawals issued in the same millisecond.
+    const refSuffix = Math.floor(Math.random() * 0xFFFFFF).toString(36).toUpperCase().padStart(5, '0');
+    const reference = `WDL-${Date.now()}-${refSuffix}`;
     await supabase.from('wallets')
       .update({ available_balance: Number(wallet.available_balance) - amountNum })
       .eq('id', wallet.id);

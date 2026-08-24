@@ -3,11 +3,14 @@
 const axios = require('axios');
 const crypto = require('crypto');
 
-const INTERSWITCH_CLIENT_ID = process.env.INTERSWITCH_CLIENT_ID || 'IKIA1FEF38723819F5F74734FA9B6D2619C542806AD6';
-const INTERSWITCH_SECRET_KEY = process.env.INTERSWITCH_SECRET_KEY || 'E0BCE3CA12781727B3E6f905786feb496e9ec63f$+653f2a9258Ee60Cb46916d';
-const INTERSWITCH_MERCHANT_CODE = process.env.INTERSWITCH_MERCHANT_CODE || 'MX179463';
-const INTERSWITCH_PAY_ITEM_ID = process.env.INTERSWITCH_PAY_ITEM_ID || '7974853';
-const INTERSWITCH_ENV = process.env.INTERSWITCH_ENV || 'production'; // 'sandbox' or 'production' (LIVE)
+// Read all Interswitch credentials from environment only. Never bake secrets into
+// source — defaults that mirror production values have been removed because
+// committed `.env` files leak them to anyone with repo access.
+const INTERSWITCH_CLIENT_ID = process.env.INTERSWITCH_CLIENT_ID || '';
+const INTERSWITCH_SECRET_KEY = process.env.INTERSWITCH_SECRET_KEY || '';
+const INTERSWITCH_MERCHANT_CODE = process.env.INTERSWITCH_MERCHANT_CODE || '';
+const INTERSWITCH_PAY_ITEM_ID = process.env.INTERSWITCH_PAY_ITEM_ID || '';
+const INTERSWITCH_ENV = process.env.INTERSWITCH_ENV || 'sandbox'; // 'sandbox' or 'production' (LIVE)
 
 const PASSPORT_URL = INTERSWITCH_ENV === 'production'
   ? 'https://passport.interswitchng.com/passport/oauth/token'

@@ -30,7 +30,11 @@ const disputeController = {
         return res.status(403).json({ success: false, message: 'You can only dispute your own orders.' });
       }
 
-      const disputeCode = `DSP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      // Use a 9-char base36 random suffix to keep collision probability low
+      // across high-volume years. Math.random alone (4 digits) would collide
+      // for a busy marketplace; the schema enforces UNIQUE on dispute_code.
+      const suffix = Math.floor(Math.random() * 0xFFFFFFFFF).toString(36).toUpperCase().padStart(9, '0');
+      const disputeCode = `DSP-${new Date().getFullYear()}-${suffix}`;
       const { data, error } = await supabase.from('buyer_disputes').insert({
         dispute_code: disputeCode,
         order_id: orderId,

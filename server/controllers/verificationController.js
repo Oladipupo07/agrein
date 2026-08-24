@@ -11,7 +11,7 @@ function dossierForClient(row, profile, docs) {
     farmer_name: profile ? profile.full_name : 'New Agrein Farmer',
     email: profile ? profile.email : null,
     phone: profile ? profile.phone_number : null,
-    state: profile ? profile.state : row.admin_notes,
+    state: profile ? profile.state : null,
     lga: profile ? profile.lga : null,
     status: row.status,
     nin_masked: row.nin_number ? `••••••••${String(row.nin_number).slice(-3)}` : '••••••••789',
@@ -382,7 +382,10 @@ const verificationController = {
       await supabase.from('profiles').update({
         verification_status: 'APPROVED',
         is_verified: true,
-        trust_score: Math.max(80, 80)
+        // Newly verified farmers start with a strong trust signal so buyer
+        // dashboards render a meaningful score on first load. This is the
+        // floor; subsequent orders/reviews recompute it elsewhere.
+        trust_score: 80
       }).eq('id', data.user_id);
       await verificationController.logAudit(data, req.user && req.user.id, req.user && req.user.email, 'APPROVED', prevStatus && prevStatus.status, 'APPROVED', adminNotes || null);
       return res.json({ success: true, message: 'Farmer approved.', application: data });

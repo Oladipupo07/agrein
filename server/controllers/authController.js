@@ -413,25 +413,52 @@ const authController = {
   // Secure Admin-Only creation of new Administrator accounts
   async createAdminAccount(req, res) {
     try {
-      const { fullName, email, password } = req.body;
+      const { fullName, email, password } = req.body || {};
 
       if (req.user && req.user.role !== 'ADMIN') {
         return res.status(403).json({ success: false, message: 'Forbidden: Only existing Admins can create new Admin accounts.' });
       }
 
+      // Validate required fields and password strength so we don't persist
+      // a half-empty record or accept a weak password via the admin endpoint.
+      if (!fullName || !email || !password) {
+        return res.status(400).json({ success: false, message: 'fullName, email, and password are required.' });
+      }
+      const normalizedEmail = String(email).toLowerCase();
+      if (!normalizedEmail.includes('@')) {
+        return res.status(400).json({ success: false, message: 'A valid email is required.' });
+      }
+      if (String(password).length < 8) {
+        return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long.' });
+      }
+
+      // Reload from disk to avoid clobbering a concurrent change.
+      registeredUsers = UserDatabase.loadAll();
+      const existing = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+      if (existing) {
+        return res.status(409).json({ success: false, message: 'An account with that email already exists.' });
+      }
+
+      const { salt, hash } = passwordService.hashPassword(password);
       const newAdmin = {
-        id: `adm-${Date.now()}`,
+        id: `usr-${Date.now()}`,
         full_name: fullName,
-        email,
+        email: normalizedEmail,
         role: 'ADMIN',
         email_verified: true,
+        is_verified: true,
+        verification_status: 'APPROVED',
+        passwordSalt: salt,
+        passwordHash: hash,
         created_at: new Date().toISOString()
       };
+      registeredUsers.push(newAdmin);
+      syncUserToDb(newAdmin);
 
       res.status(201).json({
         success: true,
-        message: `Admin account created for ${fullName} (${email}).`,
-        admin: newAdmin
+        message: `Admin account created for ${fullName} (${normalizedEmail}).`,
+        admin: toClientUser(newAdmin)
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

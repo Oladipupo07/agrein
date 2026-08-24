@@ -88,6 +88,16 @@ exports.submitBid = async (req, res) => {
     }).select('*').single();
     if (error) throw error;
 
+    // Once the first bid lands, flip the RFQ to AWAITING_BIDS so the buyer
+    // dashboard can surface it. Best-effort; ignore failures since the bid
+    // itself succeeded.
+    try {
+      await supabase.from('rfqs')
+        .update({ status: 'AWAITING_BIDS' })
+        .eq('id', rfqId)
+        .eq('status', 'OPEN');
+    } catch (_) { /* noop */ }
+
     return res.status(201).json({
       success: true,
       message: 'Bid submitted',

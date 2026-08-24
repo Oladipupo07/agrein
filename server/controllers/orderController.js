@@ -23,7 +23,18 @@ exports.createOrder = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Login required.' });
     }
     const { buyerEmail, items, totalAmount, deliveryAddress, state, productId, farmerId, quantity } = req.body || {};
-    const orderCode = `AGR-${Math.floor(100000 + Math.random() * 900000)}`;
+    // Order codes are unique per order (schema enforces UNIQUE). Use a wider
+    // random range to keep collision probability low; the previous 6-digit
+    // range had birthday-bound duplicates for high-volume days.
+    const suffix = Math.floor(Math.random() * 0xFFFFFFFF).toString(36).toUpperCase().padStart(8, '0');
+    const orderCode = `AGR-${Date.now().toString(36).toUpperCase()}-${suffix}`;
+
+    // farmerId is required: the schema enforces NOT NULL, and silently
+    // defaulting it to the buyer's id (the previous behaviour) corrupted the
+    // farmer_id column for the dashboards and wallet escrow lockup.
+    if (!farmerId) {
+      return res.status(400).json({ success: false, message: 'farmerId is required.' });
+    }
 
     // Persist order row.
     const { data: order, error: orderErr } = await supabase
@@ -31,7 +42,7 @@ exports.createOrder = async (req, res) => {
       .insert({
         order_code: orderCode,
         buyer_id: req.user.id,
-        farmer_id: farmerId || req.user.id,
+        farmer_id: farmerId,
         product_id: productId || null,
         quantity: Number(quantity || 1),
         total_amount: Number(totalAmount || 0),

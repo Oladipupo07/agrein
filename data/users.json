@@ -22,10 +22,10 @@
     "email_verified": false,
     "is_verified": false,
     "verification_status": "APPROVED",
-    "passwordSalt": "538478f3b7eb8e15aee475dfd6031756",
-    "passwordHash": "aad3c0f2de9503248c8b216b88bbe10b1c9431834c588d8d7afeea0652813d63",
+    "passwordSalt": "96ae52827ba6f09d8dbefcb4afc406dc",
+    "passwordHash": "b0e87038edd7645b9ade99e0647834c8d59e0cea8646ed098af6b8b8a21cb5e8",
     "created_at": "2026-08-18T09:05:12.356Z",
-    "updated_at": "2026-08-20T15:53:54.384Z",
+    "updated_at": "2026-08-24T14:36:03.964Z",
     "state": "Lagos",
     "lga": "Ikeja",
     "city": "Ikeja",
@@ -41,9 +41,9 @@
     "email_verified": false,
     "is_verified": false,
     "verification_status": "NOT_STARTED",
-    "passwordSalt": "e8d30d8170b1b9b56b021d84cae554d1",
-    "passwordHash": "50bc7f2f0fd8f4a5570fe8431a7eecf751a62580213bdf9d9a73120bd2ac1d95",
+    "passwordSalt": "e4c011a6ceba31bad2101571488a3d21",
+    "passwordHash": "ca45c3f038211c442908b77aa76a91bb64fef9e9c4f971c6d0fec50217d84079",
     "created_at": "2026-08-18T09:05:12.831Z",
-    "updated_at": "2026-08-20T15:53:54.427Z"
+    "updated_at": "2026-08-24T14:36:04.086Z"
   }
 ]

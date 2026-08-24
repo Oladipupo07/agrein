@@ -62,16 +62,55 @@ exports.getAllProducts = async (req, res) => {
       const qdByProductId = new Map();
       (qdRows || []).forEach((q) => qdByProductId.set(q.product_id, q));
 
-      rows = (prodRows || []).map((p) => ({
-        ...p,
-        product_quality_details: qdByProductId.get(p.id) ? [qdByProductId.get(p.id)] : []
-      }));
+      // Look up farmer display info so each product carries the real farm
+      // name (and origin state when not set on the product row) instead of a
+      // hardcoded placeholder.
+      const farmerIds = Array.from(new Set((prodRows || []).map((p) => p.farmer_id).filter(Boolean)));
+      const farmByFarmerId = new Map();
+      const profileById = new Map();
+      if (farmerIds.length > 0) {
+        const { data: fpRows } = await supabase
+          .from('farmer_profiles')
+          .select('user_id, farm_name, farm_state, farm_lga')
+          .in('user_id', farmerIds);
+        (fpRows || []).forEach((fp) => farmByFarmerId.set(fp.user_id, fp));
+
+        const { data: profileRows } = await supabase
+          .from('profiles')
+          .select('id, full_name, state, lga')
+          .in('id', farmerIds);
+        (profileRows || []).forEach((p) => profileById.set(p.id, p));
+      }
+
+      rows = (prodRows || []).map((p) => {
+        const fp = farmByFarmerId.get(p.farmer_id) || null;
+        const profile = profileById.get(p.farmer_id) || null;
+        return {
+          ...p,
+          product_quality_details: qdByProductId.get(p.id) ? [qdByProductId.get(p.id)] : [],
+          farm_profile: fp,
+          farmer_profile: profile
+        };
+      });
     }
 
     // Normalize to the field names the client uses. The seed UI and the
     // dashboards read `title`, `farm_name`, `origin_state`, etc.
     let items = (rows || []).map((p) => {
       const q = Array.isArray(p.product_quality_details) ? p.product_quality_details[0] : null;
+      // Prefer the joined farmer profile (Path 1) but fall back to the
+      // separately-fetched `farm_profile` / `farmer_profile` (Path 2).
+      const fp = p.farm_profile || null;
+      const farmerProfile = p.farmer_profile || null;
+      const fallbackFarmName =
+        (fp && fp.farm_name) ||
+        (farmerProfile && farmerProfile.full_name) ||
+        'Agrein Verified Farm';
+      const fallbackState =
+        (fp && fp.farm_state) ||
+        (farmerProfile && farmerProfile.state) ||
+        p.state ||
+        '';
       return {
         id: p.id,
         title: p.title,
@@ -81,13 +120,13 @@ exports.getAllProducts = async (req, res) => {
         unit: p.unit,
         available_qty: q ? Number(q.available_qty) : Number(p.available_qty || 0),
         images: p.images || [],
-        origin_state: p.state,
-        state: p.state,
-        lga: p.lga,
+        origin_state: p.state || fallbackState,
+        state: p.state || fallbackState,
+        lga: p.lga || (fp && fp.farm_lga) || (farmerProfile && farmerProfile.lga) || '',
         farmer_id: p.farmer_id,
         is_organic: q ? Boolean(q.is_certified_organic) : false,
         category: q ? (q.grade || 'Grade A') : 'Grade A',
-        farm_name: 'Agrein Farm',
+        farm_name: fallbackFarmName,
         status: p.is_active ? 'active' : 'inactive',
         rating: 5.0,
         created_at: p.created_at,

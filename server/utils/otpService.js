@@ -31,11 +31,13 @@ const otpService = {
 
     otpStore.set(email.toLowerCase(), record);
 
+    // Operator log deliberately omits the raw OTP. The code is sent via SMTP
+    // and exposed to the demo UI through state.demoOtp; logging it here would
+    // leak it into any process that captures stdout (Render, journald, etc.).
     console.log(`\n=================================================`);
     console.log(`📧 [AGREIN EMAIL OTP DISPATCH]`);
     console.log(`To: ${email}`);
     console.log(`Subject: Verify Your Agrein Email Address`);
-    console.log(`Code: ${rawOtp}`);
     console.log(`Expires: 5 minutes (${new Date(expiresAt).toLocaleTimeString()})`);
     console.log(`=================================================\n`);
 
