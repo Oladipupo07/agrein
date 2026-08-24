@@ -1,0 +1,287 @@
+// Product Controller for Agrein Backend API
+// Phase C: persisted in Supabase (public.products + public.product_quality_details).
+// Realtime change feed handles broadcast — controllers just write, the client listens.
+
+const supabase = require('../utils/supabaseClient');
+
+// List products. Default scope: marketplace-facing ("is_active = true") so the
+// catalog reflects only what buyers can see.
+// True when the embedded join can't be resolved (no FK in schema cache,
+// PostgREST permission flip after a constraint was added, etc.). We fall
+// back to two separate queries rather than 500-ing the marketplace.
+//
+// IMPORTANT: when in doubt, fall through. The join is an optimization; the
+// separate-query path always works as long as the service_role can read
+// `products` and `product_quality_details` directly.
+function isRelationshipError(err) {
+  if (!err) return false;
+  const msg = (err.message || '') + ' ' + (err.details || '') + ' ' + (err.hint || '');
+  return /relationship|schema cache|could not find|permission denied|permission_denied|42501|42P01/i.test(msg);
+}
+
+exports.getAllProducts = async (req, res) => {
+  try {
+    const { category, state, organic, search, owner } = req.query;
+    const scopeFilter = (q) => (owner === 'me' && req.user && req.user.id)
+      ? q.eq('farmer_id', req.user.id)
+      : q.eq('is_active', true);
+
+    // Path 1: joined select (fast — single round-trip). Requires a FK from
+    // product_quality_details.product_id -> products.id in the schema cache.
+    let rows = null;
+    let joinedErr = null;
+    try {
+      const joinedQuery = scopeFilter(
+        supabase.from('products').select('*, product_quality_details(*)')
+      );
+      const { data, error } = await joinedQuery;
+      if (error) throw error;
+      rows = data;
+    } catch (e) {
+      // Any failure on the embedded join falls through to the separate-query
+      // path. The join is an optimization; the fallback always works as long
+      // as the service_role can read the two tables directly. This guards
+      // against PostgREST schema-cache mismatches, FK regressions, and
+      // permission flips after constraint changes.
+      console.warn('[productController] joined select failed, falling back:', e && (e.message || e.code || e));
+      joinedErr = e;
+    }
+
+    // Path 2: fallback — separate queries merged in JS. Used until the FK
+    // relationship is added to the live DB (see database/schema.sql).
+    if (rows === null) {
+      console.warn('[productController] joined select unavailable, using fallback:', joinedErr && joinedErr.message);
+      const productsQuery = scopeFilter(supabase.from('products').select('*'));
+      const { data: prodRows, error: prodErr } = await productsQuery;
+      if (prodErr) throw prodErr;
+
+      const { data: qdRows, error: qdErr } = await supabase
+        .from('product_quality_details')
+        .select('*');
+      if (qdErr) throw qdErr;
+      const qdByProductId = new Map();
+      (qdRows || []).forEach((q) => qdByProductId.set(q.product_id, q));
+
+      // Look up farmer display info so each product carries the real farm
+      // name (and origin state when not set on the product row) instead of a
+      // hardcoded placeholder.
+      const farmerIds = Array.from(new Set((prodRows || []).map((p) => p.farmer_id).filter(Boolean)));
+      const farmByFarmerId = new Map();
+      const profileById = new Map();
+      if (farmerIds.length > 0) {
+        const { data: fpRows } = await supabase
+          .from('farmer_profiles')
+          .select('user_id, farm_name, farm_state, farm_lga')
+          .in('user_id', farmerIds);
+        (fpRows || []).forEach((fp) => farmByFarmerId.set(fp.user_id, fp));
+
+        const { data: profileRows } = await supabase
+          .from('profiles')
+          .select('id, full_name, state, lga')
+          .in('id', farmerIds);
+        (profileRows || []).forEach((p) => profileById.set(p.id, p));
+      }
+
+      rows = (prodRows || []).map((p) => {
+        const fp = farmByFarmerId.get(p.farmer_id) || null;
+        const profile = profileById.get(p.farmer_id) || null;
+        return {
+          ...p,
+          product_quality_details: qdByProductId.get(p.id) ? [qdByProductId.get(p.id)] : [],
+          farm_profile: fp,
+          farmer_profile: profile
+        };
+      });
+    }
+
+    // Normalize to the field names the client uses. The seed UI and the
+    // dashboards read `title`, `farm_name`, `origin_state`, etc.
+    let items = (rows || []).map((p) => {
+      const q = Array.isArray(p.product_quality_details) ? p.product_quality_details[0] : null;
+      // Prefer the joined farmer profile (Path 1) but fall back to the
+      // separately-fetched `farm_profile` / `farmer_profile` (Path 2).
+      const fp = p.farm_profile || null;
+      const farmerProfile = p.farmer_profile || null;
+      const fallbackFarmName =
+        (fp && fp.farm_name) ||
+        (farmerProfile && farmerProfile.full_name) ||
+        'Agrein Verified Farm';
+      const fallbackState =
+        (fp && fp.farm_state) ||
+        (farmerProfile && farmerProfile.state) ||
+        p.state ||
+        '';
+      return {
+        id: p.id,
+        title: p.title,
+        crop_name: p.crop_name,
+        description: p.description,
+        price_per_unit: Number(p.price_per_unit),
+        unit: p.unit,
+        available_qty: q ? Number(q.available_qty) : Number(p.available_qty || 0),
+        images: p.images || [],
+        origin_state: p.state || fallbackState,
+        state: p.state || fallbackState,
+        lga: p.lga || (fp && fp.farm_lga) || (farmerProfile && farmerProfile.lga) || '',
+        farmer_id: p.farmer_id,
+        is_organic: q ? Boolean(q.is_certified_organic) : false,
+        category: q ? (q.grade || 'Grade A') : 'Grade A',
+        farm_name: fallbackFarmName,
+        status: p.is_active ? 'active' : 'inactive',
+        rating: 5.0,
+        created_at: p.created_at,
+        quality_details: q || null
+      };
+    });
+
+    if (category && category !== 'All') {
+      const c = category.toLowerCase();
+      items = items.filter((p) => (p.category || '').toLowerCase() === c);
+    }
+    if (state && state !== 'All') {
+      const s = state.toLowerCase();
+      items = items.filter((p) => (p.origin_state || '').toLowerCase() === s);
+    }
+    if (organic === 'true') {
+      items = items.filter((p) => p.is_organic);
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      items = items.filter((p) =>
+        (p.title || '').toLowerCase().includes(q) ||
+        (p.farm_name || '').toLowerCase().includes(q) ||
+        (p.crop_name || '').toLowerCase().includes(q)
+      );
+    }
+
+    return res.json({ success: true, count: items.length, data: items });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.getProductById = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*, product_quality_details(*)')
+      .eq('id', req.params.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ success: false, message: 'Product not found' });
+    return res.json({ success: true, data });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.createProduct = async (req, res) => {
+  try {
+    const farmerId = req.user && req.user.id;
+    if (!farmerId) return res.status(401).json({ success: false, message: 'Login required.' });
+
+    const {
+      title, crop_name, description, price_per_unit, unit,
+      available_qty, images, state, lga, category, is_organic,
+      grade, harvest_date, shelf_life_days, production_method,
+      storage_conditions, processing_info, organic_cert_url
+    } = req.body || {};
+
+    if (!title || !crop_name || price_per_unit == null) {
+      return res.status(400).json({ success: false, message: 'title, crop_name, price_per_unit are required.' });
+    }
+
+    const { data: product, error: prodErr } = await supabase
+      .from('products')
+      .insert({
+        farmer_id: farmerId,
+        title,
+        crop_name,
+        description: description || null,
+        price_per_unit,
+        unit: unit || 'kg',
+        available_qty: available_qty || 0,
+        images: Array.isArray(images) ? images : [],
+        state: state || null,
+        lga: lga || null,
+        is_active: true
+      })
+      .select('*')
+      .single();
+    if (prodErr) throw prodErr;
+
+    // Quality details row: keep parity with the original schema so farmers can
+    // attach harvest date, grade, organic certs, etc.
+    await supabase.from('product_quality_details').insert({
+      product_id: product.id,
+      harvest_date: harvest_date || new Date().toISOString().slice(0, 10),
+      grade: grade || 'Grade A',
+      shelf_life_days: shelf_life_days || 14,
+      production_method: production_method || 'Irrigated',
+      storage_conditions: storage_conditions || null,
+      processing_info: processing_info || null,
+      is_certified_organic: Boolean(is_organic),
+      organic_cert_url: organic_cert_url || null,
+      available_qty: available_qty || 0
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Product listed successfully',
+      data: {
+        ...product,
+        category: grade || 'Grade A',
+        is_organic: Boolean(is_organic),
+        farm_name: 'Agrein Farm',
+        status: 'active',
+        rating: 5.0
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.updateProduct = async (req, res) => {
+  try {
+    const farmerId = req.user && req.user.id;
+    if (!farmerId) return res.status(401).json({ success: false, message: 'Login required.' });
+
+    const updates = { ...req.body, updated_at: new Date().toISOString() };
+    delete updates.id;
+    delete updates.farmer_id;
+
+    const { data, error } = await supabase
+      .from('products')
+      .update(updates)
+      .eq('id', req.params.id)
+      .eq('farmer_id', farmerId)
+      .select('*')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ success: false, message: 'Product not found' });
+    return res.json({ success: true, message: 'Product updated successfully', data });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.deleteProduct = async (req, res) => {
+  try {
+    const farmerId = req.user && req.user.id;
+    if (!farmerId) return res.status(401).json({ success: false, message: 'Login required.' });
+
+    const { data, error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('farmer_id', farmerId)
+      .select('*')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ success: false, message: 'Product not found' });
+    return res.json({ success: true, message: 'Product deleted successfully', data });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};

@@ -1,0 +1,25 @@
+# Agrein Marketplace Robots Configuration
+User-agent: *
+Allow: /
+Allow: /index.html
+Allow: /privacy-policy.html
+Allow: /#marketplace
+Allow: /#ai-insights
+Allow: /#commodity-index
+Allow: /#nearby-farms
+Allow: /#weather
+Allow: /#rfq-board
+Allow: /#bulk-b2b
+Allow: /#export-trade
+Allow: /#cooperatives
+Allow: /#forum
+Allow: /#learning-center
+Allow: /#traceability
+
+# Disallow authenticated admin queues & internal endpoints
+Disallow: /api/admin/
+Disallow: /#admin-dashboard
+Disallow: /#admin-verification
+Disallow: /#admin-review
+
+Sitemap: https://agrein.me/sitemap.xml

@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Environment variables (SECRETS - never commit!)
+server/.env
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Claude/AI config
+.claude/

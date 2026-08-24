@@ -1,0 +1,29 @@
+{
+  "name": "agrein-server",
+  "version": "1.0.0",
+  "description": "Agrein Agricultural Marketplace Backend API",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "tailwindcss -c ../tailwind.config.js -i ../src/tailwind.css -o ../public/styles.css --minify",
+    "build": "npm run build:css",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "node tests/interswitch-web-redirect.test.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.4",
+    "axios": "^1.7.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^6.9.13"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "nodemon": "^3.1.0",
+    "postcss": "^8.4.41",
+    "tailwindcss": "^3.4.10"
+  },
+  "license": "MIT"
+}

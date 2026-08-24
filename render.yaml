@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: agrein-api
+    runtime: node
+    rootDir: .
+    plan: free
+    buildCommand: npm --prefix server install && npm --prefix server run build
+    startCommand: cd server && node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: INTERSWITCH_ENV
+        value: production
+      - key: INTERSWITCH_MERCHANT_CODE
+        sync: false
+      - key: INTERSWITCH_PAY_ITEM_ID
+        sync: false
+      - key: INTERSWITCH_CLIENT_ID
+        sync: false
+      - key: INTERSWITCH_SECRET_KEY
+        sync: false
+      # Brevo transactional email (HTTPS API, works on Render's free tier
+      # because port 443 is not blocked — unlike SMTP 25/465/587).
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM_ADDRESS
+        value: akobeoladipupo@gmail.com
+      - key: MAIL_FROM_NAME
+        value: Agrein Market
+    healthCheckPath: /api/status

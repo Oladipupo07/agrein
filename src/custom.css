@@ -1,0 +1,348 @@
+/* Agrein Custom Styles & Design System System */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
+:root {
+  --font-heading: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+
+  --color-brand-50: #ecfdf5;
+  --color-brand-100: #d1fae5;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+  --color-brand-700: #047857;
+  --color-brand-800: #065f46;
+  --color-brand-900: #064e3b;
+
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+
+  --bg-gradient-light: linear-gradient(135deg, #f0fdf4 0%, #ffffff 50%, #fef3c7 100%);
+  --bg-gradient-dark: linear-gradient(135deg, #091a13 0%, #0f172a 50%, #172554 100%);
+}
+
+body {
+  font-family: var(--font-body);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+/* Glassmorphism utility classes */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .glass-card {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 30px -10px rgba(4, 120, 87, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.dark .glass-card:hover {
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.5);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* Custom Gradients */
+.text-gradient-emerald {
+  background: linear-gradient(135deg, #059669 0%, #10b981 50%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dark .text-gradient-emerald {
+  background: linear-gradient(135deg, #34d399 0%, #6ee7b7 50%, #fbbf24 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-hero-glow {
+  background: radial-gradient(circle at 50% 20%, rgba(16, 185, 129, 0.18) 0%, rgba(245, 158, 11, 0.08) 45%, transparent 70%);
+}
+
+.dark .bg-hero-glow {
+  background: radial-gradient(circle at 50% 20%, rgba(16, 185, 129, 0.22) 0%, rgba(245, 158, 11, 0.1) 50%, transparent 75%);
+}
+
+/* Ticker Scroll Animation */
+@keyframes ticker {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-ticker {
+  display: flex;
+  width: max-content;
+  animation: ticker 35s linear infinite;
+}
+
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+
+/* Pulse Glow */
+.glow-emerald {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
+}
+
+.glow-amber {
+  box-shadow: 0 0 20px rgba(217, 119, 6, 0.35);
+}
+
+/* Modal Animations */
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-modal {
+  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.4);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(4, 120, 87, 0.7);
+}
+
+/* Shimmer Loading Effect */
+.shimmer {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 255, 255, 0) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Ecosystem Nav Gradient Edges */
+.ecosystem-nav-gradient::before,
+.ecosystem-nav-gradient::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ecosystem-nav-gradient::before {
+  left: 0;
+  background: linear-gradient(to right, rgba(248, 250, 252, 1) 0%, transparent 100%);
+}
+
+.ecosystem-nav-gradient::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(248, 250, 252, 1) 0%, transparent 100%);
+}
+
+.dark .ecosystem-nav-gradient::before {
+  background: linear-gradient(to right, rgba(2, 6, 23, 1) 0%, transparent 100%);
+}
+
+.dark .ecosystem-nav-gradient::after {
+  background: linear-gradient(to left, rgba(2, 6, 23, 1) 0%, transparent 100%);
+}
+
+/* Progress bar animation */
+@keyframes progressPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-progress-pulse {
+  animation: progressPulse 2s ease-in-out infinite;
+}
+
+/* ============================================
+   MOBILE RESPONSIVENESS — @media rules
+   ============================================ */
+
+@media (max-width: 640px) {
+
+  /* Force modals to full-screen on phones */
+  .modal-fullscreen-mobile {
+    border-radius: 0 !important;
+    max-width: 100vw !important;
+    max-height: 100dvh !important;
+    min-height: 100dvh !important;
+    width: 100vw !important;
+    margin: 0 !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  /* Hero banner — shrink fixed 440px height */
+  img.hero-banner {
+    height: 14rem !important;
+  }
+
+  /* Floating glass badges — hide the animated one on mobile to reduce visual noise */
+  .hero-floating-badge.animate-bounce {
+    display: none;
+  }
+
+  /* Tables inside dashboards — keep horizontal scroll but tighter */
+  table {
+    font-size: 0.7rem;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 641px) and (max-width: 1023px) {
+  img.hero-banner {
+    height: 20rem !important;
+  }
+}
+
+/* Safe-area helper for iPhone notch (used by full-screen modals) */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Mobile drawer slide-in animation */
+@keyframes drawerSlideIn {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-drawer {
+  animation: drawerSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Mobile bottom-nav bar — iOS notch / Android gesture bar safe area */
+.bottom-nav-safe {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
+
+/* Mobile top bar — smooth height transition (reserved for v2 compress-on-scroll) */
+.topbar {
+  transition: height 200ms ease, padding 200ms ease;
+}
+
+/* Bottom-sheet slide-up animation (used by sell sheet) */
+@keyframes sheetUp {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-sheet-up {
+  animation: sheetUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
