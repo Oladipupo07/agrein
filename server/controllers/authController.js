@@ -71,30 +71,63 @@ function toClientUser(user) {
   return safe;
 }
 
-// Database helper: synchronize user record to both Supabase AND local file storage
+// Database helper: synchronize user record to both Supabase AND local file storage.
+//
+// The local file is the offline source-of-truth and is always written first. The
+// Supabase write is awaited and its result is returned to the caller so that a
+// sync failure can be surfaced to the HTTP response (rather than silently
+// swallowed, which left the local file ahead of the dashboard DB and confused
+// admins). When Supabase is unreachable or returns an error we re-throw so the
+// caller can decide whether to fail the request or accept the local-only write.
 async function syncUserToDb(user) {
-  try {
-    // ✅ Save to local persistent database (file storage)
-    UserDatabase.upsert(user);
-    
-    // Also sync to Supabase if connected
-    const supabase = require('../utils/supabaseClient');
-    if (!supabase) return;
-    await supabase.from('profiles').upsert({
-      id: user.id,
-      full_name: user.full_name,
-      email: user.email,
-      phone_number: user.phone_number,
-      role: user.role,
-      email_verified: Boolean(user.email_verified),
-      is_verified: Boolean(user.is_verified),
-      verification_status: user.verification_status || 'APPROVED',
-      created_at: user.created_at || new Date().toISOString()
-    }, { onConflict: 'email' });
-  } catch (err) {
-    // Non-blocking sync log
-    console.warn('[syncUserToDb] Sync notice:', err.message);
+  // 1. Always write to the local file. This is the offline source-of-truth so
+  //    it must succeed even if Supabase is down — losing a registration to a
+  //    transient cloud outage is unacceptable.
+  UserDatabase.upsert(user);
+
+  // 2. Mirror to Supabase. Return a structured result instead of throwing so
+  //    callers can choose between failing the request (registration) or
+  //    continuing with a warning (login, profile update, etc.).
+  const supabase = require('../utils/supabaseClient');
+  if (!supabase) {
+    return { ok: false, source: 'local-only', reason: 'supabase client not initialized' };
   }
+
+  // Supabase expects a UUID for `id`. Local records use `usr-<timestamp>` which
+  // is not a valid UUID, so we omit `id` on insert and let the DB default
+  // (uuid_generate_v4) generate one. Subsequent upserts by email will find the
+  // existing row and update it.
+  const { id: _ignoreLocalId, ...payload } = {
+    id: user.id,
+    full_name: user.full_name,
+    email: user.email,
+    phone_number: user.phone_number,
+    role: user.role,
+    email_verified: Boolean(user.email_verified),
+    is_verified: Boolean(user.is_verified),
+    verification_status: user.verification_status || 'APPROVED',
+    created_at: user.created_at || new Date().toISOString()
+  };
+  // Keep payload `id` as the local id only if it's already a UUID (e.g. when
+  // an admin re-imports a row that originated in Supabase). Otherwise omit it
+  // so the default kicks in.
+  const isUuid = typeof payload.id === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.id);
+  if (!isUuid) delete payload.id;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .upsert(payload, { onConflict: 'email' })
+    .select('id, email')
+    .single();
+
+  if (error) {
+    console.error('[syncUserToDb] ❌ Supabase upsert failed for', user.email, '—', error.message);
+    return { ok: false, source: 'local-only', reason: error.message };
+  }
+
+  console.log('[syncUserToDb] ✅ Synced', user.email, '→ Supabase', data && data.id);
+  return { ok: true, source: 'supabase', id: data && data.id };
 }
 
 const authController = {
@@ -257,7 +290,14 @@ const authController = {
       // Generate 6-Digit Email OTP against the (possibly updated) record
       const target = existing || registeredUsers[registeredUsers.length - 1];
       const { rawOtp, expiresAt } = otpService.generateOtp(target.email);
-      syncUserToDb(target);
+      const sync = await syncUserToDb(target);
+
+      // Surface sync drift so admins don't lose new users. Local write already
+      // succeeded, but if Supabase failed we report a non-blocking warning the
+      // frontend can show — and log loudly on the server.
+      if (!sync.ok) {
+        console.warn(`[register] ⚠️ ${target.email} saved locally only — Supabase sync failed: ${sync.reason}`);
+      }
 
       res.status(201).json({
         success: true,
@@ -265,7 +305,9 @@ const authController = {
         message: `We've sent a 6-digit verification code to ${target.email}.`,
         email: target.email,
         role: target.role,
-        expiresInSeconds: 300
+        expiresInSeconds: 300,
+        // Non-blocking diagnostic for the client / admin dashboard.
+        sync: sync.ok ? { ok: true } : { ok: false, reason: sync.reason }
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -316,7 +358,10 @@ const authController = {
         registeredUsers.push(user);
       }
 
-      syncUserToDb(user);
+      const sync = await syncUserToDb(user);
+      if (!sync.ok) {
+        console.warn(`[verifyOtp] ⚠️ ${user.email} verified locally only — Supabase sync failed: ${sync.reason}`);
+      }
 
       const redirectView = user.role === 'FARMER' ? 'farmer-verification' : 'buyer-dashboard';
 
@@ -328,7 +373,8 @@ const authController = {
           ...toClientUser(user),
           token: mintToken(user)
         },
-        redirectView
+        redirectView,
+        sync: sync.ok ? { ok: true } : { ok: false, reason: sync.reason }
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
