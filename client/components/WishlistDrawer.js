@@ -25,7 +25,7 @@ function renderWishlistDrawer(state, actions) {
               <h3 class="font-heading font-extrabold xs:text-lg sm:text-xl text-slate-900 dark:text-white leading-tight">My Wishlist</h3>
               <p class="text-[10px] text-gray-500">Saved crops & farm produce</p>
             </div>
-            <span class="px-2 xs:px-1.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 text-xs font-bold ml-1">${wishlist.length}</span>
+            <span class="px-2 xs:px-1.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 text-xs font-bold ml-1">${wishlist.length > 99 ? '99+' : wishlist.length}</span>
           </div>
           <button onclick="actions.closeWishlistDrawer()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-colors" aria-label="Close Wishlist">
             <i class="fa-solid fa-xmark text-lg"></i>

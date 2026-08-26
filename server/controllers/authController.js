@@ -2,18 +2,15 @@
 //
 // Architecture:
 //   - Supabase `profiles` is the source of truth for ALL user fields including
-//     password_hash / password_salt (added by the schema migration that adds
-//     `local_id`). This makes login survive Render free-tier redeploys, which
-//     wipe the local filesystem.
-//   - `data/users.json` is a write-through cache / offline fallback for
-//     password material. It is populated on every password write but is no
-//     longer required for correctness.
-//   - `registeredUsers` (the in-memory array) is a hot cache for password
-//     material loaded from `data/users.json` at startup, so login doesn't
-//     re-read the file on every request.
+//     password_hash / password_salt. Login survives Render free-tier
+//     redeploys because nothing is stored on the local filesystem.
+//   - `registeredUsers` is a tiny in-memory hot cache for password material
+//     within the current process — it's re-populated from Supabase on every
+//     login, so it never persists across deploys and never touches disk.
+//   - `data/users.json` is no longer used. It exists on disk from older
+//     builds but no code reads or writes it.
 const otpService = require('../utils/otpService');
 const passwordService = require('../utils/passwordService');
-const { UserDatabase } = require('../utils/userDatabase');
 const supabaseClient = require('../utils/supabaseClient');
 const { getSupabaseAdmin, findProfileByEmail, findProfileById } = supabaseClient;
 const jwt = require('jsonwebtoken');
@@ -48,16 +45,11 @@ function toClientUser(user) {
 // Password material cache
 // ----------------------------------------------------------------------------
 //
-// We keep a per-email key/value cache of passwordSalt + passwordHash so the
-// login flow doesn't re-read users.json on every request. The cache is loaded
-// from disk on startup and updated whenever a registration or password change
-// mutates the file.
-//
-// Why we keep passwords out of Supabase: the existing schema doesn't have
-// password columns on `profiles`. Adding them would be a separate migration.
-// Until then, this file remains the only place password material lives.
+// In-memory only. Populated by login + register (writes go to Supabase; this
+// is just a per-process fast path). Wiped on every server restart, which is
+// fine because Supabase is the real source of truth.
 
-let registeredUsers = UserDatabase.loadAll();
+const registeredUsers = [];
 
 function getCachedPassword(email) {
   if (!email) return null;
@@ -82,16 +74,10 @@ function setCachedPassword(email, id, salt, hash) {
   } else {
     registeredUsers.push(record);
   }
-  // Persist to disk best-effort (used as offline fallback only — Supabase is
-  // the source of truth so login survives Render redeploys that wipe this file).
-  try { UserDatabase.upsert(record); } catch (e) {
-    console.warn('[authController] local password persist failed:', e.message);
-  }
 
-  // Persist to Supabase (the real source of truth). If the password columns
-  // haven't been added yet (schema migration not run), the regex on the error
-  // message lets us know and we silently skip — the local file will hold the
-  // password until the columns exist.
+  // Persist to Supabase (the real source of truth). Failures are logged but
+  // do not block the response — the caller will surface 503 if Supabase is
+  // down entirely. Without this write succeeding, the account cannot log in.
   const sb = getSupabaseAdmin();
   if (!sb) return;
   sb.from('profiles').update({
@@ -99,10 +85,6 @@ function setCachedPassword(email, id, salt, hash) {
     password_salt: salt,
     updated_at: new Date().toISOString()
   }).eq('email', norm).then(({ error }) => {
-    if (error && /password_hash|password_salt/i.test(error.message)) {
-      // Columns don't exist yet — keep going; password stays in local file.
-      return;
-    }
     if (error) {
       console.warn('[setCachedPassword] Supabase password write failed for', norm, '—', error.message);
     }
@@ -112,139 +94,121 @@ function setCachedPassword(email, id, salt, hash) {
 }
 
 // ----------------------------------------------------------------------------
-// Startup: seed admin only if not already present anywhere
+// Startup: seed admin only if not already present in Supabase
 // ----------------------------------------------------------------------------
 //
-// The previous implementation re-seeded the admin every time the local file
-// was empty (which happens after every Render redeploy). That broke admin
-// login because the password hash changed. Now we only seed if neither the
-// local cache nor Supabase has the admin email yet — so the seed runs at
-// most once per environment.
+// Runs once per process. If Supabase already has the admin row, we leave it
+// alone — including any pre-existing password (which is what makes admin login
+// survive redeploys). If Supabase is empty for this email, we seed both the
+// profile row and the password columns with the default `password123`.
+//
+// There is no local-file fallback anymore. The admin's password either lives
+// in Supabase or it doesn't.
 
 async function ensureAdminSeeded() {
   const adminEmail = 'akobeoladipupo@gmail.com';
 
-  // Hot cache hit?
-  if (registeredUsers.some(u => u.email && u.email.toLowerCase() === adminEmail)) {
-    console.log('✅ Admin user present in local cache');
-  }
-
-  // Supabase hit?
   let supabaseAdmin = null;
   try {
     supabaseAdmin = await findProfileByEmail(adminEmail);
   } catch (_) { /* swallow */ }
+
   if (supabaseAdmin) {
     console.log('✅ Admin user present in Supabase');
 
-    // If the row has no password columns populated yet (common after a Render
-    // redeploy wiped the local file) but we DO have the local file, migrate
-    // the password up to Supabase so login works on the next request.
+    // If the row exists but has no password columns populated (legacy data
+    // from before the schema migration), the admin will need a password reset.
     const hasPasswordOnProfile = supabaseAdmin.password_hash && supabaseAdmin.password_salt;
     if (!hasPasswordOnProfile) {
-      const fromDisk = registeredUsers.find(u => u.email && u.email.toLowerCase() === adminEmail);
-      if (fromDisk && fromDisk.passwordSalt && fromDisk.passwordHash) {
-        console.log('🔄 Migrating admin password from local file → Supabase');
-        const sb = getSupabaseAdmin();
-        if (sb) {
-          const { error } = await sb.from('profiles').update({
-            password_hash: fromDisk.passwordHash,
-            password_salt: fromDisk.passwordSalt,
-            updated_at: new Date().toISOString()
-          }).eq('email', adminEmail);
-          if (error && /password_hash|password_salt/i.test(error.message)) {
-            console.warn('⚠️ password columns missing on profiles — admin migration skipped');
-          } else if (error) {
-            console.error('[ensureAdminSeeded] ❌ admin password migration failed:', error.message);
-          } else {
-            console.log('✅ Admin password migrated to Supabase');
-          }
-        }
-      } else if (!getCachedPassword(adminEmail)) {
-        console.warn('⚠️ Admin exists in Supabase but has no password anywhere. Password reset required.');
-      }
+      console.warn('⚠️ Admin row has no password_hash / password_salt — login will fail until a password reset is performed.');
     }
     return;
   }
 
-  // Neither place has the admin — seed it.
+  // Supabase has no admin row — seed it.
   const adminSeed = passwordService.hashPassword('password123');
-  const adminUser = {
-    id: 'usr-admin-01',
-    full_name: 'Akobe Oladipupo',
+  const sb = getSupabaseAdmin();
+  if (!sb) {
+    console.error('[ensureAdminSeeded] Supabase admin client unavailable — cannot seed admin.');
+    return;
+  }
+
+  const profilePayload = {
     email: adminEmail,
+    full_name: 'Akobe Oladipupo',
     phone_number: '08000000001',
     role: 'ADMIN',
     email_verified: true,
     is_verified: true,
-    verification_status: 'APPROVED',
-    passwordSalt: adminSeed.salt,
-    passwordHash: adminSeed.hash,
-    created_at: new Date().toISOString()
+    verification_status: 'APPROVED'
   };
 
-  // Persist to Supabase first.
-  const sb = getSupabaseAdmin();
-  if (sb) {
-    const payload = { ...adminUser };
-    delete payload.passwordHash;
-    delete payload.passwordSalt;
-    const { error } = await sb.from('profiles').upsert(payload, { onConflict: 'email' });
-    if (error) {
-      console.error('[ensureAdminSeeded] ❌ Supabase seed failed:', error.message);
-    } else {
-      console.log('✅ Admin user seeded into Supabase');
-    }
+  // Upsert the profile row first (with local_id fallback for the legacy column).
+  let profileRes = await sb.from('profiles')
+    .upsert({ ...profilePayload, local_id: 'usr-admin-01' }, { onConflict: 'email' })
+    .select('*')
+    .single();
+  if (profileRes.error && /local_id/i.test(profileRes.error.message)) {
+    profileRes = await sb.from('profiles')
+      .upsert(profilePayload, { onConflict: 'email' })
+      .select('*')
+      .single();
   }
+  if (profileRes.error) {
+    console.error('[ensureAdminSeeded] ❌ Supabase seed failed:', profileRes.error.message);
+    return;
+  }
+  console.log('✅ Admin profile seeded into Supabase');
 
-  // Save password to local file + cache.
-  setCachedPassword(adminUser.email, adminUser.id, adminSeed.salt, adminSeed.hash);
-  console.log('✅ Admin password seeded locally (password: password123)');
+  // Then write the password columns.
+  const { error: pwErr } = await sb.from('profiles').update({
+    password_hash: adminSeed.hash,
+    password_salt: adminSeed.salt,
+    updated_at: new Date().toISOString()
+  }).eq('email', adminEmail);
+  if (pwErr) {
+    console.error('[ensureAdminSeeded] ❌ admin password write failed:', pwErr.message);
+    return;
+  }
+  console.log('✅ Admin password seeded into Supabase (default password: password123)');
+
+  // Populate the in-memory cache so a subsequent login in this process
+  // doesn't have to round-trip Supabase just for password material.
+  setCachedPassword(adminEmail, profileRes.data.id, adminSeed.salt, adminSeed.hash);
 }
 
 // Fire-and-forget so module load doesn't block. Errors are logged inside.
 ensureAdminSeeded().catch(err => console.error('[ensureAdminSeeded] fatal:', err));
 
 // ----------------------------------------------------------------------------
-// Record helpers: Supabase-first, with a graceful fallback to local file for
-// offline reads. The local file is treated as a hint, not authoritative.
+// Record helpers: Supabase-only. No more local-file fallback for user records.
 // ----------------------------------------------------------------------------
 
-// Fetch a user record (without password) from Supabase. Falls back to the
-// local file if Supabase errors. Returns null when nothing is found.
+// Fetch a user record (with password material) from Supabase by email.
+// Returns null when nothing is found or Supabase is unreachable.
 async function findUserRecordByEmail(email) {
   if (!email) return null;
   const norm = String(email).toLowerCase();
   const sb = getSupabaseAdmin();
-  if (sb) {
-    const profile = await findProfileByEmail(norm);
-    if (profile) {
-      return profileToRecord(profile);
-    }
-    // Supabase reachable but no row — user genuinely doesn't exist.
-    return null;
-  }
-  // No Supabase: fall back to local file (offline mode).
-  const local = registeredUsers.find(u => u.email && u.email.toLowerCase() === norm);
-  return local ? localToRecord(local) : null;
+  if (!sb) return null;
+  const profile = await findProfileByEmail(norm);
+  return profile ? profileToRecord(profile) : null;
 }
 
 async function findUserRecordById(id) {
   if (!id) return null;
   const sb = getSupabaseAdmin();
-  if (sb) {
-    const profile = await findProfileById(id);
-    if (profile) return profileToRecord(profile);
-    return null;
-  }
-  const local = registeredUsers.find(u => u.id === id);
-  return local ? localToRecord(local) : null;
+  if (!sb) return null;
+  const profile = await findProfileById(id);
+  return profile ? profileToRecord(profile) : null;
 }
 
 // Convert a Supabase profile row to the shape the rest of the controller uses.
-// Password material prefers the columns on profiles (so login survives Render
-// redeploys that wipe the local file). The local cache is a fallback for old
-// rows that pre-date the password columns being added.
+// Password material comes from the password_hash / password_salt columns on
+// profiles — Supabase is the only source of truth. The in-memory cache is a
+// per-process fast path: it may be populated for users who registered or
+// logged in within this process. If neither has it (e.g. another instance
+// registered the user), we treat the user as needing a password reset.
 function profileToRecord(profile) {
   if (!profile) return null;
   let salt = profile.password_salt || null;
@@ -282,32 +246,8 @@ function profileToRecord(profile) {
   };
 }
 
-// Convert a local-file record to the same shape (for offline fallback).
-function localToRecord(local) {
-  return {
-    id: local.local_id || local.id,
-    local_id: local.local_id || local.id,
-    full_name: local.full_name || '',
-    email: local.email,
-    phone_number: local.phone_number || '',
-    role: String(local.role || 'BUYER').toUpperCase(),
-    email_verified: Boolean(local.email_verified),
-    is_verified: Boolean(local.is_verified),
-    verification_status: local.verification_status || 'APPROVED',
-    state: local.state || '',
-    lga: local.lga || '',
-    city: local.city || '',
-    address: local.address || '',
-    marketing_consent: Boolean(local.marketing_consent),
-    created_at: local.created_at,
-    updated_at: local.updated_at,
-    deletion_pending: Boolean(local.deletion_pending),
-    deletion_requested_at: local.deletion_requested_at || null,
-    deletion_scheduled_for: local.deletion_scheduled_for || null,
-    deletion_request_reason: local.deletion_request_reason || null,
-    passwordSalt: local.passwordSalt,
-    passwordHash: local.passwordHash
-  };
+// No more local-file fallback — `localToRecord` removed. All records come from
+// Supabase via `profileToRecord` above.
 }
 
 // Persist a record to Supabase. Returns the canonical Supabase UUID. Local
@@ -382,8 +322,7 @@ const authController = {
         if (error) throw error;
         users = (data || []).map(profileToRecord);
       } else {
-        // Offline fallback.
-        users = registeredUsers.map(localToRecord);
+        users = [];
       }
 
       // Filter by Role
@@ -1147,18 +1086,13 @@ authController.findUserById = async (id) => {
   try {
     return await findUserRecordById(id);
   } catch (e) {
-    console.warn('[findUserById] fallback:', e.message);
-    return registeredUsers.find(u => u.id === id) ? localToRecord(registeredUsers.find(u => u.id === id)) : null;
+    console.warn('[findUserById] error:', e.message);
+    return null;
   }
 };
 
-// Offline-only helpers (used as fallbacks inside findUserBy*).
-function findUserRecordByEmailOffline(email) {
-  if (!email) return null;
-  const norm = String(email).toLowerCase();
-  const local = registeredUsers.find(u => u.email && u.email.toLowerCase() === norm);
-  return local ? localToRecord(local) : null;
-}
+// `findUserRecordByEmailOffline` removed — there is no local-file fallback
+// for user records anymore. All reads go through Supabase.
 
 // Append-only audit log of deletion-related actions (in-memory only; survives
 // the lifetime of the server process — useful for debugging without writing

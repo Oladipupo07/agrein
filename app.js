@@ -7,19 +7,12 @@ const state = {
   //                        'farmer-verification', 'admin-verification', 'admin-review', 'account-settings'
   activeRole: 'visitor', // 'visitor', 'farmer', 'buyer', 'admin'
   darkMode: false,
-  cart: [
-    {
-      id: 'prod-001',
-      title: 'Grade-A Sun-Dried Yellow Maize',
-      price: 480,
-      unit: 'kg',
-      cartQty: 100,
-      farmName: 'Zaria Agro-Gold Farms',
-      originState: 'Kaduna',
-      image: 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80'
-    }
-  ],
-  wishlist: ['prod-002', 'prod-004'],
+  // Cart & wishlist start empty — the user populates them by tapping "Add to
+  // Cart" or the heart icon on real products. Earlier demo builds seeded fake
+  // items here at boot, which made a fresh install look like the user had
+  // already shopped.
+  cart: [],
+  wishlist: [],
   
   // Catalog filters
   selectedCategory: 'All',
@@ -3242,6 +3235,17 @@ document.addEventListener('DOMContentLoaded', () => {
       // /api/products returns { success, count, data: [...] }
       if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
         state.mockData.products = data.data;
+        // One-shot migration: drop any cart/wishlist items whose IDs are not
+        // present in the live catalog. Removes the placeholder product IDs
+        // (prod-001, prod-002, etc.) that older demo builds seeded into
+        // localStorage so returning users don't see ghost items.
+        const validIds = new Set(data.data.map(p => p.id));
+        const cartBefore = state.cart.length;
+        const wishBefore = state.wishlist.length;
+        state.cart = state.cart.filter(item => validIds.has(item.id));
+        state.wishlist = state.wishlist.filter(id => validIds.has(id));
+        if (state.cart.length !== cartBefore) StorageManager.saveCart(state.cart);
+        if (state.wishlist.length !== wishBefore) StorageManager.saveWishlist(state.wishlist);
         renderApp();
       }
     })

@@ -94,12 +94,12 @@ function renderNavbar(state, actions) {
         <!-- Mobile Wishlist Button -->
         <button onclick="actions.toggleWishlistDrawer()" class="relative w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-sm active:scale-95 flex-shrink-0" aria-label="Wishlist" title="Wishlist">
           <i class="fa-regular fa-heart text-sm"></i>
-          ${wishlist.length > 0 ? `<span class="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-extrabold flex items-center justify-center">${wishlist.length}</span>` : ''}
+          ${wishlist.length > 0 ? `<span class="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-extrabold flex items-center justify-center">${wishlist.length > 99 ? '99+' : wishlist.length}</span>` : ''}
         </button>
         <!-- Mobile Cart Button -->
         <button onclick="actions.toggleCartDrawer()" class="relative w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center shadow-md shadow-emerald-700/20 active:scale-95 flex-shrink-0" aria-label="Cart" title="Cart">
           <i class="fa-solid fa-cart-shopping text-sm"></i>
-          ${cartCount > 0 ? `<span class="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-amber-400 text-emerald-950 text-[9px] font-extrabold flex items-center justify-center">${cartCount}</span>` : ''}
+          ${cartCount > 0 ? `<span class="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-amber-400 text-emerald-950 text-[9px] font-extrabold flex items-center justify-center">${cartCount > 99 ? '99+' : cartCount}</span>` : ''}
         </button>
         <button onclick="actions.toggleMobileMenu()" class="w-9 h-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-gray-200 flex items-center justify-center flex-shrink-0" aria-label="Menu">
           <i class="fa-solid fa-bars text-base"></i>
@@ -174,13 +174,13 @@ function renderNavbar(state, actions) {
           <button onclick="actions.toggleCartDrawer()" class="relative p-2 lg:p-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-700/20 transition-all items-center space-x-2 flex-shrink-0 hidden sm:inline-flex">
             <i class="fa-solid fa-cart-shopping text-sm"></i>
             <span class="text-xs font-bold hidden sm:inline">Cart</span>
-            ${cartCount > 0 ? `<span class="w-5 h-5 bg-amber-400 text-emerald-950 rounded-full text-[10px] font-extrabold flex items-center justify-center">${cartCount}</span>` : ''}
+            ${cartCount > 0 ? `<span class="min-w-[20px] h-5 px-1 bg-amber-400 text-emerald-950 rounded-full text-[10px] font-extrabold flex items-center justify-center">${cartCount > 99 ? '99+' : cartCount}</span>` : ''}
           </button>
 
           <!-- Wishlist Badge (desktop only — mobile lives in drawer & top bar) -->
           <button onclick="actions.toggleWishlistDrawer()" class="relative p-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all hidden lg:inline-flex" title="Wishlist">
             <i class="fa-regular fa-heart text-base text-rose-500"></i>
-            ${wishlist.length > 0 ? `<span class="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center shadow">${wishlist.length}</span>` : ''}
+            ${wishlist.length > 0 ? `<span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center shadow">${wishlist.length > 99 ? '99+' : wishlist.length}</span>` : ''}
           </button>
 
           <!-- Dark Mode Toggle (desktop only — mobile lives in drawer) -->
@@ -293,12 +293,12 @@ function renderNavbar(state, actions) {
           <button onclick="actions.closeMobileMenu(); setTimeout(() => actions.toggleCartDrawer(), 50);" class="relative flex flex-col items-center justify-center py-3 px-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition-all">
             <i class="fa-solid fa-cart-shopping text-base mb-1"></i>
             <span class="text-[10px] font-bold">Cart</span>
-            ${cartCount > 0 ? `<span class="absolute top-1.5 right-2 w-4 h-4 bg-amber-400 text-emerald-950 rounded-full text-[9px] font-extrabold flex items-center justify-center">${cartCount}</span>` : ''}
+            ${cartCount > 0 ? `<span class="absolute top-1.5 right-2 min-w-[16px] h-[16px] px-1 bg-amber-400 text-emerald-950 rounded-full text-[9px] font-extrabold flex items-center justify-center">${cartCount > 99 ? '99+' : cartCount}</span>` : ''}
           </button>
           <button onclick="actions.closeMobileMenu(); setTimeout(() => actions.toggleWishlistDrawer(), 50);" class="relative flex flex-col items-center justify-center py-3 px-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-all">
             <i class="fa-regular fa-heart text-base mb-1"></i>
             <span class="text-[10px] font-bold">Wishlist</span>
-            ${wishlist.length > 0 ? `<span class="absolute top-1.5 right-2 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center">${wishlist.length}</span>` : ''}
+            ${wishlist.length > 0 ? `<span class="absolute top-1.5 right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-extrabold flex items-center justify-center">${wishlist.length > 99 ? '99+' : wishlist.length}</span>` : ''}
           </button>
           <button onclick="actions.toggleDarkMode()" class="flex flex-col items-center justify-center py-3 px-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-all">
             <i class="fa-solid ${darkMode ? 'fa-sun' : 'fa-moon'} text-base mb-1"></i>
@@ -409,7 +409,7 @@ function renderNavbar(state, actions) {
         ${cartCount > 0 ? `
           <button onclick="actions.toggleCartDrawer()" class="relative flex flex-col items-center justify-center py-1 gap-0.5 rounded-xl ${state.cartOpen ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}" aria-label="Cart">
             <i class="fa-solid fa-cart-shopping text-lg"></i>
-            <span class="absolute top-0 right-2 w-4 h-4 rounded-full bg-amber-400 text-emerald-950 text-[9px] font-extrabold flex items-center justify-center">${cartCount}</span>
+            <span class="absolute top-0 right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-amber-400 text-emerald-950 text-[9px] font-extrabold flex items-center justify-center">${cartCount > 99 ? '99+' : cartCount}</span>
             <span class="text-[10px] font-bold">Cart</span>
           </button>
         ` : `

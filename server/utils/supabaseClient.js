@@ -69,7 +69,40 @@ async function findProfileById(id) {
   return byLocal || null;
 }
 
+/**
+ * Probe whether the `password_hash` and `password_salt` columns exist on
+ * `public.profiles`. Used at server boot to refuse to start when the schema
+ * migration hasn't been applied — without these columns, every new account
+ * created on Render will be unable to log in on the next deploy (Render's
+ * free-tier filesystem is ephemeral and wipes data/users.json).
+ *
+ * Returns an object: { ok, missing: [...] }
+ */
+async function profilesHasPasswordColumns() {
+  const sb = getSupabaseAdmin();
+  if (!sb) return { ok: false, missing: ['password_hash', 'password_salt'], reason: 'No Supabase admin client (missing service-role key).' };
+  try {
+    const { data, error } = await sb
+      .from('information_schema.columns')
+      .select('column_name')
+      .eq('table_schema', 'public')
+      .eq('table_name', 'profiles')
+      .in('column_name', ['password_hash', 'password_salt']);
+
+    if (error) {
+      return { ok: false, missing: ['password_hash', 'password_salt'], reason: error.message };
+    }
+
+    const found = new Set((data || []).map(r => r.column_name));
+    const missing = ['password_hash', 'password_salt'].filter(c => !found.has(c));
+    return { ok: missing.length === 0, missing };
+  } catch (e) {
+    return { ok: false, missing: ['password_hash', 'password_salt'], reason: e.message };
+  }
+}
+
 module.exports = supabase;
 module.exports.getSupabaseAdmin = getSupabaseAdmin;
 module.exports.findProfileByEmail = findProfileByEmail;
 module.exports.findProfileById = findProfileById;
+module.exports.profilesHasPasswordColumns = profilesHasPasswordColumns;
