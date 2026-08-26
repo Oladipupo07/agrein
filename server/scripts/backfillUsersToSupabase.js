@@ -33,7 +33,11 @@ function toProfilePayload(u) {
   // The Supabase `id` column is a UUID. Local ids look like `usr-1787043912356`,
   // so we let the DB default (uuid_generate_v4) generate one and key the upsert
   // on email instead. This avoids "invalid input syntax for type uuid" errors.
-  return {
+  //
+  // We also persist the legacy local_id so the middleware can resolve either
+  // format during the transition window. `local_id` is an optional column —
+  // the schema migration may not have run yet, in which case we omit it.
+  const payload = {
     email: u.email,
     full_name: u.full_name || (u.email || '').split('@')[0],
     phone_number: u.phone_number || null,
@@ -43,6 +47,10 @@ function toProfilePayload(u) {
     verification_status: u.verification_status || 'APPROVED',
     created_at: u.created_at || new Date().toISOString()
   };
+  if (typeof u.id === 'string' && !u.id.includes('-')) {
+    payload.local_id = u.id;
+  }
+  return payload;
 }
 
 async function main() {
@@ -58,6 +66,7 @@ async function main() {
   let created = 0;
   let updated = 0;
   let failed = 0;
+  let localIdBackfilled = 0;
   const failures = [];
 
   for (const user of users) {
@@ -69,11 +78,23 @@ async function main() {
     const payload = toProfilePayload(user);
 
     // `onConflict: 'email'` makes this an upsert keyed on the unique email column.
-    const { data, error } = await supabase
+    let result = await supabase
       .from('profiles')
       .upsert(payload, { onConflict: 'email' })
-      .select('id, email, created_at')
+      .select('id, email, local_id, created_at')
       .single();
+
+    // If `local_id` column doesn't exist (migration not yet applied), retry without it.
+    if (result.error && /local_id/i.test(result.error.message)) {
+      const { local_id, ...retryPayload } = payload;
+      result = await supabase
+        .from('profiles')
+        .upsert(retryPayload, { onConflict: 'email' })
+        .select('id, email, created_at')
+        .single();
+    }
+
+    const { data, error } = result;
 
     if (error) {
       failed += 1;
@@ -82,15 +103,19 @@ async function main() {
       continue;
     }
 
+    if (payload.local_id && data.local_id === payload.local_id) {
+      localIdBackfilled += 1;
+    }
+
     // Heuristic: if Supabase created_at is within a second of our payload, it's a fresh insert.
     const wasInsert = data && payload.created_at
       && Math.abs(new Date(data.created_at).getTime() - new Date(payload.created_at).getTime()) < 1000;
     if (wasInsert) {
       created += 1;
-      console.log(`  ✨ Created  ${user.email} → ${data.id}`);
+      console.log(`  ✨ Created  ${user.email} → ${data.id}${data.local_id ? ` (local_id=${data.local_id})` : ''}`);
     } else {
       updated += 1;
-      console.log(`  📝 Updated  ${user.email} → ${data.id}`);
+      console.log(`  📝 Updated  ${user.email} → ${data.id}${data.local_id ? ` (local_id=${data.local_id})` : ''}`);
     }
   }
 
@@ -104,6 +129,7 @@ async function main() {
   console.log(`  Supabase after        : ${after}`);
   console.log(`  Newly created         : ${created}`);
   console.log(`  Updated existing      : ${updated}`);
+  console.log(`  local_id backfilled   : ${localIdBackfilled}`);
   console.log(`  Failed                : ${failed}`);
   if (failures.length) {
     console.log('\n  Failures:');

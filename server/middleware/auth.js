@@ -68,7 +68,9 @@ async function authenticateToken(req, res, next) {
       const lookupEmail = (req.headers['x-user-email'] || '').toLowerCase();
       let user = null;
       if (lookupEmail && authController.findUserByEmail) {
-        user = authController.findUserByEmail(lookupEmail);
+        try {
+          user = await authController.findUserByEmail(lookupEmail);
+        } catch (_) { /* swallow */ }
       }
       // As a last resort, scan via getRegisteredUsers if findUserById is missing.
       if (!user && lookupEmail) {
@@ -104,23 +106,55 @@ function expiresIn() {
  * Header-based auth that reads the caller's email and resolves them against
  * the registered user table. Used by /api/auth/change-password so the caller
  * is bound to a real account. Attaches `req.user = { id, email, role, verificationStatus }`.
+ *
+ * Resolves against Supabase `profiles` first (so the path survives a Render
+ * redeploy that wipes the local file). Falls back to the in-memory cache only
+ * if Supabase is unreachable.
  */
-function authenticateFromHeader(req, res, next) {
+async function authenticateFromHeader(req, res, next) {
   const email = (req.headers['x-user-email'] || '').toLowerCase();
   if (!email) {
     return res.status(401).json({ success: false, message: 'Authentication required.' });
   }
-  const user = authController.findUserByEmail(email);
-  if (!user) {
-    return res.status(401).json({ success: false, message: 'Account not found.' });
+
+  // Prefer Supabase — it survives ephemeral-disk deploys.
+  const supabase = getSupabaseAdmin();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, role, verification_status')
+        .eq('email', email)
+        .maybeSingle();
+      if (!error && data) {
+        req.user = {
+          id: data.id,
+          email: data.email,
+          role: String(data.role || 'BUYER').toUpperCase(),
+          verificationStatus: data.verification_status || 'APPROVED'
+        };
+        return next();
+      }
+    } catch (err) {
+      console.warn('[auth] Supabase profile lookup failed in authenticateFromHeader:', err.message);
+    }
   }
-  req.user = {
-    id: user.id,
-    email: user.email,
-    role: user.role,
-    verificationStatus: user.verification_status
-  };
-  next();
+
+  // Fallback: in-memory cache (covers Supabase-down scenarios).
+  try {
+    const user = await authController.findUserByEmail(email);
+    if (user) {
+      req.user = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        verificationStatus: user.verification_status
+      };
+      return next();
+    }
+  } catch (_) { /* fallthrough */ }
+
+  return res.status(401).json({ success: false, message: 'Account not found.' });
 }
 
 /**

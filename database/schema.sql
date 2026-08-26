@@ -422,3 +422,19 @@ DROP POLICY IF EXISTS "Owner reads own notifications" ON public.notifications;
 CREATE POLICY "Owner reads own notifications" ON public.notifications
   FOR SELECT USING (auth.uid() = user_id);
 
+-- ============================================================================
+-- Local-file compatibility shim
+-- ============================================================================
+-- Existing JWTs minted before the Supabase source-of-truth refactor carry
+-- `usr-<timestamp>` ids from data/users.json. Storing that legacy id on the
+-- row lets the lookup helpers match by either UUID or local_id during the
+-- transition window. After all clients have re-minted tokens this column can
+-- be dropped.
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS local_id TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS profiles_local_id_unique_idx
+  ON public.profiles (local_id)
+  WHERE local_id IS NOT NULL;
+

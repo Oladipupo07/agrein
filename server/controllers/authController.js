@@ -1,7 +1,21 @@
 // User Authentication & Role Controller for Agrein with Email OTP Verification
+//
+// Architecture (post-refactor):
+//   - Supabase `profiles` is the source of truth for all user RECORDS
+//     (email, role, verification_status, full_name, phone_number, etc).
+//   - `data/users.json` is the source of truth for password material
+//     (`passwordHash`, `passwordSalt`). Supabase `profiles` has no password
+//     columns, so passwords cannot live there without a schema change.
+//   - `registeredUsers` (the in-memory array) is a write-through cache for the
+//     password file, kept hot so login doesn't hit the disk on every request.
+//   - On every record write we update Supabase first (await), then mirror to
+//     the local cache + file. Reads prefer Supabase; the local cache is a
+//     fallback for password verification.
 const otpService = require('../utils/otpService');
 const passwordService = require('../utils/passwordService');
-const { UserDatabase } = require('../utils/userDatabase'); // ✅ Add persistent storage
+const { UserDatabase } = require('../utils/userDatabase');
+const supabaseClient = require('../utils/supabaseClient');
+const { getSupabaseAdmin, findProfileByEmail, findProfileById } = supabaseClient;
 const jwt = require('jsonwebtoken');
 
 // Inline the JWT expiry so this module doesn't depend on the middleware's
@@ -23,148 +37,300 @@ function mintToken(user) {
   );
 }
 
-// Helper: pre-compute a deterministic-ish password hash pair for seeds.
-// We hash here at module load so the registeredUsers array is a plain literal
-// of user records. New users created via /register get fresh salts.
-function hashSync(plain) {
-  return passwordService.hashPassword(plain);
-}
-
-// ✅ Load users from persistent database file
-// Only seed admin if no users exist
-function initializeUsers() {
-  let registeredUsers = UserDatabase.loadAll();
-  
-  // If no users exist, create admin
-  if (registeredUsers.length === 0) {
-    const adminSeed = hashSync('password123');
-    const adminUser = {
-      id: 'usr-admin-01',
-      full_name: 'Akobe Oladipupo',
-      email: 'akobeoladipupo@gmail.com',
-      phone_number: '08000000001',
-      role: 'ADMIN',
-      email_verified: true,
-      is_verified: true,
-      verification_status: 'APPROVED',
-      passwordSalt: adminSeed.salt,
-      passwordHash: adminSeed.hash,
-      created_at: new Date().toISOString()
-    };
-    UserDatabase.upsert(adminUser);
-    registeredUsers = [adminUser];
-    console.log('✅ Admin user created and saved to database');
-  } else {
-    console.log(`✅ Loaded ${registeredUsers.length} users from persistent database`);
-  }
-  
-  return registeredUsers;
-}
-
-let registeredUsers = initializeUsers();
-
 // Strip the password material before returning a user record to clients.
 function toClientUser(user) {
   if (!user) return null;
-  // eslint-disable-next-line no-unused-vars
   const { passwordHash, passwordSalt, ...safe } = user;
   return safe;
 }
 
-// Database helper: synchronize user record to both Supabase AND local file storage.
+// ----------------------------------------------------------------------------
+// Password material cache
+// ----------------------------------------------------------------------------
 //
-// The local file is the offline source-of-truth and is always written first. The
-// Supabase write is awaited and its result is returned to the caller so that a
-// sync failure can be surfaced to the HTTP response (rather than silently
-// swallowed, which left the local file ahead of the dashboard DB and confused
-// admins). When Supabase is unreachable or returns an error we re-throw so the
-// caller can decide whether to fail the request or accept the local-only write.
-async function syncUserToDb(user) {
-  // 1. Always write to the local file. This is the offline source-of-truth so
-  //    it must succeed even if Supabase is down — losing a registration to a
-  //    transient cloud outage is unacceptable.
-  UserDatabase.upsert(user);
+// We keep a per-email key/value cache of passwordSalt + passwordHash so the
+// login flow doesn't re-read users.json on every request. The cache is loaded
+// from disk on startup and updated whenever a registration or password change
+// mutates the file.
+//
+// Why we keep passwords out of Supabase: the existing schema doesn't have
+// password columns on `profiles`. Adding them would be a separate migration.
+// Until then, this file remains the only place password material lives.
 
-  // 2. Mirror to Supabase. Return a structured result instead of throwing so
-  //    callers can choose between failing the request (registration) or
-  //    continuing with a warning (login, profile update, etc.).
-  const supabase = require('../utils/supabaseClient');
-  if (!supabase) {
-    return { ok: false, source: 'local-only', reason: 'supabase client not initialized' };
+let registeredUsers = UserDatabase.loadAll();
+
+function getCachedPassword(email) {
+  if (!email) return null;
+  const norm = String(email).toLowerCase();
+  const u = registeredUsers.find(x => x.email && x.email.toLowerCase() === norm);
+  if (!u) return null;
+  return { salt: u.passwordSalt, hash: u.passwordHash, id: u.id };
+}
+
+function setCachedPassword(email, id, salt, hash) {
+  if (!email) return;
+  const norm = String(email).toLowerCase();
+  const idx = registeredUsers.findIndex(x => x.email && x.email.toLowerCase() === norm);
+  const record = {
+    id: id || (idx >= 0 ? registeredUsers[idx].id : `usr-${Date.now()}`),
+    email: norm,
+    passwordSalt: salt,
+    passwordHash: hash
+  };
+  if (idx >= 0) {
+    registeredUsers[idx] = { ...registeredUsers[idx], ...record };
+  } else {
+    registeredUsers.push(record);
+  }
+  // Persist to disk best-effort.
+  try { UserDatabase.upsert(record); } catch (e) {
+    console.warn('[authController] local password persist failed:', e.message);
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Startup: seed admin only if not already present anywhere
+// ----------------------------------------------------------------------------
+//
+// The previous implementation re-seeded the admin every time the local file
+// was empty (which happens after every Render redeploy). That broke admin
+// login because the password hash changed. Now we only seed if neither the
+// local cache nor Supabase has the admin email yet — so the seed runs at
+// most once per environment.
+
+async function ensureAdminSeeded() {
+  const adminEmail = 'akobeoladipupo@gmail.com';
+
+  // Hot cache hit?
+  if (registeredUsers.some(u => u.email && u.email.toLowerCase() === adminEmail)) {
+    console.log('✅ Admin user present in local cache');
   }
 
-  // Supabase expects a UUID for `id`. Local records use `usr-<timestamp>` which
-  // is not a valid UUID, so we omit `id` on insert and let the DB default
-  // (uuid_generate_v4) generate one. Subsequent upserts by email will find the
-  // existing row and update it.
-  const { id: _ignoreLocalId, ...payload } = {
-    id: user.id,
-    full_name: user.full_name,
+  // Supabase hit?
+  let supabaseAdmin = null;
+  try {
+    supabaseAdmin = await findProfileByEmail(adminEmail);
+  } catch (_) { /* swallow */ }
+  if (supabaseAdmin) {
+    console.log('✅ Admin user present in Supabase');
+    // Mirror password into cache from disk if not already there.
+    if (!getCachedPassword(adminEmail)) {
+      const fromDisk = registeredUsers.find(u => u.email && u.email.toLowerCase() === adminEmail);
+      if (!fromDisk) {
+        // No local record — can't recover the original password hash from Supabase.
+        console.warn('⚠️ Admin exists in Supabase but not locally. Password reset required.');
+      }
+    }
+    return;
+  }
+
+  // Neither place has the admin — seed it.
+  const adminSeed = passwordService.hashPassword('password123');
+  const adminUser = {
+    id: 'usr-admin-01',
+    full_name: 'Akobe Oladipupo',
+    email: adminEmail,
+    phone_number: '08000000001',
+    role: 'ADMIN',
+    email_verified: true,
+    is_verified: true,
+    verification_status: 'APPROVED',
+    passwordSalt: adminSeed.salt,
+    passwordHash: adminSeed.hash,
+    created_at: new Date().toISOString()
+  };
+
+  // Persist to Supabase first.
+  const sb = getSupabaseAdmin();
+  if (sb) {
+    const payload = { ...adminUser };
+    delete payload.passwordHash;
+    delete payload.passwordSalt;
+    const { error } = await sb.from('profiles').upsert(payload, { onConflict: 'email' });
+    if (error) {
+      console.error('[ensureAdminSeeded] ❌ Supabase seed failed:', error.message);
+    } else {
+      console.log('✅ Admin user seeded into Supabase');
+    }
+  }
+
+  // Save password to local file + cache.
+  setCachedPassword(adminUser.email, adminUser.id, adminSeed.salt, adminSeed.hash);
+  console.log('✅ Admin password seeded locally (password: password123)');
+}
+
+// Fire-and-forget so module load doesn't block. Errors are logged inside.
+ensureAdminSeeded().catch(err => console.error('[ensureAdminSeeded] fatal:', err));
+
+// ----------------------------------------------------------------------------
+// Record helpers: Supabase-first, with a graceful fallback to local file for
+// offline reads. The local file is treated as a hint, not authoritative.
+// ----------------------------------------------------------------------------
+
+// Fetch a user record (without password) from Supabase. Falls back to the
+// local file if Supabase errors. Returns null when nothing is found.
+async function findUserRecordByEmail(email) {
+  if (!email) return null;
+  const norm = String(email).toLowerCase();
+  const sb = getSupabaseAdmin();
+  if (sb) {
+    const profile = await findProfileByEmail(norm);
+    if (profile) {
+      return profileToRecord(profile);
+    }
+    // Supabase reachable but no row — user genuinely doesn't exist.
+    return null;
+  }
+  // No Supabase: fall back to local file (offline mode).
+  const local = registeredUsers.find(u => u.email && u.email.toLowerCase() === norm);
+  return local ? localToRecord(local) : null;
+}
+
+async function findUserRecordById(id) {
+  if (!id) return null;
+  const sb = getSupabaseAdmin();
+  if (sb) {
+    const profile = await findProfileById(id);
+    if (profile) return profileToRecord(profile);
+    return null;
+  }
+  const local = registeredUsers.find(u => u.id === id);
+  return local ? localToRecord(local) : null;
+}
+
+// Convert a Supabase profile row to the shape the rest of the controller uses.
+// The local cache contributes password material so login can still verify.
+function profileToRecord(profile) {
+  if (!profile) return null;
+  const cred = getCachedPassword(profile.email);
+  return {
+    id: profile.id,
+    local_id: profile.local_id || null,
+    full_name: profile.full_name || '',
+    email: profile.email,
+    phone_number: profile.phone_number || '',
+    role: String(profile.role || 'BUYER').toUpperCase(),
+    email_verified: Boolean(profile.email_verified),
+    is_verified: Boolean(profile.is_verified),
+    verification_status: profile.verification_status || 'APPROVED',
+    state: profile.state || '',
+    lga: profile.lga || '',
+    city: profile.city || '',
+    address: profile.address || '',
+    marketing_consent: Boolean(profile.marketing_consent),
+    created_at: profile.created_at,
+    updated_at: profile.updated_at,
+    deletion_pending: Boolean(profile.deletion_pending),
+    deletion_requested_at: profile.deletion_requested_at || null,
+    deletion_scheduled_for: profile.deletion_scheduled_for || null,
+    deletion_request_reason: profile.deletion_request_reason || null,
+    passwordSalt: cred ? cred.salt : null,
+    passwordHash: cred ? cred.hash : null
+  };
+}
+
+// Convert a local-file record to the same shape (for offline fallback).
+function localToRecord(local) {
+  return {
+    id: local.local_id || local.id,
+    local_id: local.local_id || local.id,
+    full_name: local.full_name || '',
+    email: local.email,
+    phone_number: local.phone_number || '',
+    role: String(local.role || 'BUYER').toUpperCase(),
+    email_verified: Boolean(local.email_verified),
+    is_verified: Boolean(local.is_verified),
+    verification_status: local.verification_status || 'APPROVED',
+    state: local.state || '',
+    lga: local.lga || '',
+    city: local.city || '',
+    address: local.address || '',
+    marketing_consent: Boolean(local.marketing_consent),
+    created_at: local.created_at,
+    updated_at: local.updated_at,
+    deletion_pending: Boolean(local.deletion_pending),
+    deletion_requested_at: local.deletion_requested_at || null,
+    deletion_scheduled_for: local.deletion_scheduled_for || null,
+    deletion_request_reason: local.deletion_request_reason || null,
+    passwordSalt: local.passwordSalt,
+    passwordHash: local.passwordHash
+  };
+}
+
+// Persist a record to Supabase. Returns the canonical Supabase UUID. Local
+// cache is updated with any new password material.
+async function persistUserToSupabase(user) {
+  const sb = getSupabaseAdmin();
+  if (!sb) return null;
+
+  // Strip password fields — they're not in the schema. Strip legacy `id`
+  // unless it's already a UUID; Supabase generates one otherwise.
+  const payload = {
     email: user.email,
-    phone_number: user.phone_number,
-    role: user.role,
+    full_name: user.full_name,
+    phone_number: user.phone_number || null,
+    role: String(user.role || 'BUYER').toUpperCase(),
     email_verified: Boolean(user.email_verified),
     is_verified: Boolean(user.is_verified),
     verification_status: user.verification_status || 'APPROVED',
-    created_at: user.created_at || new Date().toISOString()
+    state: user.state || null,
+    lga: user.lga || null,
+    city: user.city || null,
+    address: user.address || null,
+    marketing_consent: Boolean(user.marketing_consent),
+    created_at: user.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
   };
-  // Keep payload `id` as the local id only if it's already a UUID (e.g. when
-  // an admin re-imports a row that originated in Supabase). Otherwise omit it
-  // so the default kicks in.
-  const isUuid = typeof payload.id === 'string'
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.id);
-  if (!isUuid) delete payload.id;
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .upsert(payload, { onConflict: 'email' })
-    .select('id, email')
-    .single();
-
-  if (error) {
-    console.error('[syncUserToDb] ❌ Supabase upsert failed for', user.email, '—', error.message);
-    return { ok: false, source: 'local-only', reason: error.message };
+  // local_id is added by an optional migration (see database/schema.sql). If
+  // the column hasn't been added yet we silently drop the field rather than
+  // fail the upsert — backward-compat for the brief window before the
+  // migration is applied.
+  if (user.local_id || (typeof user.id === 'string' && !user.id.includes('-'))) {
+    payload.local_id = user.local_id || user.id;
   }
 
-  console.log('[syncUserToDb] ✅ Synced', user.email, '→ Supabase', data && data.id);
-  return { ok: true, source: 'supabase', id: data && data.id };
+  // Build a select that includes local_id only if we know the column exists.
+  // Probe by trying with local_id first; on schema-cache error retry without.
+  let result = await sb.from('profiles').upsert(payload, { onConflict: 'email' }).select('id, email, local_id').single();
+  if (result.error && /local_id/i.test(result.error.message)) {
+    delete payload.local_id;
+    result = await sb.from('profiles').upsert(payload, { onConflict: 'email' }).select('id, email').single();
+  }
+  const { data, error } = result;
+
+  if (error) {
+    console.error('[persistUserToSupabase] ❌ upsert failed for', user.email, '—', error.message);
+    return null;
+  }
+
+  // Mirror password material into the local cache + file.
+  if (user.passwordSalt && user.passwordHash) {
+    setCachedPassword(user.email, data.id, user.passwordSalt, user.passwordHash);
+  }
+
+  return data;
 }
 
+// ----------------------------------------------------------------------------
+// Controller
+// ----------------------------------------------------------------------------
+
 const authController = {
-  // Query all registered users (Farmers, Buyers, Admins) from Database / Memory
+  // Query all registered users — Supabase is the source of truth.
   async getRegisteredUsers(req, res) {
     try {
       const { role, q } = req.query;
-      // ✅ Reload from persistent database on each request
-      registeredUsers = UserDatabase.loadAll();
-      let users = [...registeredUsers];
+      const sb = getSupabaseAdmin();
+      let users = [];
 
-      // Query from Supabase if connected
-      try {
-        const supabase = require('../utils/supabaseClient');
-        if (supabase) {
-          const { data: dbUsers, error } = await supabase.from('profiles').select('*');
-          if (!error && dbUsers && dbUsers.length > 0) {
-            dbUsers.forEach(dbU => {
-              const exists = users.find(u => u.email.toLowerCase() === (dbU.email || '').toLowerCase());
-              if (!exists) {
-                users.push({
-                  id: dbU.id,
-                  full_name: dbU.full_name || dbU.name || (dbU.email || '').split('@')[0],
-                  email: dbU.email,
-                  phone_number: dbU.phone_number || dbU.phone || 'N/A',
-                  role: (dbU.role || 'BUYER').toUpperCase(),
-                  email_verified: Boolean(dbU.email_verified ?? true),
-                  is_verified: Boolean(dbU.is_verified ?? false),
-                  verification_status: dbU.verification_status || (dbU.role === 'FARMER' ? 'PENDING' : 'APPROVED'),
-                  created_at: dbU.created_at || new Date().toISOString()
-                });
-              }
-            });
-          }
-        }
-      } catch (dbErr) {
-        console.warn('[authController] Supabase users query notice:', dbErr.message);
+      if (sb) {
+        const { data, error } = await sb.from('profiles').select('*');
+        if (error) throw error;
+        users = (data || []).map(profileToRecord);
+      } else {
+        // Offline fallback.
+        users = registeredUsers.map(localToRecord);
       }
 
       // Filter by Role
@@ -201,7 +367,7 @@ const authController = {
     }
   },
 
-  // Admin: Update a farmer's verification status in the registered users database
+  // Admin: Update a farmer's verification status.
   async updateUserVerificationStatus(req, res) {
     try {
       const { email, status } = req.body;
@@ -209,20 +375,27 @@ const authController = {
         return res.status(400).json({ success: false, message: 'Email and verification status are required.' });
       }
       const normalizedEmail = email.toLowerCase();
-      const user = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
-      if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found in database.' });
-      }
-      const prevStatus = user.verification_status;
-      user.verification_status = status.toUpperCase();
-      if (status.toUpperCase() === 'APPROVED') {
-        user.is_verified = true;
-      }
-      syncUserToDb(user);
+      const sb = getSupabaseAdmin();
+      if (!sb) return res.status(503).json({ success: false, message: 'Auth database unavailable.' });
+
+      const newStatus = status.toUpperCase();
+      const updates = { verification_status: newStatus, updated_at: new Date().toISOString() };
+      if (newStatus === 'APPROVED') updates.is_verified = true;
+
+      const { data, error } = await sb
+        .from('profiles')
+        .update(updates)
+        .eq('email', normalizedEmail)
+        .select('*')
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return res.status(404).json({ success: false, message: 'User not found in database.' });
+
+      const updated = profileToRecord(data);
       res.json({
         success: true,
-        message: `Verification status updated from ${prevStatus} to ${user.verification_status} for ${user.email}.`,
-        user: toClientUser(user)
+        message: `Verification status updated to ${updated.verification_status} for ${updated.email}.`,
+        user: toClientUser(updated)
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -232,9 +405,6 @@ const authController = {
   // Public Sign Up for BUYER and FARMER -> Triggers Email OTP
   async register(req, res) {
     try {
-      // ✅ Reload from persistent database on each request
-      registeredUsers = UserDatabase.loadAll();
-      
       const { fullName, email, phone, password, role } = req.body;
 
       if (!fullName || !email || !password || !role) {
@@ -256,48 +426,59 @@ const authController = {
         return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long.' });
       }
 
-      const existing = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+      const sb = getSupabaseAdmin();
+      if (!sb) {
+        return res.status(503).json({ success: false, message: 'Auth database unavailable. Please try again shortly.' });
+      }
+
+      // Check for an existing verified account with this email.
+      const existing = await findProfileByEmail(normalizedEmail);
       if (existing && existing.email_verified) {
         return res.status(400).json({ success: false, message: 'An account with this email address already exists. Please log in.' });
       }
 
       const { salt, hash } = passwordService.hashPassword(password);
+      const localId = `usr-${Date.now()}`;
 
-      if (existing) {
-        // Update the unverified existing record with the new credentials + role data
-        existing.full_name = fullName;
-        existing.phone_number = phone;
-        existing.role = normalizedRole;
-        existing.passwordSalt = salt;
-        existing.passwordHash = hash;
-      } else {
-        const newUser = {
-          id: `usr-${Date.now()}`,
-          full_name: fullName,
-          email: normalizedEmail,
-          phone_number: phone,
-          role: normalizedRole,
-          email_verified: false,
-          is_verified: false,
-          verification_status: normalizedRole === 'FARMER' ? 'NOT_STARTED' : 'APPROVED',
-          passwordSalt: salt,
-          passwordHash: hash,
-          created_at: new Date().toISOString()
-        };
-        registeredUsers.push(newUser);
+      // Compose the payload that will live in Supabase.
+      const profilePayload = {
+        email: normalizedEmail,
+        full_name: fullName,
+        phone_number: phone || null,
+        role: normalizedRole,
+        email_verified: false,
+        is_verified: false,
+        verification_status: normalizedRole === 'FARMER' ? 'NOT_STARTED' : 'APPROVED'
+      };
+
+      // local_id is optional (depends on the schema migration). Try it first;
+      // if the column doesn't exist yet, retry without.
+      const carryLocalId = existing ? (existing.local_id || localId) : localId;
+      let upsertRes = await sb.from('profiles').upsert({ ...profilePayload, local_id: carryLocalId }, { onConflict: 'email' }).select('*').single();
+      if (upsertRes.error && /local_id/i.test(upsertRes.error.message)) {
+        upsertRes = await sb.from('profiles').upsert(profilePayload, { onConflict: 'email' }).select('*').single();
+      }
+      const { data: persisted, error } = upsertRes;
+      if (error) {
+        console.error('[register] ❌ Supabase upsert failed:', error.message);
+        return res.status(500).json({ success: false, message: 'Could not create account. Please try again.' });
       }
 
-      // Generate 6-Digit Email OTP against the (possibly updated) record
-      const target = existing || registeredUsers[registeredUsers.length - 1];
-      const { rawOtp, expiresAt } = otpService.generateOtp(target.email);
-      const sync = await syncUserToDb(target);
-
-      // Surface sync drift so admins don't lose new users. Local write already
-      // succeeded, but if Supabase failed we report a non-blocking warning the
-      // frontend can show — and log loudly on the server.
-      if (!sync.ok) {
-        console.warn(`[register] ⚠️ ${target.email} saved locally only — Supabase sync failed: ${sync.reason}`);
+      // Mirror password material into local cache + file. If this fails the
+      // user can still be verified via OTP, but they'll need a password reset
+      // before login — surface that as a non-blocking warning.
+      let passwordPersisted = true;
+      try {
+        setCachedPassword(persisted.email, persisted.id, salt, hash);
+      } catch (e) {
+        passwordPersisted = false;
+        console.warn('[register] ⚠️ local password persist failed:', e.message);
       }
+
+      // Generate OTP. If mailer dispatch fails, the user can still verify via
+      // the demo code path (rawOtp is logged to the server console).
+      const target = profileToRecord(persisted);
+      otpService.generateOtp(target.email);
 
       res.status(201).json({
         success: true,
@@ -306,8 +487,7 @@ const authController = {
         email: target.email,
         role: target.role,
         expiresInSeconds: 300,
-        // Non-blocking diagnostic for the client / admin dashboard.
-        sync: sync.ok ? { ok: true } : { ok: false, reason: sync.reason }
+        passwordPersisted
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -317,9 +497,6 @@ const authController = {
   // Verify 6-digit OTP
   async verifyOtp(req, res) {
     try {
-      // ✅ Reload from persistent database on each request
-      registeredUsers = UserDatabase.loadAll();
-      
       const { email, otp } = req.body;
       if (!email || !otp) {
         return res.status(400).json({ success: false, message: 'Email and 6-digit verification code are required.' });
@@ -336,33 +513,36 @@ const authController = {
       }
 
       const normalizedEmail = email.toLowerCase();
-      let user = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
-      if (user) {
-        user.email_verified = true;
-        // Newly verified farmers enter the admin KYC queue immediately so the
-        // admin can see them in the verification dashboard. The client-side
-        // lock prevents them from touching the platform until status flips
-        // to APPROVED via the admin approval action.
-        if (user.role === 'FARMER' && user.verification_status === 'NOT_STARTED') {
-          user.verification_status = 'PENDING';
-        }
-      } else {
-        user = {
-          id: `usr-${Date.now()}`,
+      const sb = getSupabaseAdmin();
+      if (!sb) {
+        return res.status(503).json({ success: false, message: 'Auth database unavailable.' });
+      }
+
+      let profile = await findProfileByEmail(normalizedEmail);
+      if (!profile) {
+        // OTP was valid but we have no profile — create a default buyer.
+        const { data, error } = await sb.from('profiles').upsert({
           email: normalizedEmail,
           full_name: normalizedEmail.split('@')[0],
           role: 'BUYER',
           email_verified: true,
+          is_verified: false,
           verification_status: 'APPROVED'
-        };
-        registeredUsers.push(user);
+        }, { onConflict: 'email' }).select('*').single();
+        if (error) throw error;
+        profile = data;
+      } else {
+        // Flip email_verified and (for new farmers) push into the KYC queue.
+        const updates = { email_verified: true, updated_at: new Date().toISOString() };
+        if (profile.role === 'FARMER' && profile.verification_status === 'NOT_STARTED') {
+          updates.verification_status = 'PENDING';
+        }
+        const { data, error } = await sb.from('profiles').update(updates).eq('email', normalizedEmail).select('*').single();
+        if (error) throw error;
+        profile = data;
       }
 
-      const sync = await syncUserToDb(user);
-      if (!sync.ok) {
-        console.warn(`[verifyOtp] ⚠️ ${user.email} verified locally only — Supabase sync failed: ${sync.reason}`);
-      }
-
+      const user = profileToRecord(profile);
       const redirectView = user.role === 'FARMER' ? 'farmer-verification' : 'buyer-dashboard';
 
       res.json({
@@ -373,8 +553,7 @@ const authController = {
           ...toClientUser(user),
           token: mintToken(user)
         },
-        redirectView,
-        sync: sync.ok ? { ok: true } : { ok: false, reason: sync.reason }
+        redirectView
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -410,31 +589,38 @@ const authController = {
     }
   },
 
-  // User Login — verifies email + password against the seeded/registered records
+  // User Login — verifies email + password.
   async login(req, res) {
     try {
-      // ✅ Reload from persistent database on each request
-      registeredUsers = UserDatabase.loadAll();
-      
       const { email, password } = req.body;
       if (!email || !password) {
         return res.status(400).json({ success: false, message: 'Email and password required.' });
       }
 
       const normalizedEmail = email.toLowerCase();
-      const user = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+      const sb = getSupabaseAdmin();
+
+      // Locate the user record. Supabase first; local file as offline fallback.
+      let user = null;
+      if (sb) {
+        const profile = await findProfileByEmail(normalizedEmail);
+        if (profile) user = profileToRecord(profile);
+      } else {
+        user = findUserRecordByEmail(normalizedEmail);
+      }
 
       if (!user) {
         return res.status(401).json({ success: false, message: 'Invalid email or password.' });
       }
 
+      // Password verification — from the local cache.
       if (!user.passwordHash || !passwordService.verifyPassword(password, user.passwordSalt, user.passwordHash)) {
         return res.status(401).json({ success: false, message: 'Invalid email or password.' });
       }
 
       // Email verification gate for non-admins
       if (!user.email_verified && user.role !== 'ADMIN') {
-        const { rawOtp } = otpService.generateOtp(normalizedEmail);
+        otpService.generateOtp(normalizedEmail);
         return res.status(403).json({
           success: false,
           emailVerificationRequired: true,
@@ -465,8 +651,6 @@ const authController = {
         return res.status(403).json({ success: false, message: 'Forbidden: Only existing Admins can create new Admin accounts.' });
       }
 
-      // Validate required fields and password strength so we don't persist
-      // a half-empty record or accept a weak password via the admin endpoint.
       if (!fullName || !email || !password) {
         return res.status(400).json({ success: false, message: 'fullName, email, and password are required.' });
       }
@@ -478,29 +662,35 @@ const authController = {
         return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long.' });
       }
 
-      // Reload from disk to avoid clobbering a concurrent change.
-      registeredUsers = UserDatabase.loadAll();
-      const existing = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+      const sb = getSupabaseAdmin();
+      if (!sb) return res.status(503).json({ success: false, message: 'Auth database unavailable.' });
+
+      const existing = await findProfileByEmail(normalizedEmail);
       if (existing) {
         return res.status(409).json({ success: false, message: 'An account with that email already exists.' });
       }
 
       const { salt, hash } = passwordService.hashPassword(password);
-      const newAdmin = {
-        id: `usr-${Date.now()}`,
-        full_name: fullName,
+      const localId = `usr-${Date.now()}`;
+
+      const adminPayload = {
         email: normalizedEmail,
+        full_name: fullName,
         role: 'ADMIN',
         email_verified: true,
         is_verified: true,
-        verification_status: 'APPROVED',
-        passwordSalt: salt,
-        passwordHash: hash,
-        created_at: new Date().toISOString()
+        verification_status: 'APPROVED'
       };
-      registeredUsers.push(newAdmin);
-      syncUserToDb(newAdmin);
+      let adminRes = await sb.from('profiles').upsert({ ...adminPayload, local_id: localId }, { onConflict: 'email' }).select('*').single();
+      if (adminRes.error && /local_id/i.test(adminRes.error.message)) {
+        adminRes = await sb.from('profiles').upsert(adminPayload, { onConflict: 'email' }).select('*').single();
+      }
+      const { data, error } = adminRes;
+      if (error) throw error;
 
+      setCachedPassword(data.email, data.id, salt, hash);
+
+      const newAdmin = profileToRecord(data);
       res.status(201).json({
         success: true,
         message: `Admin account created for ${fullName} (${normalizedEmail}).`,
@@ -519,12 +709,11 @@ const authController = {
       if (!email) {
         return res.status(401).json({ success: false, message: 'Authentication required.' });
       }
-      const user = registeredUsers.find(u => u.email.toLowerCase() === email);
+      const user = await findUserRecordByEmail(email);
       if (!user) {
         return res.status(404).json({ success: false, message: 'Account not found.' });
       }
 
-      // Admins cannot self-delete — must be removed via the admin queue by another admin.
       if (user.role === 'ADMIN') {
         return res.status(403).json({
           success: false,
@@ -545,10 +734,18 @@ const authController = {
       const requestedAt = new Date();
       const scheduledFor = new Date(requestedAt.getTime() + DELETION_GRACE_DAYS * 24 * 60 * 60 * 1000);
 
-      user.deletion_pending = true;
-      user.deletion_requested_at = requestedAt.toISOString();
-      user.deletion_scheduled_for = scheduledFor.toISOString();
-      user.deletion_request_reason = (reason || '').trim() || 'No reason provided.';
+      const sb = getSupabaseAdmin();
+      if (!sb) return res.status(503).json({ success: false, message: 'Auth database unavailable.' });
+
+      const updates = {
+        deletion_pending: true,
+        deletion_requested_at: requestedAt.toISOString(),
+        deletion_scheduled_for: scheduledFor.toISOString(),
+        deletion_request_reason: (reason || '').trim() || 'No reason provided.',
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await sb.from('profiles').update(updates).eq('email', email);
+      if (error) throw error;
 
       logDeletionAudit({
         action: 'DELETION_REQUESTED',
@@ -556,14 +753,14 @@ const authController = {
         user_email: user.email,
         user_role: user.role,
         actor_email: user.email,
-        reason: user.deletion_request_reason,
-        scheduled_for: user.deletion_scheduled_for
+        reason: updates.deletion_request_reason,
+        scheduled_for: updates.deletion_scheduled_for
       });
 
       res.json({
         success: true,
         message: `Deletion requested. Your account will be permanently removed on ${scheduledFor.toDateString()} unless cancelled.`,
-        scheduledFor: user.deletion_scheduled_for,
+        scheduledFor: updates.deletion_scheduled_for,
         daysRemaining: DELETION_GRACE_DAYS
       });
     } catch (error) {
@@ -578,7 +775,7 @@ const authController = {
       if (!email) {
         return res.status(401).json({ success: false, message: 'Authentication required.' });
       }
-      const user = registeredUsers.find(u => u.email.toLowerCase() === email);
+      const user = await findUserRecordByEmail(email);
       if (!user) {
         return res.status(404).json({ success: false, message: 'Account not found.' });
       }
@@ -586,11 +783,17 @@ const authController = {
         return res.status(400).json({ success: false, message: 'No deletion request is currently pending for this account.' });
       }
 
-      const prevScheduled = user.deletion_scheduled_for;
-      delete user.deletion_pending;
-      delete user.deletion_requested_at;
-      delete user.deletion_scheduled_for;
-      delete user.deletion_request_reason;
+      const sb = getSupabaseAdmin();
+      if (!sb) return res.status(503).json({ success: false, message: 'Auth database unavailable.' });
+
+      const { error } = await sb.from('profiles').update({
+        deletion_pending: false,
+        deletion_requested_at: null,
+        deletion_scheduled_for: null,
+        deletion_request_reason: null,
+        updated_at: new Date().toISOString()
+      }).eq('email', email);
+      if (error) throw error;
 
       logDeletionAudit({
         action: 'DELETION_CANCELLED_BY_USER',
@@ -598,7 +801,7 @@ const authController = {
         user_email: user.email,
         user_role: user.role,
         actor_email: user.email,
-        previous_scheduled_for: prevScheduled
+        previous_scheduled_for: user.deletion_scheduled_for
       });
 
       res.json({
@@ -613,14 +816,18 @@ const authController = {
   // Admin: list every account flagged for deletion.
   async adminGetDeletionQueue(req, res) {
     try {
-      const requests = registeredUsers
-        .filter(u => u.deletion_pending === true)
-        .map(u => ({
+      const sb = getSupabaseAdmin();
+      let requests = [];
+      if (sb) {
+        const { data, error } = await sb.from('profiles').select('*').eq('deletion_pending', true);
+        if (error) throw error;
+        requests = (data || []).map(profileToRecord).map(u => ({
           ...toClientUser(u),
           days_remaining: u.deletion_scheduled_for
             ? Math.max(0, Math.ceil((new Date(u.deletion_scheduled_for).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
             : null
         }));
+      }
       res.json({
         success: true,
         requests,
@@ -647,7 +854,7 @@ const authController = {
         return res.status(400).json({ success: false, message: 'Mandatory reason required when resolving a deletion request.' });
       }
 
-      const user = findUserById(id);
+      const user = await findUserRecordById(id);
       if (!user) {
         return res.status(404).json({ success: false, message: 'Account not found.' });
       }
@@ -656,29 +863,41 @@ const authController = {
       }
 
       const actorEmail = (req.user && req.user.email) || 'admin@agrein.ng';
+      const sb = getSupabaseAdmin();
+      if (!sb) return res.status(503).json({ success: false, message: 'Auth database unavailable.' });
 
       if (decision === 'APPROVE') {
-        const removed = purgeUserCascade(user);
+        const { error } = await sb.from('profiles').delete().eq('id', user.id);
+        if (error) throw error;
+        // Best-effort: drop the local password cache entry too.
+        const idx = registeredUsers.findIndex(u => u.email && u.email.toLowerCase() === user.email.toLowerCase());
+        if (idx >= 0) registeredUsers.splice(idx, 1);
+
         logDeletionAudit({
           action: 'ACCOUNT_PURGED_BY_ADMIN',
-          user_id: removed.id,
-          user_email: removed.email,
-          user_role: removed.role,
+          user_id: user.id,
+          user_email: user.email,
+          user_role: user.role,
           actor_email: actorEmail,
           reason: reason.trim()
         });
         return res.json({
           success: true,
-          message: `Account ${removed.email} has been permanently removed.`,
-          purgedUser: { id: removed.id, email: removed.email }
+          message: `Account ${user.email} has been permanently removed.`,
+          purgedUser: { id: user.id, email: user.email }
         });
       }
 
-      // CANCEL: clear pending flags and log
-      delete user.deletion_pending;
-      delete user.deletion_requested_at;
-      delete user.deletion_scheduled_for;
-      user.deletion_request_reason = null;
+      // CANCEL: clear pending flags
+      const { error } = await sb.from('profiles').update({
+        deletion_pending: false,
+        deletion_requested_at: null,
+        deletion_scheduled_for: null,
+        deletion_request_reason: null,
+        updated_at: new Date().toISOString()
+      }).eq('id', user.id);
+      if (error) throw error;
+
       logDeletionAudit({
         action: 'DELETION_REJECTED_BY_ADMIN',
         user_id: user.id,
@@ -697,11 +916,8 @@ const authController = {
     }
   },
 
-
-  // Public: request a 6-digit OTP for password reset. To prevent user
-  // enumeration we always return success + a generic message even when no
-  // account exists for that email — the only difference is whether an OTP is
-  // actually dispatched.
+  // Public: request a 6-digit OTP for password reset. Always return success
+  // + a generic message even when no account exists — prevents enumeration.
   async forgotPassword(req, res) {
     try {
       const { email } = req.body || {};
@@ -712,25 +928,21 @@ const authController = {
       }
 
       const normalizedEmail = String(email).toLowerCase();
-      const user = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+      const user = await findUserRecordByEmail(normalizedEmail);
 
       if (!user) {
-        // Intentionally indistinguishable from the success path to prevent
-        // email enumeration. We log so the operator can audit probes.
         console.log(`[forgotPassword] No account for ${normalizedEmail} (returning generic success).`);
         return res.json({ success: true, message: GENERIC, expiresInSeconds: 300 });
       }
 
       otpService.generateOtp(normalizedEmail);
-
       res.json({ success: true, message: GENERIC, expiresInSeconds: 300 });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
   },
 
-  // Public: verify OTP + write a new password. Server-side strength validation
-  // mirrors the registration rules so an attacker can't bypass client checks.
+  // Public: verify OTP + write a new password.
   async resetPassword(req, res) {
     try {
       const { email, otp, newPassword } = req.body || {};
@@ -740,7 +952,7 @@ const authController = {
       }
 
       const normalizedEmail = String(email).toLowerCase();
-      const user = registeredUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+      const user = await findUserRecordByEmail(normalizedEmail);
       if (!user) {
         return res.status(404).json({ success: false, message: 'No account found for that email.' });
       }
@@ -772,8 +984,7 @@ const authController = {
       }
 
       const { salt, hash } = passwordService.hashPassword(newPassword);
-      user.passwordSalt = salt;
-      user.passwordHash = hash;
+      setCachedPassword(normalizedEmail, user.id, salt, hash);
 
       res.json({
         success: true,
@@ -793,29 +1004,34 @@ const authController = {
         return res.status(401).json({ success: false, message: 'Authentication required.' });
       }
 
-      const user = registeredUsers.find(u => u.email.toLowerCase() === email);
-      if (!user) {
-        return res.status(404).json({ success: false, message: 'Account not found.' });
-      }
+      const sb = getSupabaseAdmin();
+      if (!sb) return res.status(503).json({ success: false, message: 'Auth database unavailable.' });
 
-      const nextFullName = (fullName || user.full_name || '').trim();
+      const existing = await findProfileByEmail(email);
+      if (!existing) return res.status(404).json({ success: false, message: 'Account not found.' });
+
+      const nextFullName = (fullName || existing.full_name || '').trim();
       if (!nextFullName) {
         return res.status(400).json({ success: false, message: 'Full name is required.' });
       }
 
-      user.full_name = nextFullName;
-      user.phone_number = phone || user.phone_number || '';
-      user.state = state || user.state || '';
-      user.lga = lga || user.lga || '';
-      user.city = city || user.city || '';
-      user.address = address || user.address || '';
+      const updates = {
+        full_name: nextFullName,
+        phone_number: phone || existing.phone_number || null,
+        state: state || existing.state || null,
+        lga: lga || existing.lga || null,
+        city: city || existing.city || null,
+        address: address || existing.address || null,
+        updated_at: new Date().toISOString()
+      };
       if (typeof marketingConsent !== 'undefined') {
-        user.marketing_consent = Boolean(marketingConsent === true || marketingConsent === 'true' || marketingConsent === 'yes' || marketingConsent === 'YES' || marketingConsent === 1 || marketingConsent === '1');
+        updates.marketing_consent = Boolean(marketingConsent === true || marketingConsent === 'true' || marketingConsent === 'yes' || marketingConsent === 'YES' || marketingConsent === 1 || marketingConsent === '1');
       }
-      user.updated_at = new Date().toISOString();
 
-      syncUserToDb(user);
+      const { data, error } = await sb.from('profiles').update(updates).eq('email', email).select('*').single();
+      if (error) throw error;
 
+      const user = profileToRecord(data);
       res.json({
         success: true,
         message: 'Profile updated successfully.',
@@ -839,7 +1055,7 @@ const authController = {
         return res.status(401).json({ success: false, message: 'Authentication required.' });
       }
 
-      const user = registeredUsers.find(u => u.email.toLowerCase() === email);
+      const user = await findUserRecordByEmail(email);
       if (!user) {
         return res.status(404).json({ success: false, message: 'Account not found.' });
       }
@@ -853,8 +1069,7 @@ const authController = {
       }
 
       const { salt, hash } = passwordService.hashPassword(newPassword);
-      user.passwordSalt = salt;
-      user.passwordHash = hash;
+      setCachedPassword(email, user.id, salt, hash);
 
       res.json({
         success: true,
@@ -866,19 +1081,39 @@ const authController = {
   }
 };
 
-// Used by middleware/auth.js to look up the seed user table without circular imports
-authController.findUserByEmail = (email) => {
+// Used by middleware/auth.js to look up user records. Async because Supabase
+// is the source of truth. Falls back to the local cache if Supabase errors.
+authController.findUserByEmail = async (email) => {
   if (!email) return null;
-  return registeredUsers.find(u => u.email.toLowerCase() === String(email).toLowerCase()) || null;
+  try {
+    return await findUserRecordByEmail(email);
+  } catch (e) {
+    console.warn('[findUserByEmail] fallback:', e.message);
+    return findUserRecordByEmailOffline(email);
+  }
 };
 
-// Find by id (used by admin deletion endpoints)
-function findUserById(id) {
+authController.findUserById = async (id) => {
   if (!id) return null;
-  return registeredUsers.find(u => u.id === id) || null;
+  try {
+    return await findUserRecordById(id);
+  } catch (e) {
+    console.warn('[findUserById] fallback:', e.message);
+    return registeredUsers.find(u => u.id === id) ? localToRecord(registeredUsers.find(u => u.id === id)) : null;
+  }
+};
+
+// Offline-only helpers (used as fallbacks inside findUserBy*).
+function findUserRecordByEmailOffline(email) {
+  if (!email) return null;
+  const norm = String(email).toLowerCase();
+  const local = registeredUsers.find(u => u.email && u.email.toLowerCase() === norm);
+  return local ? localToRecord(local) : null;
 }
 
-// Append-only audit log of deletion-related actions
+// Append-only audit log of deletion-related actions (in-memory only; survives
+// the lifetime of the server process — useful for debugging without writing
+// audit records to disk or Supabase).
 let mockDeletionAuditLogs = [];
 
 function logDeletionAudit(entry) {
@@ -888,16 +1123,8 @@ function logDeletionAudit(entry) {
     ...entry
   };
   mockDeletionAuditLogs.unshift(log);
-  // Cap the in-memory log at 200 entries so a long-running server doesn't bloat.
   if (mockDeletionAuditLogs.length > 200) mockDeletionAuditLogs.length = 200;
   return log;
-}
-
-function purgeUserCascade(user) {
-  const idx = registeredUsers.findIndex(u => u.id === user.id);
-  if (idx === -1) return null;
-  const [removed] = registeredUsers.splice(idx, 1);
-  return removed;
 }
 
 const DELETION_GRACE_DAYS = 14;
