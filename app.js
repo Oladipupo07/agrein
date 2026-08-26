@@ -2436,12 +2436,20 @@ const actions = {
 
       if (resData && resData.success && resData.payment) {
         const p = resData.payment;
+
+        // Server guarantees payment_url / merchant_code / pay_item_id are
+        // populated (or it would have returned 503). Defensive null check
+        // only — we don't auto-fake a redirect if the payload is broken.
+        if (!p.payment_url || !p.merchant_code || !p.pay_item_id) {
+          throw new Error('Payment gateway returned an incomplete payload.');
+        }
+
         actions.triggerToast('🔄 Redirecting to Interswitch Payment Gateway...');
 
         // Create standard HTML Web Redirect form dynamically as specified by Interswitch
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = p.payment_url || 'https://newwebpay.interswitchng.com/collections/w/pay';
+        form.action = p.payment_url;
         form.style.display = 'none';
 
         const fields = {
@@ -2476,13 +2484,13 @@ const actions = {
         throw new Error((resData && resData.message) || 'Failed to initialize Interswitch payment');
       }
     } catch (err) {
-      console.warn('[Interswitch Checkout] Direct redirect error:', err.message);
-      // Fallback for offline demo testing
-      const fallbackTxnRef = `AGR-${Date.now()}`;
-      actions.triggerToast(`🔄 Redirecting to Interswitch Payment...`);
-      setTimeout(() => {
-        actions.executePayment(fallbackTxnRef, finalAmount);
-      }, 1000);
+      // Hard fail — never fabricate a successful payment client-side. In LIVE
+      // mode that would let a payment "succeed" without ever talking to
+      // Interswitch. Leave the modal open so the user can retry.
+      console.error('[Interswitch Checkout] Direct redirect error:', err.message);
+      state.checkoutProcessing = false;
+      actions.triggerToast(`❌ ${err.message || 'Could not start payment. Please try again.'}`);
+      renderApp();
     }
   },
 

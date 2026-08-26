@@ -78,16 +78,51 @@ exports.createOrder = async (req, res) => {
     const redirectUrl = `${baseUrl}/api/orders/payment-response`;
     const itemName = (items && items[0] && items[0].title) ? items[0].title : 'Agrein Marketplace Order';
 
-    // Initialize Interswitch Gateway Web Redirect parameters
-    const iswResult = await initializeInterswitchPayment({
-      email: buyerEmail || req.user.email || '',
-      amount: Number(totalAmount || 0),
-      reference: orderCode,
-      redirectUrl: redirectUrl,
-      custName: req.user.full_name || req.user.name || '',
-      custId: req.user.id,
-      payItemName: itemName
-    });
+    // Initialize Interswitch Gateway Web Redirect parameters.
+    // initializeInterswitchPayment throws if credentials are missing or the
+    // OAuth call fails — never returns a half-built payload.
+    let iswResult;
+    try {
+      iswResult = await initializeInterswitchPayment({
+        email: buyerEmail || req.user.email || '',
+        amount: Number(totalAmount || 0),
+        reference: orderCode,
+        redirectUrl: redirectUrl,
+        custName: req.user.full_name || req.user.name || '',
+        custId: req.user.id,
+        payItemName: itemName
+      });
+    } catch (payErr) {
+      console.error('[orders] Interswitch init failed:', payErr.message);
+      // Order row is already persisted. Mark it cancelled so the buyer doesn't
+      // see a PENDING order with no way to pay it.
+      await supabase
+        .from('orders')
+        .update({ escrow_status: 'CANCELLED' })
+        .eq('id', order.id);
+      return res.status(503).json({
+        success: false,
+        message: 'Payment gateway is temporarily unavailable. Please try again shortly.',
+        order_code: orderCode
+      });
+    }
+
+    // Defensive shape check — initializeInterswitchPayment already validates
+    // credentials, but a future change to the gateway might return a partial
+    // payload. Better to fail loud than to submit a form with empty fields.
+    const p = iswResult.data || {};
+    if (!p.payment_url || !p.merchant_code || !p.pay_item_id) {
+      console.error('[orders] Interswitch returned incomplete payload:', p);
+      await supabase
+        .from('orders')
+        .update({ escrow_status: 'CANCELLED' })
+        .eq('id', order.id);
+      return res.status(503).json({
+        success: false,
+        message: 'Payment gateway is not configured. Contact admin.',
+        order_code: orderCode
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -101,7 +136,7 @@ exports.createOrder = async (req, res) => {
         delivery_state: state,
         items: items || []
       },
-      payment: iswResult.data
+      payment: p
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

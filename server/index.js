@@ -5,6 +5,16 @@ require('dotenv').config();
 
 const path = require('path');
 const apiRoutes = require('./routes/api');
+const { assertInterswitchConfig } = require('./utils/interswitch');
+
+// Refuse to boot in LIVE mode without Interswitch credentials. Better to crash
+// here than to charge real cards with an empty merchant_code.
+try {
+  assertInterswitchConfig();
+} catch (e) {
+  console.error('\n❌ Boot aborted:', e.message, '\n');
+  process.exit(1);
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;

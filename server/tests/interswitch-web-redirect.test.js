@@ -1,4 +1,5 @@
 // Automated Test Suite for Interswitch Web Redirect Integration
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const assert = require('assert');
 const {
   initializeInterswitchPayment,
@@ -40,12 +41,16 @@ async function runTests() {
   console.log('✅ Test 1 Passed: Web Redirect payload is properly formatted with all required fields.\n');
 
   // Test 2: Server-side Re-query Verification
-  console.log('👉 Test 2: Validate verifyInterswitchPayment queries Interswitch live gateway and parses response');
+  // The test environment has no real Interswitch credentials, so both v1 and
+  // v2 requery calls will fail and verifyInterswitchPayment should return a
+  // non-success response — never silently fake an approval.
+  console.log('👉 Test 2: Validate verifyInterswitchPayment returns non-success when gateway is unreachable');
   const verifyResult = await verifyInterswitchPayment(sampleRef, 1500);
   assert.ok(verifyResult, 'Requery result must not be null');
   assert.ok(verifyResult.ResponseCode !== undefined, 'ResponseCode must be present in gateway response');
   assert.ok(typeof verifyResult.ResponseDescription === 'string', 'ResponseDescription must be a string');
-  console.log(`✅ Test 2 Passed: Server-side requery connected to Interswitch gateway (Returned ResponseCode: ${verifyResult.ResponseCode}, Desc: ${verifyResult.ResponseDescription}).\n`);
+  assert.notStrictEqual(verifyResult.ResponseCode, '00', 'Requery must NOT auto-approve when gateway is unreachable (LIVE safety guard)');
+  console.log(`✅ Test 2 Passed: Requery refused to fake-approve (Returned ResponseCode: ${verifyResult.ResponseCode}, Desc: ${verifyResult.ResponseDescription}).\n`);
 
   // Test 3: Controller handlePaymentResponse with declined / unverified transaction
   console.log('👉 Test 3: Validate handlePaymentResponse with unapproved reference redirects to payment=failed');
