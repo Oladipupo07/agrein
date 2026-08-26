@@ -1,16 +1,16 @@
-// User Authentication & Role Controller for Agrein with Email OTP Verification
+// User Authentication & Role Controller for Agrein
 //
-// Architecture (post-refactor):
-//   - Supabase `profiles` is the source of truth for all user RECORDS
-//     (email, role, verification_status, full_name, phone_number, etc).
-//   - `data/users.json` is the source of truth for password material
-//     (`passwordHash`, `passwordSalt`). Supabase `profiles` has no password
-//     columns, so passwords cannot live there without a schema change.
-//   - `registeredUsers` (the in-memory array) is a write-through cache for the
-//     password file, kept hot so login doesn't hit the disk on every request.
-//   - On every record write we update Supabase first (await), then mirror to
-//     the local cache + file. Reads prefer Supabase; the local cache is a
-//     fallback for password verification.
+// Architecture:
+//   - Supabase `profiles` is the source of truth for ALL user fields including
+//     password_hash / password_salt (added by the schema migration that adds
+//     `local_id`). This makes login survive Render free-tier redeploys, which
+//     wipe the local filesystem.
+//   - `data/users.json` is a write-through cache / offline fallback for
+//     password material. It is populated on every password write but is no
+//     longer required for correctness.
+//   - `registeredUsers` (the in-memory array) is a hot cache for password
+//     material loaded from `data/users.json` at startup, so login doesn't
+//     re-read the file on every request.
 const otpService = require('../utils/otpService');
 const passwordService = require('../utils/passwordService');
 const { UserDatabase } = require('../utils/userDatabase');
@@ -82,10 +82,33 @@ function setCachedPassword(email, id, salt, hash) {
   } else {
     registeredUsers.push(record);
   }
-  // Persist to disk best-effort.
+  // Persist to disk best-effort (used as offline fallback only — Supabase is
+  // the source of truth so login survives Render redeploys that wipe this file).
   try { UserDatabase.upsert(record); } catch (e) {
     console.warn('[authController] local password persist failed:', e.message);
   }
+
+  // Persist to Supabase (the real source of truth). If the password columns
+  // haven't been added yet (schema migration not run), the regex on the error
+  // message lets us know and we silently skip — the local file will hold the
+  // password until the columns exist.
+  const sb = getSupabaseAdmin();
+  if (!sb) return;
+  sb.from('profiles').update({
+    password_hash: hash,
+    password_salt: salt,
+    updated_at: new Date().toISOString()
+  }).eq('email', norm).then(({ error }) => {
+    if (error && /password_hash|password_salt/i.test(error.message)) {
+      // Columns don't exist yet — keep going; password stays in local file.
+      return;
+    }
+    if (error) {
+      console.warn('[setCachedPassword] Supabase password write failed for', norm, '—', error.message);
+    }
+  }).catch(e => {
+    console.warn('[setCachedPassword] Supabase password write threw:', e.message);
+  });
 }
 
 // ----------------------------------------------------------------------------
@@ -113,12 +136,32 @@ async function ensureAdminSeeded() {
   } catch (_) { /* swallow */ }
   if (supabaseAdmin) {
     console.log('✅ Admin user present in Supabase');
-    // Mirror password into cache from disk if not already there.
-    if (!getCachedPassword(adminEmail)) {
+
+    // If the row has no password columns populated yet (common after a Render
+    // redeploy wiped the local file) but we DO have the local file, migrate
+    // the password up to Supabase so login works on the next request.
+    const hasPasswordOnProfile = supabaseAdmin.password_hash && supabaseAdmin.password_salt;
+    if (!hasPasswordOnProfile) {
       const fromDisk = registeredUsers.find(u => u.email && u.email.toLowerCase() === adminEmail);
-      if (!fromDisk) {
-        // No local record — can't recover the original password hash from Supabase.
-        console.warn('⚠️ Admin exists in Supabase but not locally. Password reset required.');
+      if (fromDisk && fromDisk.passwordSalt && fromDisk.passwordHash) {
+        console.log('🔄 Migrating admin password from local file → Supabase');
+        const sb = getSupabaseAdmin();
+        if (sb) {
+          const { error } = await sb.from('profiles').update({
+            password_hash: fromDisk.passwordHash,
+            password_salt: fromDisk.passwordSalt,
+            updated_at: new Date().toISOString()
+          }).eq('email', adminEmail);
+          if (error && /password_hash|password_salt/i.test(error.message)) {
+            console.warn('⚠️ password columns missing on profiles — admin migration skipped');
+          } else if (error) {
+            console.error('[ensureAdminSeeded] ❌ admin password migration failed:', error.message);
+          } else {
+            console.log('✅ Admin password migrated to Supabase');
+          }
+        }
+      } else if (!getCachedPassword(adminEmail)) {
+        console.warn('⚠️ Admin exists in Supabase but has no password anywhere. Password reset required.');
       }
     }
     return;
@@ -199,10 +242,20 @@ async function findUserRecordById(id) {
 }
 
 // Convert a Supabase profile row to the shape the rest of the controller uses.
-// The local cache contributes password material so login can still verify.
+// Password material prefers the columns on profiles (so login survives Render
+// redeploys that wipe the local file). The local cache is a fallback for old
+// rows that pre-date the password columns being added.
 function profileToRecord(profile) {
   if (!profile) return null;
-  const cred = getCachedPassword(profile.email);
+  let salt = profile.password_salt || null;
+  let hash = profile.password_hash || null;
+  if (!salt || !hash) {
+    const cred = getCachedPassword(profile.email);
+    if (cred) {
+      salt = salt || cred.salt;
+      hash = hash || cred.hash;
+    }
+  }
   return {
     id: profile.id,
     local_id: profile.local_id || null,
@@ -224,8 +277,8 @@ function profileToRecord(profile) {
     deletion_requested_at: profile.deletion_requested_at || null,
     deletion_scheduled_for: profile.deletion_scheduled_for || null,
     deletion_request_reason: profile.deletion_request_reason || null,
-    passwordSalt: cred ? cred.salt : null,
-    passwordHash: cred ? cred.hash : null
+    passwordSalt: salt,
+    passwordHash: hash
   };
 }
 
@@ -431,30 +484,31 @@ const authController = {
         return res.status(503).json({ success: false, message: 'Auth database unavailable. Please try again shortly.' });
       }
 
-      // Check for an existing verified account with this email.
+      // Check for an existing account with this email.
       const existing = await findProfileByEmail(normalizedEmail);
-      if (existing && existing.email_verified) {
+      if (existing) {
         return res.status(400).json({ success: false, message: 'An account with this email address already exists. Please log in.' });
       }
 
       const { salt, hash } = passwordService.hashPassword(password);
       const localId = `usr-${Date.now()}`;
 
-      // Compose the payload that will live in Supabase.
+      // Compose the payload that will live in Supabase. Email verification has
+      // been removed — accounts land in the DB as fully usable on first
+      // registration. (Farmers still go through admin KYC for `is_verified`.)
       const profilePayload = {
         email: normalizedEmail,
         full_name: fullName,
         phone_number: phone || null,
         role: normalizedRole,
-        email_verified: false,
+        email_verified: true,
         is_verified: false,
         verification_status: normalizedRole === 'FARMER' ? 'NOT_STARTED' : 'APPROVED'
       };
 
       // local_id is optional (depends on the schema migration). Try it first;
       // if the column doesn't exist yet, retry without.
-      const carryLocalId = existing ? (existing.local_id || localId) : localId;
-      let upsertRes = await sb.from('profiles').upsert({ ...profilePayload, local_id: carryLocalId }, { onConflict: 'email' }).select('*').single();
+      let upsertRes = await sb.from('profiles').upsert({ ...profilePayload, local_id: localId }, { onConflict: 'email' }).select('*').single();
       if (upsertRes.error && /local_id/i.test(upsertRes.error.message)) {
         upsertRes = await sb.from('profiles').upsert(profilePayload, { onConflict: 'email' }).select('*').single();
       }
@@ -464,9 +518,8 @@ const authController = {
         return res.status(500).json({ success: false, message: 'Could not create account. Please try again.' });
       }
 
-      // Mirror password material into local cache + file. If this fails the
-      // user can still be verified via OTP, but they'll need a password reset
-      // before login — surface that as a non-blocking warning.
+      // Mirror password material into local cache + file. (Supabase is the
+      // real source of truth via the password_hash / password_salt columns.)
       let passwordPersisted = true;
       try {
         setCachedPassword(persisted.email, persisted.id, salt, hash);
@@ -475,19 +528,22 @@ const authController = {
         console.warn('[register] ⚠️ local password persist failed:', e.message);
       }
 
-      // Generate OTP. If mailer dispatch fails, the user can still verify via
-      // the demo code path (rawOtp is logged to the server console).
       const target = profileToRecord(persisted);
-      otpService.generateOtp(target.email);
+
+      // Auto-login: mint a token so the client can drop straight into the
+      // dashboard without an OTP round-trip.
+      const token = mintToken(target);
 
       res.status(201).json({
         success: true,
-        requiresEmailVerification: true,
-        message: `We've sent a 6-digit verification code to ${target.email}.`,
+        message: `Account created for ${target.email}.`,
         email: target.email,
         role: target.role,
-        expiresInSeconds: 300,
-        passwordPersisted
+        passwordPersisted,
+        user: {
+          ...toClientUser(target),
+          token
+        }
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -618,16 +674,9 @@ const authController = {
         return res.status(401).json({ success: false, message: 'Invalid email or password.' });
       }
 
-      // Email verification gate for non-admins
-      if (!user.email_verified && user.role !== 'ADMIN') {
-        otpService.generateOtp(normalizedEmail);
-        return res.status(403).json({
-          success: false,
-          emailVerificationRequired: true,
-          email: normalizedEmail,
-          message: "Email verification required. We've sent a new verification code to your email."
-        });
-      }
+      // Email verification gate has been removed — accounts are usable on
+      // first registration. Farmers still need admin KYC for `is_verified`,
+      // but that is enforced by the marketplace flows, not login.
 
       res.json({
         success: true,

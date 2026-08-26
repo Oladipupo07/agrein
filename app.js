@@ -774,7 +774,9 @@ const actions = {
         return;
       }
 
-      // Call API to generate and send OTP
+      // Call API to create account. Email verification has been removed, so a
+      // successful register response includes the user + JWT — drop them
+      // straight into the dashboard.
       fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -787,39 +789,44 @@ const actions = {
           return;
         }
 
-        // Store user pending state and transition to OTP screen
-        state.otpEmail = email;
-        state.otpRole = role;
-        state.otpFlow = 'register';
-        state.demoOtp = data.demoOtp || '482913';
-        state.authModalMode = 'verify-otp';
-        state.otpDigits = ['', '', '', '', '', ''];
-        state.otpError = null;
-        state.otpSuccess = false;
-        state.otpTimerSeconds = 300;
-        state.otpCooldownSeconds = 0;
+        const user = data.user || {};
+        if (!user.token) {
+          actions.triggerToast('❌ Account created but auto-login failed. Please log in.');
+          state.authModalMode = 'login';
+          renderApp();
+          return;
+        }
 
-        actions.startOtpCountdown();
-        actions.triggerToast(`📧 Verification code sent to ${email}`);
+        state.currentUser = {
+          id: user.id,
+          full_name: user.full_name,
+          email: user.email,
+          role: (user.role || role || 'BUYER').toUpperCase(),
+          token: user.token,
+          verification_status: user.verification_status
+        };
+        state.activeRole = (state.currentUser.role || 'buyer').toLowerCase();
+        state.authModalActive = false;
+        state.authModalMode = null;
+        state.otpEmail = null;
+        state.otpFlow = null;
+
+        try { localStorage.setItem('agrein_user', JSON.stringify(state.currentUser)); } catch (_) {}
+
+        actions.triggerToast(`✅ Welcome to Agrein, ${state.currentUser.full_name || state.currentUser.email}!`);
+
+        // Farmers must complete KYC before listing; everyone else goes to home.
+        if (state.activeRole === 'farmer') {
+          state.activeView = 'farmer-verification';
+        } else {
+          state.activeView = 'home';
+        }
+
         renderApp();
       })
-      .catch(() => {
-        // Fallback for offline client state
-        const fallbackDemoOtp = Math.floor(100000 + Math.random() * 900000).toString();
-        state.otpEmail = email;
-        state.otpRole = role;
-        state.otpFlow = 'register';
-        state.demoOtp = fallbackDemoOtp;
-        state.authModalMode = 'verify-otp';
-        state.otpDigits = ['', '', '', '', '', ''];
-        state.otpError = null;
-        state.otpSuccess = false;
-        state.otpTimerSeconds = 300;
-        state.otpCooldownSeconds = 0;
-
-        actions.startOtpCountdown();
-        actions.triggerToast(`📧 Verification code sent to ${email}`);
-        renderApp();
+      .catch(err => {
+        console.error('[register] failed:', err);
+        actions.triggerToast('❌ Could not reach the server. Please try again.');
       });
     } else {
       const email = document.getElementById('authEmail')?.value?.trim();
@@ -1248,6 +1255,38 @@ const actions = {
         }
       }
     });
+  },
+
+  // Live password-mismatch indicator for register + forgot-password-reset.
+  //
+  // Toggles a red border + inline "Passwords do not match." message under the
+  // confirm field as the user types. The check only runs once both fields
+  // have content; an empty confirm field hides the indicator entirely so the
+  // user isn't shown an error before they've finished typing.
+  checkPasswordMatch(passwordId, confirmId, errorId) {
+    const pwEl = document.getElementById(passwordId);
+    const confirmEl = document.getElementById(confirmId);
+    const errorEl = document.getElementById(errorId);
+    if (!pwEl || !confirmEl || !errorEl) return;
+
+    const pw = pwEl.value || '';
+    const confirm = confirmEl.value || '';
+
+    if (confirm.length === 0) {
+      errorEl.classList.add('hidden');
+      confirmEl.classList.remove('border-red-500', 'dark:border-red-500', 'ring-1', 'ring-red-500');
+      confirmEl.classList.add('border-gray-300', 'dark:border-slate-700');
+      return;
+    }
+
+    if (pw === confirm) {
+      errorEl.classList.add('hidden');
+      confirmEl.classList.remove('border-red-500', 'dark:border-red-500', 'ring-1', 'ring-red-500');
+    } else {
+      errorEl.classList.remove('hidden');
+      confirmEl.classList.remove('border-gray-300', 'dark:border-slate-700');
+      confirmEl.classList.add('border-red-500', 'dark:border-red-500', 'ring-1', 'ring-red-500');
+    }
   },
 
   // Live Crop Product Listing Modal Handlers

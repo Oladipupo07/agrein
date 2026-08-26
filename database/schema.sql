@@ -438,3 +438,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS profiles_local_id_unique_idx
   ON public.profiles (local_id)
   WHERE local_id IS NOT NULL;
 
+-- ============================================================================
+-- Password material on profiles
+-- ============================================================================
+-- Render's free tier wipes the disk on every redeploy, which used to lose the
+-- password material that lived only in data/users.json. Moving password_hash
+-- and password_salt onto profiles makes login survive redeploys. Existing
+-- rows leave these NULL until the user resets their password; the auth
+-- controller falls back to data/users.json when the columns are NULL.
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS password_hash TEXT;
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS password_salt TEXT;
+
