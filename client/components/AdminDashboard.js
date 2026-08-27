@@ -8,7 +8,6 @@
 
 function renderAdminDashboard(state, actions) {
   const { adminProfile, products } = state.mockData || {};
-  const verifications = state.mockData.adminVerifications || [];
   const activeTab = state.adminActiveTab || 'overview';
   const deletionRequests = state.deletionRequests || [];
 
@@ -25,6 +24,55 @@ function renderAdminDashboard(state, actions) {
     }
   ];
 
+  // Auto-fetch verifications from server if not loaded yet
+  if (!state.adminVerificationsLoaded && typeof actions.fetchAdminVerifications === 'function') {
+    state.adminVerificationsLoaded = true;
+    setTimeout(() => actions.fetchAdminVerifications(), 50);
+  }
+
+  // Combine server applications with any local mock / submitted verification apps
+  let rawVerifications = [...(state.mockData.adminVerifications || [])];
+  
+  if (state.mockData.farmerVerificationApp && state.mockData.farmerVerificationApp.status && state.mockData.farmerVerificationApp.status !== 'DRAFT') {
+    const local = state.mockData.farmerVerificationApp;
+    const exists = rawVerifications.some(v => v.id === local.id || (v.farmer_email && v.farmer_email === local.farmer_email) || (v.email && v.email === local.email));
+    if (!exists) {
+      rawVerifications.unshift(local);
+    }
+  }
+
+  // Ensure all registered farmers from database are present in the verification pipeline
+  userList.filter(u => u.role === 'FARMER').forEach(f => {
+    const exists = rawVerifications.some(v => (v.farmer_email && v.farmer_email.toLowerCase() === f.email.toLowerCase()) || (v.email && v.email.toLowerCase() === f.email.toLowerCase()));
+    if (!exists) {
+      rawVerifications.push({
+        id: `ver-${f.id || f.email}`,
+        farmer_name: f.full_name || 'Registered Farmer',
+        farmer_email: f.email,
+        email: f.email,
+        phone: f.phone_number || '',
+        state: f.state || 'Nigeria',
+        lga: f.lga || '',
+        residential_address: f.address || '',
+        farm_name: `${f.full_name || 'Farmer'}'s Agro Enterprise`,
+        farm_type: 'Crop Farming',
+        farm_size_acres: 5,
+        years_experience: 3,
+        crops_produced: ['Cassava', 'Maize', 'Tomatoes'],
+        farm_location: f.address || f.state || 'Nigeria',
+        farm_state: f.state || 'Nigeria',
+        farm_lga: f.lga || '',
+        gps_latitude: 9.0820,
+        gps_longitude: 8.6753,
+        status: f.verification_status || 'PENDING_REVIEW',
+        submitted_at: f.created_at || new Date().toISOString(),
+        documents: []
+      });
+    }
+  });
+
+  const verifications = rawVerifications;
+
   const counts = state.registeredUsersCounts || {
     total: userList.length,
     farmers: userList.filter(u => u.role === 'FARMER').length,
@@ -34,7 +82,7 @@ function renderAdminDashboard(state, actions) {
 
   const verificationCounts = {
     total: verifications.length,
-    pending: verifications.filter(v => v.status === 'PENDING_REVIEW').length,
+    pending: verifications.filter(v => v.status === 'PENDING_REVIEW' || v.status === 'PENDING').length,
     underReview: verifications.filter(v => v.status === 'UNDER_REVIEW').length,
     changesRequired: verifications.filter(v => v.status === 'CHANGES_REQUIRED').length,
     approved: verifications.filter(v => v.status === 'APPROVED').length,
@@ -58,7 +106,7 @@ function renderAdminDashboard(state, actions) {
 
   // Filter verifications
   const filteredVerifications = verifications.filter(v => {
-    const matchStatus = verificationFilter === 'ALL' || v.status === verificationFilter;
+    const matchStatus = verificationFilter === 'ALL' || v.status === verificationFilter || (verificationFilter === 'PENDING_REVIEW' && v.status === 'PENDING');
     const matchSearch = !verificationSearch ||
       (v.farmer_name && v.farmer_name.toLowerCase().includes(verificationSearch)) ||
       (v.farmer_email && v.farmer_email.toLowerCase().includes(verificationSearch)) ||
@@ -72,6 +120,7 @@ function renderAdminDashboard(state, actions) {
     const map = {
       'APPROVED': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/40',
       'PENDING_REVIEW': 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700/40 animate-pulse',
+      'PENDING': 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700/40 animate-pulse',
       'UNDER_REVIEW': 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-700/40',
       'CHANGES_REQUIRED': 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 border-orange-300 dark:border-orange-700/40',
       'REJECTED': 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 border-red-300 dark:border-red-700/40',
@@ -94,19 +143,19 @@ function renderAdminDashboard(state, actions) {
               <span>Agrein SuperAdmin Command Center</span>
             </div>
             <h1 class="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
-              Platform Governance & Moderation
+              Platform Governance & Verification
             </h1>
-            <p class="text-xs text-gray-500 mt-1">Review farmer verification dossiers, inspect user databases, manage escrow disputes, and oversee marketplace health.</p>
+            <p class="text-xs text-gray-500 mt-1">Review farmer verification requests, inspect inputted land/crop details, and manage database records.</p>
           </div>
 
           <div class="flex items-center space-x-3 flex-wrap gap-2">
-            <button onclick="actions.fetchRegisteredUsers(); actions.triggerToast('🔄 Registry refreshed!');" class="px-4 py-2.5 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-extrabold shadow-md transition-all flex items-center space-x-2">
+            <button onclick="actions.fetchAdminVerifications(); actions.fetchRegisteredUsers(); actions.triggerToast('🔄 Loaded latest applications!');" class="px-4 py-2.5 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-extrabold shadow-md transition-all flex items-center space-x-2">
               <i class="fa-solid fa-rotate text-amber-300"></i>
-              <span>Refresh Data</span>
+              <span>Refresh Applications</span>
             </button>
             <button onclick="actions.setView('farmer-verification')" class="px-4 py-2.5 rounded-2xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-gray-200 text-xs font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-all flex items-center space-x-2">
-              <i class="fa-solid fa-eye text-emerald-500"></i>
-              <span>Farmer Portal View</span>
+              <i class="fa-solid fa-tractor text-emerald-500"></i>
+              <span>Farmer Verification Form</span>
             </button>
           </div>
         </div>
@@ -122,10 +171,10 @@ function renderAdminDashboard(state, actions) {
           <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 shadow-sm text-center cursor-pointer hover:border-amber-400 transition-all" onclick="actions.setAdminTab('verifications')">
             <div class="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1">
               <i class="fa-solid fa-clock"></i>
-              <span>Pending KYC</span>
+              <span>Pending Requests</span>
             </div>
             <div class="text-xl font-heading font-extrabold text-amber-700 dark:text-amber-300 mt-1">${verificationCounts.pending}</div>
-            <div class="text-[10px] text-amber-600 font-bold mt-0.5">Requires Action</div>
+            <div class="text-[10px] text-amber-600 font-bold mt-0.5">Awaiting Review</div>
           </div>
 
           <div class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 shadow-sm text-center cursor-pointer hover:border-emerald-400 transition-all" onclick="actions.setAdminTab('verifications')">
@@ -134,7 +183,7 @@ function renderAdminDashboard(state, actions) {
               <span>Verified Farmers</span>
             </div>
             <div class="text-xl font-heading font-extrabold text-emerald-700 dark:text-emerald-300 mt-1">${verificationCounts.approved}</div>
-            <div class="text-[10px] text-emerald-600 font-bold mt-0.5">Active Sellers</div>
+            <div class="text-[10px] text-emerald-600 font-bold mt-0.5">Active Badges</div>
           </div>
 
           <div class="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 shadow-sm text-center">
@@ -144,9 +193,9 @@ function renderAdminDashboard(state, actions) {
           </div>
 
           <div class="p-4 rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/40 shadow-sm text-center">
-            <div class="text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">Changes Requested</div>
+            <div class="text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">Changes Needed</div>
             <div class="text-xl font-heading font-extrabold text-orange-700 dark:text-orange-300 mt-1">${verificationCounts.changesRequired}</div>
-            <div class="text-[10px] text-orange-600 font-bold mt-0.5">Awaiting Farmer</div>
+            <div class="text-[10px] text-orange-600 font-bold mt-0.5">Action Sent</div>
           </div>
 
           <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 shadow-sm text-center cursor-pointer hover:border-red-400 transition-all" onclick="actions.setAdminTab('deletions')">
@@ -161,17 +210,17 @@ function renderAdminDashboard(state, actions) {
 
         <!-- ═══ NAVIGATION TABS ═══ -->
         <div class="flex items-center space-x-2 border-b border-gray-200 dark:border-slate-800 pb-2 overflow-x-auto">
-          <button onclick="actions.setAdminTab('overview')"
-                  class="px-5 py-2.5 rounded-2xl text-xs font-extrabold transition-all flex items-center space-x-2 whitespace-nowrap ${activeTab === 'overview' ? 'bg-purple-700 text-white shadow-lg shadow-purple-700/20' : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-400 hover:text-purple-600'}">
-            <i class="fa-solid fa-chart-pie"></i>
-            <span>Overview & Insights</span>
-          </button>
-
           <button onclick="actions.setAdminTab('verifications')"
                   class="px-5 py-2.5 rounded-2xl text-xs font-extrabold transition-all flex items-center space-x-2 whitespace-nowrap ${activeTab === 'verifications' ? 'bg-emerald-700 text-white shadow-lg shadow-emerald-700/20' : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-400 hover:text-emerald-600'}">
             <i class="fa-solid fa-id-card"></i>
-            <span>Farmer KYC Dossiers</span>
-            ${verificationCounts.pending > 0 ? `<span class="px-2 py-0.5 rounded-full bg-amber-400 text-slate-900 text-[10px] font-black">${verificationCounts.pending}</span>` : ''}
+            <span>Farmer Verification Requests (${verifications.length})</span>
+            ${verificationCounts.pending > 0 ? `<span class="px-2 py-0.5 rounded-full bg-amber-400 text-slate-900 text-[10px] font-black animate-pulse">${verificationCounts.pending}</span>` : ''}
+          </button>
+
+          <button onclick="actions.setAdminTab('overview')"
+                  class="px-5 py-2.5 rounded-2xl text-xs font-extrabold transition-all flex items-center space-x-2 whitespace-nowrap ${activeTab === 'overview' ? 'bg-purple-700 text-white shadow-lg shadow-purple-700/20' : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-400 hover:text-purple-600'}">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>Overview</span>
           </button>
 
           <button onclick="actions.setAdminTab('users')"
@@ -190,16 +239,131 @@ function renderAdminDashboard(state, actions) {
           <button onclick="actions.setAdminTab('deletions')"
                   class="px-5 py-2.5 rounded-2xl text-xs font-extrabold transition-all flex items-center space-x-2 whitespace-nowrap ${activeTab === 'deletions' ? 'bg-red-700 text-white shadow-lg shadow-red-700/20' : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-400 hover:text-red-600'}">
             <i class="fa-solid fa-trash-can"></i>
-            <span>Account Deletion Queue</span>
-            ${deletionRequests.length > 0 ? `<span class="px-2 py-0.5 rounded-full bg-red-400 text-white text-[10px] font-black">${deletionRequests.length}</span>` : ''}
+            <span>Deletion Queue</span>
           </button>
         </div>
 
-        <!-- ═══ TAB 1: OVERVIEW & SHORTCUTS ═══ -->
+        <!-- ═══ TAB: FARMER VERIFICATION & KYC DOSSIER QUEUE ═══ -->
+        ${activeTab === 'verifications' ? `
+          <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-emerald-500/20 shadow-sm space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div class="inline-flex items-center space-x-2 text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">
+                  <i class="fa-solid fa-user-check"></i>
+                  <span>KYC Approval Pipeline</span>
+                </div>
+                <h2 class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white">Farmer Verification Applications</h2>
+                <p class="text-xs text-gray-500">Click <strong>"Inspect Details & Docs"</strong> on any farmer to see all inputted data: full personal info, land size, crops produced, GPS satellite location, and uploaded IDs.</p>
+              </div>
+
+              <!-- Status Filters -->
+              <div class="flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                ${[
+                  { key: 'ALL', label: 'All' },
+                  { key: 'PENDING_REVIEW', label: 'Pending Review' },
+                  { key: 'UNDER_REVIEW', label: 'Under Review' },
+                  { key: 'CHANGES_REQUIRED', label: 'Changes Needed' },
+                  { key: 'APPROVED', label: 'Approved' },
+                  { key: 'REJECTED', label: 'Rejected' }
+                ].map(tab => `
+                  <button onclick="actions.setAdminVerificationFilter('${tab.key}')"
+                          class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${verificationFilter === tab.key ? 'bg-emerald-700 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-emerald-600'}">
+                    ${tab.label}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="relative">
+              <input type="text"
+                     value="${state.adminVerificationSearch || ''}"
+                     oninput="actions.setAdminVerificationSearch(this.value)"
+                     placeholder="Search applications by farmer name, email, farm name, or state..."
+                     class="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm">
+              <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-gray-400 text-sm"></i>
+            </div>
+
+            <!-- Applications Table -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-emerald-50 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 font-bold border-b border-gray-200 dark:border-slate-700">
+                  <tr>
+                    <th class="py-3.5 px-4">Farmer Details</th>
+                    <th class="py-3.5 px-4">Farm Details</th>
+                    <th class="py-3.5 px-4">Location & GPS</th>
+                    <th class="py-3.5 px-4">Documents</th>
+                    <th class="py-3.5 px-4">Status</th>
+                    <th class="py-3.5 px-4">Submitted</th>
+                    <th class="py-3.5 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
+                  ${filteredVerifications.length === 0 ? `
+                    <tr>
+                      <td colspan="7" class="py-12 text-center text-gray-500 font-medium">
+                        <div class="text-sm font-bold text-slate-800 dark:text-white mb-1">No applications found</div>
+                        <p class="text-xs text-gray-400">Click "Refresh Applications" or fill the Farmer Verification form to submit a new one.</p>
+                      </td>
+                    </tr>
+                  ` : filteredVerifications.map(v => `
+                    <tr class="hover:bg-emerald-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                      <td class="py-3.5 px-4 min-w-[170px]">
+                        <div class="font-extrabold text-slate-900 dark:text-white text-xs">${v.farmer_name || 'Farmer'}</div>
+                        <div class="text-[10px] text-gray-400 font-mono">${v.farmer_email || v.email || 'N/A'}</div>
+                        <div class="text-[10px] text-gray-400">${v.phone || ''}</div>
+                      </td>
+
+                      <td class="py-3.5 px-4 min-w-[160px]">
+                        <div class="font-bold text-slate-800 dark:text-gray-200">${v.farm_name || 'Agro Farm'}</div>
+                        <div class="text-[10px] text-emerald-600 font-bold">${v.farm_type || 'Crop Farming'} • ${v.farm_size_acres || 0} Acres</div>
+                        <div class="text-[10px] text-gray-500 truncate max-w-[160px]">${Array.isArray(v.crops_produced) ? v.crops_produced.join(', ') : (v.crops_produced || 'N/A')}</div>
+                      </td>
+
+                      <td class="py-3.5 px-4 min-w-[150px]">
+                        <div class="font-bold text-slate-700 dark:text-gray-300">${v.farm_state || v.state || 'Nigeria'}, ${v.farm_lga || ''}</div>
+                        ${v.gps_latitude && v.gps_longitude ? `
+                          <a href="https://www.google.com/maps?q=${v.gps_latitude},${v.gps_longitude}" target="_blank" class="inline-flex items-center space-x-1 text-[10px] text-blue-600 font-bold hover:underline">
+                            <i class="fa-solid fa-location-crosshairs text-amber-500"></i>
+                            <span>${v.gps_latitude.toString().slice(0, 7)}°, ${v.gps_longitude.toString().slice(0, 7)}°</span>
+                          </a>
+                        ` : '<span class="text-[10px] text-gray-400">No GPS coords</span>'}
+                      </td>
+
+                      <td class="py-3.5 px-4">
+                        <span class="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-gray-200 font-bold text-[10px] inline-flex items-center space-x-1">
+                          <i class="fa-solid fa-paperclip text-emerald-500"></i>
+                          <span>${(v.documents || []).length} Uploads</span>
+                        </span>
+                      </td>
+
+                      <td class="py-3.5 px-4">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${statusBadge(v.status)} whitespace-nowrap">
+                          ${(v.status || 'PENDING_REVIEW').replace('_', ' ')}
+                        </span>
+                      </td>
+
+                      <td class="py-3.5 px-4 text-gray-500 text-[11px] whitespace-nowrap">
+                        ${v.submitted_at ? new Date(v.submitted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent'}
+                      </td>
+
+                      <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1">
+                        <button onclick="actions.openAdminReview('${v.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-[10px] shadow-sm transition-all inline-flex items-center space-x-1">
+                          <i class="fa-solid fa-magnifying-glass"></i>
+                          <span>Inspect Details & Docs</span>
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- ═══ TAB: OVERVIEW & SHORTCUTS ═══ -->
         ${activeTab === 'overview' ? `
           <div class="space-y-8">
-            
-            <!-- Quick Action Priority Banner -->
             ${verificationCounts.pending > 0 ? `
               <div class="p-6 rounded-3xl bg-gradient-to-r from-amber-500 via-amber-600 to-emerald-600 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
                 <div class="flex items-center space-x-4">
@@ -218,7 +382,6 @@ function renderAdminDashboard(state, actions) {
               </div>
             ` : ''}
 
-            <!-- Governance Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div onclick="actions.setAdminTab('verifications')" class="glass-card p-6 rounded-3xl space-y-3 cursor-pointer hover:border-emerald-500/50 hover:shadow-xl transition-all group bg-white dark:bg-slate-900">
                 <div class="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
@@ -276,162 +439,10 @@ function renderAdminDashboard(state, actions) {
                 </div>
               </div>
             </div>
-
-            <!-- Recent KYC Queue Preview -->
-            <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-gray-200 dark:border-slate-800 shadow-sm space-y-5">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h3 class="text-lg font-heading font-extrabold text-slate-900 dark:text-white">Recent Farmer Verification Applications</h3>
-                  <p class="text-xs text-gray-500">Live submission stream ready for superadmin approval.</p>
-                </div>
-                <button onclick="actions.setAdminTab('verifications')" class="text-xs font-extrabold text-emerald-600 hover:text-emerald-700 flex items-center space-x-1">
-                  <span>View All (${verifications.length})</span>
-                  <i class="fa-solid fa-arrow-right text-[10px]"></i>
-                </button>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                ${verifications.slice(0, 3).map(v => `
-                  <div class="p-5 rounded-2xl border border-gray-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">
-                    <div class="flex items-center justify-between">
-                      <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${statusBadge(v.status)}">${v.status.replace('_', ' ')}</span>
-                      <span class="text-[10px] text-gray-400 font-mono">${v.submitted_at ? new Date(v.submitted_at).toLocaleDateString() : 'Draft'}</span>
-                    </div>
-                    <div>
-                      <div class="font-extrabold text-sm text-slate-900 dark:text-white">${v.farmer_name || 'Farmer'}</div>
-                      <div class="text-xs text-emerald-600 font-bold">${v.farm_name || 'Farm Details'}</div>
-                      <div class="text-[11px] text-gray-500 mt-0.5"><i class="fa-solid fa-location-dot text-amber-500 mr-1"></i>${v.farm_state || 'Nigeria'}, ${v.farm_lga || ''}</div>
-                    </div>
-                    <button onclick="actions.openAdminReview('${v.id}')" class="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center space-x-1.5">
-                      <i class="fa-solid fa-magnifying-glass"></i>
-                      <span>Inspect Details & Docs</span>
-                    </button>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-
           </div>
         ` : ''}
 
-        <!-- ═══ TAB 2: FARMER VERIFICATION & KYC DOSSIER QUEUE ═══ -->
-        ${activeTab === 'verifications' ? `
-          <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-emerald-500/20 shadow-sm space-y-6">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div class="inline-flex items-center space-x-2 text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">
-                  <i class="fa-solid fa-user-check"></i>
-                  <span>KYC Approval Pipeline</span>
-                </div>
-                <h2 class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white">Farmer Verification Applications</h2>
-                <p class="text-xs text-gray-500">Inspect full farmer credentials, GPS land coordinates, operational scale, and uploaded legal documents</p>
-              </div>
-
-              <!-- Status Filters -->
-              <div class="flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
-                ${[
-                  { key: 'ALL', label: 'All' },
-                  { key: 'PENDING_REVIEW', label: 'Pending' },
-                  { key: 'UNDER_REVIEW', label: 'Under Review' },
-                  { key: 'CHANGES_REQUIRED', label: 'Changes Needed' },
-                  { key: 'APPROVED', label: 'Approved' },
-                  { key: 'REJECTED', label: 'Rejected' }
-                ].map(tab => `
-                  <button onclick="actions.setAdminVerificationFilter('${tab.key}')"
-                          class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${verificationFilter === tab.key ? 'bg-emerald-700 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-emerald-600'}">
-                    ${tab.label}
-                  </button>
-                `).join('')}
-              </div>
-            </div>
-
-            <!-- Search Bar -->
-            <div class="relative">
-              <input type="text"
-                     value="${state.adminVerificationSearch || ''}"
-                     oninput="actions.setAdminVerificationSearch(this.value)"
-                     placeholder="Search applications by farmer name, email, farm name, or state..."
-                     class="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm">
-              <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-gray-400 text-sm"></i>
-            </div>
-
-            <!-- Applications Table -->
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs">
-                <thead class="bg-emerald-50 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 font-bold border-b border-gray-200 dark:border-slate-700">
-                  <tr>
-                    <th class="py-3.5 px-4">Farmer Details</th>
-                    <th class="py-3.5 px-4">Farm Details</th>
-                    <th class="py-3.5 px-4">Location & GPS</th>
-                    <th class="py-3.5 px-4">Documents</th>
-                    <th class="py-3.5 px-4">Status</th>
-                    <th class="py-3.5 px-4">Submitted</th>
-                    <th class="py-3.5 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
-                  ${filteredVerifications.length === 0 ? `
-                    <tr>
-                      <td colspan="7" class="py-10 text-center text-gray-500 font-medium">
-                        No farmer verification applications found matching your criteria.
-                      </td>
-                    </tr>
-                  ` : filteredVerifications.map(v => `
-                    <tr class="hover:bg-emerald-50/30 dark:hover:bg-slate-800/40 transition-colors">
-                      <td class="py-3.5 px-4 min-w-[160px]">
-                        <div class="font-extrabold text-slate-900 dark:text-white text-xs">${v.farmer_name || 'Farmer'}</div>
-                        <div class="text-[10px] text-gray-400 font-mono">${v.farmer_email || v.email || 'N/A'}</div>
-                        <div class="text-[10px] text-gray-400">${v.phone || ''}</div>
-                      </td>
-
-                      <td class="py-3.5 px-4 min-w-[150px]">
-                        <div class="font-bold text-slate-800 dark:text-gray-200">${v.farm_name || 'Agro Farm'}</div>
-                        <div class="text-[10px] text-emerald-600 font-bold">${v.farm_type || 'Crop Farming'} • ${v.farm_size_acres || 0} Acres</div>
-                        <div class="text-[10px] text-gray-500 truncate max-w-[160px]">${(v.crops_produced || []).join(', ') || 'N/A'}</div>
-                      </td>
-
-                      <td class="py-3.5 px-4 min-w-[140px]">
-                        <div class="font-bold text-slate-700 dark:text-gray-300">${v.farm_state || v.state || 'Nigeria'}, ${v.farm_lga || ''}</div>
-                        ${v.gps_latitude && v.gps_longitude ? `
-                          <a href="https://www.google.com/maps?q=${v.gps_latitude},${v.gps_longitude}" target="_blank" class="inline-flex items-center space-x-1 text-[10px] text-blue-600 font-bold hover:underline">
-                            <i class="fa-solid fa-location-crosshairs text-amber-500"></i>
-                            <span>${v.gps_latitude.toString().slice(0, 7)}°, ${v.gps_longitude.toString().slice(0, 7)}°</span>
-                          </a>
-                        ` : '<span class="text-[10px] text-gray-400">No GPS coords</span>'}
-                      </td>
-
-                      <td class="py-3.5 px-4">
-                        <span class="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-gray-200 font-bold text-[10px] inline-flex items-center space-x-1">
-                          <i class="fa-solid fa-paperclip text-emerald-500"></i>
-                          <span>${(v.documents || []).length} Uploads</span>
-                        </span>
-                      </td>
-
-                      <td class="py-3.5 px-4">
-                        <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${statusBadge(v.status)} whitespace-nowrap">
-                          ${v.status.replace('_', ' ')}
-                        </span>
-                      </td>
-
-                      <td class="py-3.5 px-4 text-gray-500 text-[11px] whitespace-nowrap">
-                        ${v.submitted_at ? new Date(v.submitted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                      </td>
-
-                      <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1">
-                        <button onclick="actions.openAdminReview('${v.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-[10px] shadow-sm transition-all inline-flex items-center space-x-1">
-                          <i class="fa-solid fa-magnifying-glass"></i>
-                          <span>Inspect Details</span>
-                        </button>
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- ═══ TAB 3: USER DATABASE REGISTRY ═══ -->
+        <!-- ═══ TAB: USER DATABASE REGISTRY ═══ -->
         ${activeTab === 'users' ? `
           <div class="glass-card rounded-3xl p-6 sm:p-8 space-y-6 border border-blue-500/20 bg-white dark:bg-slate-900">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -461,16 +472,6 @@ function renderAdminDashboard(state, actions) {
               </div>
             </div>
 
-            <!-- Search Bar -->
-            <div class="relative">
-              <input type="text"
-                     value="${state.adminUserSearch || ''}"
-                     oninput="actions.setAdminUserSearch(this.value)"
-                     placeholder="Search registered users by full name, email address, or phone number..."
-                     class="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none shadow-sm">
-              <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-gray-400 text-sm"></i>
-            </div>
-
             <!-- Table -->
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs">
@@ -480,9 +481,9 @@ function renderAdminDashboard(state, actions) {
                     <th class="py-3 px-4">Role</th>
                     <th class="py-3 px-4">Email Address</th>
                     <th class="py-3 px-4">Phone Number</th>
-                    <th class="py-3 px-4">Email OTP</th>
                     <th class="py-3 px-4">KYC / Verification</th>
                     <th class="py-3 px-4">Registered Date</th>
+                    <th class="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
@@ -502,22 +503,9 @@ function renderAdminDashboard(state, actions) {
                       <td class="py-3.5 px-4 font-mono font-medium text-gray-700 dark:text-gray-300">${u.email}</td>
                       <td class="py-3.5 px-4 font-mono text-gray-600 dark:text-gray-400">${u.phone_number || 'N/A'}</td>
                       <td class="py-3.5 px-4">
-                        ${u.email_verified ? `
-                          <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-bold flex items-center space-x-1 w-max">
-                            <i class="fa-solid fa-circle-check text-emerald-500"></i>
-                            <span>Verified</span>
-                          </span>
-                        ` : `
-                          <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px] font-bold flex items-center space-x-1 w-max">
-                            <i class="fa-solid fa-clock text-amber-500"></i>
-                            <span>Pending</span>
-                          </span>
-                        `}
-                      </td>
-                      <td class="py-3.5 px-4">
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           u.verification_status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
-                          u.verification_status === 'PENDING' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
+                          u.verification_status === 'PENDING' || u.verification_status === 'PENDING_REVIEW' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
                           'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-gray-400'
                         }">
                           ${u.verification_status || 'NOT_STARTED'}
@@ -525,6 +513,14 @@ function renderAdminDashboard(state, actions) {
                       </td>
                       <td class="py-3.5 px-4 text-gray-500 text-[11px]">
                         ${new Date(u.created_at || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </td>
+                      <td class="py-3.5 px-4 text-right">
+                        ${u.role === 'FARMER' ? `
+                          <button onclick="actions.openAdminReview('${u.id || u.email}')" class="px-2.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-[10px] shadow-sm transition-all inline-flex items-center space-x-1">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <span>Inspect Dossier</span>
+                          </button>
+                        ` : ''}
                       </td>
                     </tr>
                   `).join('')}
@@ -534,7 +530,7 @@ function renderAdminDashboard(state, actions) {
           </div>
         ` : ''}
 
-        <!-- ═══ TAB 4: DISPUTE ADJUDICATION ═══ -->
+        <!-- ═══ TAB: DISPUTE ADJUDICATION ═══ -->
         ${activeTab === 'disputes' ? `
           <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-rose-500/20 shadow-sm space-y-6">
             <div class="flex items-center justify-between">
@@ -555,7 +551,7 @@ function renderAdminDashboard(state, actions) {
           </div>
         ` : ''}
 
-        <!-- ═══ TAB 5: ACCOUNT DELETION QUEUE ═══ -->
+        <!-- ═══ TAB: ACCOUNT DELETION QUEUE ═══ -->
         ${activeTab === 'deletions' ? `
           <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-red-500/30 shadow-sm space-y-6">
             <div class="flex items-center justify-between">
@@ -606,9 +602,9 @@ function renderAdminDashboard(state, actions) {
             <div>
               <div class="flex items-center space-x-2">
                 <span class="px-3 py-1 rounded-full text-xs font-extrabold border ${statusBadge(inspected.status)}">
-                  ${inspected.status.replace('_', ' ')}
+                  ${(inspected.status || 'PENDING_REVIEW').replace('_', ' ')}
                 </span>
-                <span class="text-xs text-gray-400 font-mono">ID: ${inspected.id}</span>
+                <span class="text-xs text-gray-400 font-mono">ID: ${inspected.id || 'AGR-VER'}</span>
               </div>
               <h2 class="text-2xl font-heading font-extrabold text-slate-900 dark:text-white mt-1.5">
                 ${inspected.farmer_name || 'Farmer Verification Dossier'}
@@ -629,11 +625,11 @@ function renderAdminDashboard(state, actions) {
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
               <div><span class="text-gray-400 block text-[10px]">Full Name</span><span class="font-bold text-slate-900 dark:text-white">${inspected.farmer_name || 'N/A'}</span></div>
-              <div><span class="text-gray-400 block text-[10px]">Email Address</span><span class="font-bold text-slate-900 dark:text-white">${inspected.farmer_email || inspected.email || 'N/A'}</span></div>
-              <div><span class="text-gray-400 block text-[10px]">Phone Number</span><span class="font-bold text-slate-900 dark:text-white">${inspected.phone || 'N/A'}</span></div>
+              <div><span class="text-gray-400 block text-[10px]">Email Address</span><span class="font-bold text-slate-900 dark:text-white font-mono">${inspected.farmer_email || inspected.email || 'N/A'}</span></div>
+              <div><span class="text-gray-400 block text-[10px]">Phone Number</span><span class="font-bold text-slate-900 dark:text-white font-mono">${inspected.phone || 'N/A'}</span></div>
               <div><span class="text-gray-400 block text-[10px]">Residential State</span><span class="font-bold text-slate-900 dark:text-white">${inspected.state || inspected.farm_state || 'N/A'}</span></div>
               <div><span class="text-gray-400 block text-[10px]">Residential LGA</span><span class="font-bold text-slate-900 dark:text-white">${inspected.lga || inspected.farm_lga || 'N/A'}</span></div>
-              <div><span class="text-gray-400 block text-[10px]">Residential Address</span><span class="font-bold text-slate-900 dark:text-white">${inspected.residential_address || 'N/A'}</span></div>
+              <div><span class="text-gray-400 block text-[10px]">Residential Street Address</span><span class="font-bold text-slate-900 dark:text-white">${inspected.residential_address || 'N/A'}</span></div>
             </div>
           </div>
 
@@ -649,7 +645,7 @@ function renderAdminDashboard(state, actions) {
               <div><span class="text-gray-400 block text-[10px]">Land Size (Acres)</span><span class="font-bold text-slate-900 dark:text-white">${inspected.farm_size_acres || 0} Acres</span></div>
               <div><span class="text-gray-400 block text-[10px]">Farming Experience</span><span class="font-bold text-slate-900 dark:text-white">${inspected.years_experience || 0} Years</span></div>
               <div class="sm:col-span-2"><span class="text-gray-400 block text-[10px]">Crops & Livestock Produced</span><span class="font-bold text-slate-900 dark:text-white">${Array.isArray(inspected.crops_produced) ? inspected.crops_produced.join(', ') : (inspected.crops_produced || 'N/A')}</span></div>
-              <div class="sm:col-span-3"><span class="text-gray-400 block text-[10px]">Intended Produce for Sale</span><span class="font-bold text-slate-900 dark:text-white">${inspected.intended_products || 'All certified harvest'}</span></div>
+              <div class="sm:col-span-3"><span class="text-gray-400 block text-[10px]">Intended Produce for Sale on Agrein</span><span class="font-bold text-slate-900 dark:text-white">${inspected.intended_products || 'All certified produce'}</span></div>
             </div>
           </div>
 

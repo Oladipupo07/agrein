@@ -109,7 +109,7 @@ const state = {
   documentUploads: {}, // { 'government_id': { progress: 45, fileName: 'id.pdf', isUploading: true }, ... }
 
   // Admin Executive Dashboard & Dossier Inspection State
-  adminActiveTab: 'overview', // 'overview' | 'verifications' | 'users' | 'disputes' | 'deletions'
+  adminActiveTab: 'verifications', // 'verifications' | 'overview' | 'users' | 'disputes' | 'deletions'
   adminVerificationFilter: 'ALL',
   adminVerificationSearch: '',
   adminInspectionModalActive: false,
@@ -1791,24 +1791,39 @@ const actions = {
       })
     }).catch(err => console.warn('[submitFarmerVerification] Background sync:', err.message));
 
-    // Mirror the app into the admin queue
-    const existing = state.mockData.adminVerifications.find(v => v.id === app.id);
-    if (!existing) {
-      state.mockData.adminVerifications.unshift({
-        id: app.id,
-        farmer_name: app.farmer_name || (state.currentUser && state.currentUser.full_name) || 'New Farmer',
-        farmer_email: app.farmer_email || userEmail,
-        status: 'PENDING_REVIEW',
-        submitted_at: app.submitted_at,
-        farm_location: app.farm_location || app.farm_state || 'Nigeria',
-        farm_size_acres: app.farm_size_acres || 0,
-        years_experience: app.years_experience || 0,
-        documents: app.documents || []
-      });
+    // Mirror the complete app into the admin queue
+    const fullAppRecord = {
+      ...app,
+      id: app.id,
+      farmer_name: app.farmer_name || (state.currentUser && state.currentUser.full_name) || 'New Farmer',
+      farmer_email: app.farmer_email || userEmail,
+      email: app.email || userEmail,
+      phone: app.phone || (state.currentUser && state.currentUser.phone_number) || '',
+      state: app.state || '',
+      lga: app.lga || '',
+      residential_address: app.residential_address || '',
+      farm_name: app.farm_name || 'Agro Farm',
+      farm_type: app.farm_type || 'Crop Farming',
+      farm_size_acres: app.farm_size_acres || 0,
+      years_experience: app.years_experience || 0,
+      crops_produced: Array.isArray(app.crops_produced) ? app.crops_produced : [],
+      intended_products: app.intended_products || '',
+      farm_location: app.farm_location || app.farm_state || 'Nigeria',
+      farm_state: app.farm_state || app.state || '',
+      farm_lga: app.farm_lga || app.lga || '',
+      gps_latitude: app.gps_latitude || null,
+      gps_longitude: app.gps_longitude || null,
+      documents: app.documents || [],
+      status: 'PENDING_REVIEW',
+      submitted_at: app.submitted_at
+    };
+
+    if (!state.mockData.adminVerifications) state.mockData.adminVerifications = [];
+    const existingIdx = state.mockData.adminVerifications.findIndex(v => v.id === app.id || (v.farmer_email && v.farmer_email === userEmail));
+    if (existingIdx >= 0) {
+      state.mockData.adminVerifications[existingIdx] = fullAppRecord;
     } else {
-      existing.status = 'PENDING_REVIEW';
-      existing.submitted_at = app.submitted_at;
-      existing.documents = app.documents || [];
+      state.mockData.adminVerifications.unshift(fullAppRecord);
     }
 
     actions.triggerToast('✅ Farm verification application submitted! 100% compulsory criteria satisfied.');
@@ -2415,6 +2430,33 @@ const actions = {
   setAdminVerificationSearch(query) {
     state.adminVerificationSearch = query;
     renderApp();
+  },
+
+  fetchAdminVerifications() {
+    const token = (state.currentUser && state.currentUser.token) || '';
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (state.currentUser && state.currentUser.email) headers['x-user-email'] = state.currentUser.email;
+
+    fetch('/api/admin/farmer-verifications', { headers })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success && Array.isArray(data.applications)) {
+          const serverApps = data.applications || [];
+          if (state.mockData.farmerVerificationApp && state.mockData.farmerVerificationApp.status && state.mockData.farmerVerificationApp.status !== 'DRAFT') {
+            const localApp = state.mockData.farmerVerificationApp;
+            const exists = serverApps.some(a => a.id === localApp.id || (a.email && a.email === localApp.email));
+            if (!exists) {
+              serverApps.unshift(localApp);
+            }
+          }
+          state.mockData.adminVerifications = serverApps;
+          renderApp();
+        }
+      })
+      .catch(err => {
+        console.warn('[fetchAdminVerifications] Sync error:', err.message);
+      });
   },
 
   openAdminReview(verificationId) {
