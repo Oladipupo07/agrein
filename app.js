@@ -2760,9 +2760,13 @@ const actions = {
   },
 
   openChatDrawer(recipient) {
-    state.chatRecipient = recipient || 'Mallam Ibrahim Bello';
+    state.chatRecipient = recipient || 'AgriBot AI Support';
     state.chatActive = true;
     renderApp();
+    setTimeout(() => {
+      const container = document.getElementById('chatMessagesContainer');
+      if (container) container.scrollTop = container.scrollHeight;
+    }, 100);
   },
 
   closeChatDrawer() {
@@ -2774,21 +2778,84 @@ const actions = {
     state.chatInputText = text;
   },
 
-  sendChatMessage() {
-    if (!state.chatInputText.trim()) return;
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    state.chatMessages.push({ sender: 'you', text: state.chatInputText, time });
-    state.chatInputText = '';
+  clearAiChatHistory() {
+    state.chatMessages = [];
+    actions.triggerToast('💬 Chat history cleared.');
     renderApp();
+  },
 
-    setTimeout(() => {
-      state.chatMessages.push({
-        sender: 'them',
-        text: 'Thank you for reaching out! We are preparing the cold chain shipment. I will update your dispatch tracking code.',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      });
+  sendSuggestedPrompt(promptText) {
+    state.chatInputText = promptText;
+    actions.sendChatMessage();
+  },
+
+  sendChatMessage() {
+    const userText = (state.chatInputText || '').trim();
+    if (!userText) return;
+
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    state.chatMessages.push({ sender: 'you', text: userText, time });
+    state.chatInputText = '';
+
+    const isAiSupport = !state.chatRecipient ||
+      state.chatRecipient.toLowerCase().includes('support') ||
+      state.chatRecipient.toLowerCase().includes('agribot') ||
+      state.chatRecipient.toLowerCase().includes('ai');
+
+    if (isAiSupport) {
+      state.chatIsBotTyping = true;
       renderApp();
-    }, 1200);
+
+      setTimeout(() => {
+        const container = document.getElementById('chatMessagesContainer');
+        if (container) container.scrollTop = container.scrollHeight;
+      }, 50);
+
+      fetch('/api/support/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userText,
+          history: state.chatMessages.slice(-6)
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        state.chatIsBotTyping = false;
+        const reply = data && data.reply ? data.reply : 'Thank you for reaching out to Agrein Support! We are reviewing your inquiry.';
+        state.chatMessages.push({
+          sender: 'bot',
+          text: reply,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+        renderApp();
+        setTimeout(() => {
+          const container = document.getElementById('chatMessagesContainer');
+          if (container) container.scrollTop = container.scrollHeight;
+        }, 50);
+      })
+      .catch(err => {
+        console.warn('[AI Support] Fallback error:', err.message);
+        state.chatIsBotTyping = false;
+        state.chatMessages.push({
+          sender: 'bot',
+          text: 'Hello! I am AgriBot. Agrein escrow protects 100% of your transactions until quality delivery. For assistance, contact support@agrein.ng.',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+        renderApp();
+      });
+
+    } else {
+      renderApp();
+      setTimeout(() => {
+        state.chatMessages.push({
+          sender: 'them',
+          text: 'Thank you for reaching out! We are preparing the harvest for shipment. I will update your dispatch tracking code.',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+        renderApp();
+      }, 1200);
+    }
   },
 
   // ═══════════════════════════════════════════════════════════════

@@ -19,6 +19,12 @@ const traceabilityController = require('../controllers/traceabilityController');
 const authController = require('../controllers/authController');
 const disputeController = require('../controllers/disputeController');
 const farmController = require('../controllers/farmController');
+const aiSupportController = require('../controllers/aiSupportController');
+
+// ===== AI SUPPORT & CUSTOMER CARE BOT ROUTES =====
+router.post('/support/chat', aiSupportController.handleSupportChat);
+router.post('/support/message', aiSupportController.handleSupportChat);
+router.get('/support/suggestions', aiSupportController.getSuggestions);
 
 // ===== AUTHENTICATION & OTP ROUTES =====
 router.post('/auth/register', authController.register);
