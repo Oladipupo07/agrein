@@ -3,17 +3,28 @@
 const supabase = require('../utils/supabaseClient');
 
 function dossierForClient(row, profile, docs) {
-  // Combine the row with the joined profile/docs into the legacy shape the
-  // verification screens already expect.
+  // Combine the row with the joined profile/docs into the comprehensive dossier shape
   return {
     id: row.id,
     farmer_id: row.user_id,
-    farmer_name: profile ? profile.full_name : 'New Agrein Farmer',
-    email: profile ? profile.email : null,
-    phone: profile ? profile.phone_number : null,
-    state: profile ? profile.state : null,
-    lga: profile ? profile.lga : null,
-    status: row.status,
+    farmer_name: row.farmer_name || (profile ? profile.full_name : 'New Agrein Farmer'),
+    email: row.email || (profile ? profile.email : null),
+    phone: row.phone || (profile ? profile.phone_number : null),
+    state: row.state || (profile ? profile.state : null),
+    lga: row.lga || (profile ? profile.lga : null),
+    residential_address: row.residential_address || (profile ? profile.address : null),
+    farm_name: row.farm_name || 'Agro Farm',
+    farm_type: row.farm_type || 'Crop Farming',
+    farm_size_acres: row.farm_size_acres || 0,
+    years_experience: row.years_experience !== undefined ? row.years_experience : 0,
+    crops_produced: row.crops_produced || [],
+    intended_products: row.intended_products || null,
+    farm_location: row.farm_location || row.farm_state || null,
+    farm_state: row.farm_state || row.state || (profile ? profile.state : null),
+    farm_lga: row.farm_lga || row.lga || (profile ? profile.lga : null),
+    gps_latitude: row.gps_latitude || null,
+    gps_longitude: row.gps_longitude || null,
+    status: row.status || 'PENDING_REVIEW',
     nin_masked: row.nin_number ? `••••••••${String(row.nin_number).slice(-3)}` : '••••••••789',
     bvn_masked: row.bvn_number ? `••••••••${String(row.bvn_number).slice(-3)}` : '••••••••456',
     submitted_at: row.submitted_at,
@@ -25,7 +36,7 @@ function dossierForClient(row, profile, docs) {
     documents: (docs || []).map((d) => ({
       id: d.id,
       type: d.document_type,
-      name: (d.file_name || d.document_type || '').toString().replace(/_/g, ' ').toUpperCase(),
+      name: d.file_name || (d.document_type || '').toString().replace(/_/g, ' ').toUpperCase(),
       url: d.file_url,
       uploaded_at: d.uploaded_at
     }))

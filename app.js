@@ -108,6 +108,15 @@ const state = {
   // Document Upload Progress Tracking
   documentUploads: {}, // { 'government_id': { progress: 45, fileName: 'id.pdf', isUploading: true }, ... }
 
+  // Admin Executive Dashboard & Dossier Inspection State
+  adminActiveTab: 'overview', // 'overview' | 'verifications' | 'users' | 'disputes' | 'deletions'
+  adminVerificationFilter: 'ALL',
+  adminVerificationSearch: '',
+  adminInspectionModalActive: false,
+  adminInspectedDossier: null,
+  adminReviewDossier: null,
+  adminDocumentPreviewModal: { active: false, url: '', name: '', type: '' },
+
   // Locked-farmer chrome suppression. True when a FARMER is signed in but
   // hasn't been admin-verified yet. The farmer-verification page hides the
   // navbar, ecosystem strip, and footer to feel like a standalone onboarding.
@@ -2391,6 +2400,179 @@ const actions = {
   },
 
   // ===== end ACCOUNT SETTINGS / DELETION =====
+
+  // ===== ADMIN DASHBOARD & VERIFICATION ACTIONS =====
+  setAdminTab(tabName) {
+    state.adminActiveTab = tabName;
+    renderApp();
+  },
+
+  setAdminVerificationFilter(status) {
+    state.adminVerificationFilter = status;
+    renderApp();
+  },
+
+  setAdminVerificationSearch(query) {
+    state.adminVerificationSearch = query;
+    renderApp();
+  },
+
+  openAdminReview(verificationId) {
+    let dossier = (state.mockData.adminVerifications || []).find(v => v.id === verificationId);
+    if (!dossier && state.mockData.farmerVerificationApp && state.mockData.farmerVerificationApp.id === verificationId) {
+      dossier = state.mockData.farmerVerificationApp;
+    }
+    if (!dossier) {
+      dossier = (state.mockData.adminVerifications && state.mockData.adminVerifications[0]) || {
+        id: verificationId,
+        farmer_name: 'Registered Farmer',
+        status: 'PENDING_REVIEW'
+      };
+    }
+    state.adminReviewDossier = dossier;
+    state.adminInspectedDossier = dossier;
+    state.adminInspectionModalActive = true;
+
+    if (verificationId) {
+      fetch(`/api/admin/farmer-verifications/${verificationId}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d && d.success && d.dossier) {
+            state.adminReviewDossier = d.dossier;
+            state.adminInspectedDossier = d.dossier;
+            renderApp();
+          }
+        })
+        .catch(() => {});
+    }
+    renderApp();
+  },
+
+  closeAdminInspectionModal() {
+    state.adminInspectionModalActive = false;
+    renderApp();
+  },
+
+  openDocumentPreview(url, name, type) {
+    state.adminDocumentPreviewModal = {
+      active: true,
+      url: url || '',
+      name: name || 'Document',
+      type: type || 'DOCUMENT'
+    };
+    renderApp();
+  },
+
+  closeDocumentPreview() {
+    state.adminDocumentPreviewModal = { active: false, url: '', name: '', type: '' };
+    renderApp();
+  },
+
+  adminApproveFarmer(verificationId) {
+    const vList = state.mockData.adminVerifications || [];
+    const dossier = vList.find(v => v.id === verificationId) || state.mockData.farmerVerificationApp;
+    const targetEmail = dossier?.farmer_email || dossier?.email;
+
+    if (dossier) {
+      dossier.status = 'APPROVED';
+      dossier.reviewed_at = new Date().toISOString();
+    }
+    if (state.mockData.farmerVerificationApp) {
+      state.mockData.farmerVerificationApp.status = 'APPROVED';
+      state.mockData.farmerVerificationApp.reviewed_at = new Date().toISOString();
+    }
+    if (state.currentUser && (state.currentUser.email === targetEmail || state.currentUser.role === 'FARMER')) {
+      state.currentUser.verification_status = 'APPROVED';
+    }
+
+    if (targetEmail && state.registeredUsersList) {
+      const u = state.registeredUsersList.find(user => user.email.toLowerCase() === targetEmail.toLowerCase());
+      if (u) {
+        u.verification_status = 'APPROVED';
+        u.is_verified = true;
+      }
+    }
+
+    const token = state.currentUser?.token || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (state.currentUser?.email) headers['x-user-email'] = state.currentUser.email;
+
+    fetch(`/api/admin/farmer-verifications/${verificationId}/approve`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ adminNotes: 'Verified by SuperAdmin' })
+    }).catch(err => console.warn('[adminApproveFarmer] API Sync:', err.message));
+
+    state.adminInspectionModalActive = false;
+    actions.triggerToast(`✅ ${dossier?.farmer_name || 'Farmer'} has been Approved & granted Golden Verified Status!`);
+    renderApp();
+  },
+
+  adminPromptRequestChanges(verificationId) {
+    const reason = prompt('Enter notes or instructions for the farmer (e.g. Please re-upload a clearer NIN slip or farm deed):');
+    if (!reason || !reason.trim()) return;
+
+    const vList = state.mockData.adminVerifications || [];
+    const dossier = vList.find(v => v.id === verificationId) || state.mockData.farmerVerificationApp;
+    if (dossier) {
+      dossier.status = 'CHANGES_REQUIRED';
+      dossier.changes_requested_notes = reason.trim();
+      dossier.reviewed_at = new Date().toISOString();
+    }
+    if (state.mockData.farmerVerificationApp) {
+      state.mockData.farmerVerificationApp.status = 'CHANGES_REQUIRED';
+      state.mockData.farmerVerificationApp.changes_requested_notes = reason.trim();
+    }
+
+    const token = state.currentUser?.token || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (state.currentUser?.email) headers['x-user-email'] = state.currentUser.email;
+
+    fetch(`/api/admin/farmer-verifications/${verificationId}/request-changes`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ reason: reason.trim() })
+    }).catch(() => {});
+
+    state.adminInspectionModalActive = false;
+    actions.triggerToast(`🟠 Changes requested from ${dossier?.farmer_name || 'farmer'}.`);
+    renderApp();
+  },
+
+  adminPromptReject(verificationId) {
+    const reason = prompt('Enter reason for rejecting this verification application:');
+    if (!reason || !reason.trim()) return;
+
+    const vList = state.mockData.adminVerifications || [];
+    const dossier = vList.find(v => v.id === verificationId) || state.mockData.farmerVerificationApp;
+    if (dossier) {
+      dossier.status = 'REJECTED';
+      dossier.rejection_reason = reason.trim();
+      dossier.reviewed_at = new Date().toISOString();
+    }
+    if (state.mockData.farmerVerificationApp) {
+      state.mockData.farmerVerificationApp.status = 'REJECTED';
+      state.mockData.farmerVerificationApp.rejection_reason = reason.trim();
+    }
+
+    const token = state.currentUser?.token || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (state.currentUser?.email) headers['x-user-email'] = state.currentUser.email;
+
+    fetch(`/api/admin/farmer-verifications/${verificationId}/reject`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ reason: reason.trim() })
+    }).catch(() => {});
+
+    state.adminInspectionModalActive = false;
+    actions.triggerToast(`🔴 Application rejected.`);
+    renderApp();
+  },
+
 
   updateUserProfile(profileData) {
     if (!state.currentUser) {
