@@ -1623,50 +1623,126 @@ const actions = {
     reader.readAsDataURL(file);
   },
 
-  // Verification Actions
-  submitFarmerVerification() {
+  // Real-time verification field synchronization
+  updateVerificationField(field, value) {
+    if (!state.mockData.farmerVerificationApp) {
+      state.mockData.farmerVerificationApp = {
+        status: 'DRAFT',
+        documents: []
+      };
+    }
     const app = state.mockData.farmerVerificationApp;
+    if (field === 'crops_produced') {
+      app.crops_produced = String(value || '').split(',').map(s => s.trim()).filter(Boolean);
+      app.crops_produced_raw = value;
+    } else {
+      app[field] = value;
+    }
+    if (state.currentUser) {
+      if (field === 'farmer_name') state.currentUser.full_name = value;
+      if (field === 'phone') state.currentUser.phone_number = value;
+      if (field === 'state') state.currentUser.state = value;
+      if (field === 'lga') state.currentUser.lga = value;
+      if (field === 'residential_address') state.currentUser.address = value;
+    }
+    renderApp();
+  },
+
+  // Verification Actions with Strict Compulsory Field Checks
+  submitFarmerVerification() {
+    const app = state.mockData.farmerVerificationApp || (state.mockData.farmerVerificationApp = { status: 'DRAFT', documents: [] });
 
     // Collect fresh values from DOM inputs if available
-    const fullName = document.getElementById('personalFullName')?.value?.trim();
-    const email = document.getElementById('personalEmail')?.value?.trim();
-    const phone = document.getElementById('personalPhone')?.value?.trim();
-    const stateVal = document.getElementById('personalState')?.value;
-    const lgaVal = document.getElementById('personalLga')?.value?.trim();
-    const addressVal = document.getElementById('personalAddress')?.value?.trim();
+    const fullName = (document.getElementById('personalFullName')?.value || app.farmer_name || state.currentUser?.full_name || '').trim();
+    const email = (document.getElementById('personalEmail')?.value || app.email || state.currentUser?.email || '').trim();
+    const phone = (document.getElementById('personalPhone')?.value || app.phone || state.currentUser?.phone_number || '').trim();
+    const stateVal = document.getElementById('personalState')?.value || app.state || state.currentUser?.state || '';
+    const lgaVal = (document.getElementById('personalLga')?.value || app.lga || state.currentUser?.lga || '').trim();
+    const addressVal = (document.getElementById('personalAddress')?.value || app.residential_address || state.currentUser?.address || '').trim();
 
-    const farmName = document.getElementById('farmName')?.value?.trim();
-    const farmType = document.getElementById('farmType')?.value;
-    const farmSize = document.getElementById('farmSizeAcres')?.value;
-    const yearsExp = document.getElementById('yearsExperience')?.value;
-    const crops = document.getElementById('cropsProduced')?.value?.trim();
-    const intended = document.getElementById('intendedProducts')?.value?.trim();
+    const farmName = (document.getElementById('farmName')?.value || app.farm_name || '').trim();
+    const farmType = document.getElementById('farmType')?.value || app.farm_type || 'Crop Farming';
+    const farmSize = document.getElementById('farmSizeAcres')?.value || app.farm_size_acres;
+    const yearsExp = document.getElementById('yearsExperience')?.value !== undefined ? document.getElementById('yearsExperience')?.value : app.years_experience;
+    const crops = (document.getElementById('cropsProduced')?.value || (Array.isArray(app.crops_produced) ? app.crops_produced.join(', ') : app.crops_produced) || '').trim();
+    const intended = (document.getElementById('intendedProducts')?.value || app.intended_products || '').trim();
 
-    const farmAddress = document.getElementById('farmAddress')?.value?.trim();
-    const farmState = document.getElementById('farmState')?.value;
-    const farmLga = document.getElementById('farmLga')?.value?.trim();
-    const farmLat = document.getElementById('farmLat')?.value?.trim();
-    const farmLng = document.getElementById('farmLng')?.value?.trim();
+    const farmAddress = (document.getElementById('farmAddress')?.value || app.farm_location || '').trim();
+    const farmState = document.getElementById('farmState')?.value || app.farm_state || app.state || '';
+    const farmLga = (document.getElementById('farmLga')?.value || app.farm_lga || app.lga || '').trim();
+    const farmLat = document.getElementById('farmLat')?.value || app.gps_latitude || '';
+    const farmLng = document.getElementById('farmLng')?.value || app.gps_longitude || '';
 
-    if (fullName) app.farmer_name = fullName;
-    if (email) app.email = email;
-    if (phone) app.phone = phone;
-    if (stateVal) app.state = stateVal;
-    if (lgaVal) app.lga = lgaVal;
-    if (addressVal) app.residential_address = addressVal;
+    // Update state object
+    app.farmer_name = fullName;
+    app.email = email;
+    app.phone = phone;
+    app.state = stateVal;
+    app.lga = lgaVal;
+    app.residential_address = addressVal;
 
-    if (farmName) app.farm_name = farmName;
-    if (farmType) app.farm_type = farmType;
-    if (farmSize) app.farm_size_acres = parseFloat(farmSize) || 0;
-    if (yearsExp) app.years_experience = parseInt(yearsExp, 10) || 0;
-    if (crops) app.crops_produced = crops.split(',').map(s => s.trim()).filter(Boolean);
-    if (intended) app.intended_products = intended;
+    app.farm_name = farmName;
+    app.farm_type = farmType;
+    app.farm_size_acres = parseFloat(farmSize) || 0;
+    app.years_experience = yearsExp !== '' && yearsExp !== null && yearsExp !== undefined ? parseInt(yearsExp, 10) : '';
+    app.crops_produced = crops.split(',').map(s => s.trim()).filter(Boolean);
+    app.intended_products = intended;
 
-    if (farmAddress) app.farm_location = farmAddress;
-    if (farmState) app.farm_state = farmState;
-    if (farmLga) app.farm_lga = farmLga;
-    if (farmLat) app.gps_latitude = parseFloat(farmLat) || app.gps_latitude;
-    if (farmLng) app.gps_longitude = parseFloat(farmLng) || app.gps_longitude;
+    app.farm_location = farmAddress;
+    app.farm_state = farmState;
+    app.farm_lga = farmLga;
+    app.gps_latitude = parseFloat(farmLat) || app.gps_latitude;
+    app.gps_longitude = parseFloat(farmLng) || app.gps_longitude;
+
+    const docs = app.documents || [];
+    const hasGovId = docs.some(d => d.type === 'government_id');
+    const hasFarmPhoto = docs.some(d => d.type === 'farm_photo');
+    const hasProfilePhoto = docs.some(d => d.type === 'profile_photo');
+
+    // Compulsory check validation
+    const missingRequirements = [];
+    if (!fullName) missingRequirements.push({ label: 'Full Name', elId: 'personalFullName' });
+    if (!email) missingRequirements.push({ label: 'Email Address', elId: 'personalEmail' });
+    if (!phone) missingRequirements.push({ label: 'Phone Number', elId: 'personalPhone' });
+    if (!stateVal) missingRequirements.push({ label: 'Residential State', elId: 'personalState' });
+    if (!lgaVal) missingRequirements.push({ label: 'Residential LGA', elId: 'personalLga' });
+    if (!addressVal) missingRequirements.push({ label: 'Residential Address', elId: 'personalAddress' });
+
+    if (!farmName) missingRequirements.push({ label: 'Farm Name', elId: 'farmName' });
+    if (!farmType) missingRequirements.push({ label: 'Farm Type', elId: 'farmType' });
+    if (!farmSize || Number(farmSize) <= 0) missingRequirements.push({ label: 'Farm Size (Acres)', elId: 'farmSizeAcres' });
+    if (app.years_experience === '' || isNaN(app.years_experience)) missingRequirements.push({ label: 'Years of Experience', elId: 'yearsExperience' });
+    if (app.crops_produced.length === 0) missingRequirements.push({ label: 'Crops / Livestock Produced', elId: 'cropsProduced' });
+
+    if (!farmAddress) missingRequirements.push({ label: 'Farm Physical Address', elId: 'farmAddress' });
+    if (!farmState) missingRequirements.push({ label: 'Farm State', elId: 'farmState' });
+    if (!farmLga) missingRequirements.push({ label: 'Farm LGA', elId: 'farmLga' });
+    if (!app.gps_latitude || !app.gps_longitude) missingRequirements.push({ label: 'Farm GPS Coordinates', elId: 'detectLocationBtn' });
+
+    if (!hasGovId) missingRequirements.push({ label: 'Government ID Document', elId: null });
+    if (!hasFarmPhoto) missingRequirements.push({ label: 'Farm Overview Photo', elId: null });
+    if (!hasProfilePhoto) missingRequirements.push({ label: 'Farmer Profile Photo', elId: null });
+
+    const totalCompulsory = 18;
+    const completedCompulsory = totalCompulsory - missingRequirements.length;
+    const completionPercent = Math.round((completedCompulsory / totalCompulsory) * 100);
+
+    // If any compulsory requirement is missing, block submission and inform the user
+    if (missingRequirements.length > 0) {
+      const missingLabels = missingRequirements.map(m => m.label).slice(0, 3).join(', ') + (missingRequirements.length > 3 ? ` + ${missingRequirements.length - 3} more` : '');
+      actions.triggerToast(`⚠️ Verification Incomplete (${completionPercent}%): Please complete all compulsory items (${missingLabels}) before submitting.`);
+      
+      const firstMissing = missingRequirements.find(m => m.elId && document.getElementById(m.elId));
+      if (firstMissing) {
+        const el = document.getElementById(firstMissing.elId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (el.focus) el.focus();
+        }
+      }
+      renderApp();
+      return;
+    }
 
     app.status = 'PENDING_REVIEW';
     app.submitted_at = new Date().toISOString();
@@ -1726,7 +1802,7 @@ const actions = {
       existing.documents = app.documents || [];
     }
 
-    actions.triggerToast('✅ Farm verification application submitted! Our team will review it soon.');
+    actions.triggerToast('✅ Farm verification application submitted! 100% compulsory criteria satisfied.');
     state.currentView = 'farmer-pending-approval';
     renderApp();
   },

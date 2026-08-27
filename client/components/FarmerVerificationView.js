@@ -1,4 +1,4 @@
-// Farmer Verification View — Complete 7-Stage Status Lifecycle & Application Wizard
+// Farmer Verification View — Complete 7-Stage Status Lifecycle & Application Wizard with Live Completion Tracking
 
 function renderFarmerVerificationView(state, actions) {
   const app = state.mockData.farmerVerificationApp || {};
@@ -17,18 +17,79 @@ function renderFarmerVerificationView(state, actions) {
 
   const sc = statusConfig[status] || statusConfig['DRAFT'];
 
-  // Dynamic section completion tracking
-  const sectionChecks = app.sectionCompletion || {};
-  const sections = [
-    { key: 'personal',  label: 'Personal Information', icon: 'fa-user',             done: sectionChecks.personal !== false },
-    { key: 'farm',      label: 'Farm Information',     icon: 'fa-tractor',          done: sectionChecks.farm !== false },
-    { key: 'location',  label: 'Farm Location',        icon: 'fa-map-location-dot', done: sectionChecks.location !== false },
-    { key: 'documents', label: 'Identity Documents',   icon: 'fa-id-card',          done: sectionChecks.documents !== false },
-    { key: 'photos',    label: 'Farm Photos',          icon: 'fa-images',           done: sectionChecks.photos !== false }
+  // Compulsory Fields & Real-time Completion Rate Calculation
+  const docs = app.documents || [];
+  const hasGovId = docs.some(d => d.type === 'government_id');
+  const hasFarmPhoto = docs.some(d => d.type === 'farm_photo');
+  const hasProfilePhoto = docs.some(d => d.type === 'profile_photo');
+
+  const farmerName = app.farmer_name || (state.currentUser && state.currentUser.full_name) || '';
+  const emailVal = app.email || (state.currentUser && state.currentUser.email) || '';
+  const phoneVal = app.phone || (state.currentUser && state.currentUser.phone_number) || '';
+  const stateVal = app.state || (state.currentUser && state.currentUser.state) || '';
+  const lgaVal = app.lga || (state.currentUser && state.currentUser.lga) || '';
+  const addressVal = app.residential_address || (state.currentUser && state.currentUser.address) || '';
+
+  const farmNameVal = app.farm_name || '';
+  const farmTypeVal = app.farm_type || 'Crop Farming';
+  const farmSizeVal = app.farm_size_acres || '';
+  const yearsExpVal = app.years_experience !== undefined && app.years_experience !== null ? app.years_experience : '';
+  const cropsVal = Array.isArray(app.crops_produced) ? app.crops_produced.join(', ') : (app.crops_produced || '');
+
+  const farmAddressVal = app.farm_location || '';
+  const farmStateVal = app.farm_state || app.state || '';
+  const farmLgaVal = app.farm_lga || app.lga || '';
+  const farmLatVal = app.gps_latitude || '';
+  const farmLngVal = app.gps_longitude || '';
+
+  const personalItems = [
+    { key: 'name', label: 'Full Name', done: Boolean(farmerName.trim()) },
+    { key: 'email', label: 'Email Address', done: Boolean(emailVal.trim()) },
+    { key: 'phone', label: 'Phone Number', done: Boolean(phoneVal.trim()) },
+    { key: 'state', label: 'Residential State', done: Boolean(stateVal) },
+    { key: 'lga', label: 'Residential LGA', done: Boolean(lgaVal.trim()) },
+    { key: 'address', label: 'Residential Address', done: Boolean(addressVal.trim()) }
   ];
 
-  const completedCount = sections.filter(s => s.done).length;
-  const progressPercent = Math.round((completedCount / sections.length) * 100);
+  const farmItems = [
+    { key: 'farm_name', label: 'Farm / Business Name', done: Boolean(farmNameVal.trim()) },
+    { key: 'farm_type', label: 'Farm Type', done: Boolean(farmTypeVal) },
+    { key: 'farm_size', label: 'Farm Size in Acres', done: Boolean(farmSizeVal && Number(farmSizeVal) > 0) },
+    { key: 'years_exp', label: 'Years of Experience', done: Boolean(yearsExpVal !== '') },
+    { key: 'crops', label: 'Crops/Livestock Produced', done: Boolean(cropsVal.trim()) }
+  ];
+
+  const locationItems = [
+    { key: 'farm_address', label: 'Farm Physical Address', done: Boolean(farmAddressVal.trim()) },
+    { key: 'farm_state', label: 'Farm State', done: Boolean(farmStateVal) },
+    { key: 'farm_lga', label: 'Farm LGA', done: Boolean(farmLgaVal.trim()) },
+    { key: 'farm_coords', label: 'GPS Coordinates (Lat & Lng)', done: Boolean(farmLatVal && farmLngVal) }
+  ];
+
+  const docItems = [
+    { key: 'government_id', label: 'Government ID Document', done: hasGovId },
+    { key: 'farm_photo', label: 'Farm Overview Photo', done: hasFarmPhoto },
+    { key: 'profile_photo', label: 'Farmer Profile Photo', done: hasProfilePhoto }
+  ];
+
+  const allCriteria = [
+    ...personalItems,
+    ...farmItems,
+    ...locationItems,
+    ...docItems
+  ];
+
+  const completedCount = allCriteria.filter(c => c.done).length;
+  const totalCount = allCriteria.length;
+  const completionPercent = Math.round((completedCount / totalCount) * 100);
+  const isFullyComplete = completionPercent === 100;
+
+  const sections = [
+    { key: 'personal', label: 'Personal Information', icon: 'fa-user', total: personalItems.length, done: personalItems.filter(i => i.done).length },
+    { key: 'farm', label: 'Farm Information', icon: 'fa-tractor', total: farmItems.length, done: farmItems.filter(i => i.done).length },
+    { key: 'location', label: 'Farm Location & GPS', icon: 'fa-map-location-dot', total: locationItems.length, done: locationItems.filter(i => i.done).length },
+    { key: 'documents', label: 'Compulsory Documents & Photos', icon: 'fa-file-shield', total: docItems.length, done: docItems.filter(i => i.done).length }
+  ];
 
   // Status timeline steps
   const timelineSteps = [
@@ -47,13 +108,13 @@ function renderFarmerVerificationView(state, actions) {
           <i class="fa-solid fa-shield-halved text-2xl"></i>
         </div>
         <h1 class="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">Farmer Verification</h1>
-        <p class="text-sm text-gray-500 mt-2">Complete your farm verification to start selling on Agrein</p>
+        <p class="text-sm text-gray-500 mt-2">Complete all compulsory verification criteria to start selling on Agrein</p>
 
-        <!-- Standalone lock indicator: shows the farmer they're in onboarding mode. -->
+        <!-- Standalone lock indicator -->
         ${userStatus !== 'APPROVED' ? `
           <div class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700/40 text-amber-800 dark:text-amber-300 text-xs font-bold">
             <i class="fa-solid fa-lock text-[10px]"></i>
-            <span>Platform access unlocks once an Agrein admin approves your farm.</span>
+            <span>Platform selling access unlocks once an Agrein admin reviews and approves your farm.</span>
           </div>
         ` : ''}
       </div>
@@ -63,24 +124,17 @@ function renderFarmerVerificationView(state, actions) {
         <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 mb-8 shadow-sm">
           <h3 class="text-xs font-heading font-extrabold text-slate-900 dark:text-white mb-5">Verification Progress</h3>
           <div class="relative">
-            <!-- Progress Bar Background -->
             <div class="absolute top-4 left-0 right-0 h-1 bg-gray-200 dark:bg-slate-700 rounded-full mx-8"></div>
-            <!-- Progress Bar Fill -->
-            <div class="absolute top-4 left-0 h-1 rounded-full mx-8 transition-all duration-700 ${status === 'REJECTED' ? 'bg-red-500' : status === 'SUSPENDED' ? 'bg-red-500' : 'bg-emerald-500'}"
+            <div class="absolute top-4 left-0 h-1 rounded-full mx-8 transition-all duration-700 ${status === 'REJECTED' || status === 'SUSPENDED' ? 'bg-red-500' : 'bg-emerald-500'}"
                  style="width: ${status === 'REJECTED' || status === 'SUSPENDED' ? '100' : Math.max(0, Math.min(100, (currentStep / 3) * 100))}%"></div>
 
             <div class="relative flex justify-between">
               ${timelineSteps.map((step, idx) => {
                 let stepState = 'upcoming';
-                if (status === 'REJECTED' || status === 'SUSPENDED') {
-                  stepState = 'error';
-                } else if (idx < currentStep) {
-                  stepState = 'completed';
-                } else if (idx === currentStep) {
-                  stepState = 'active';
-                } else if (status === 'CHANGES_REQUIRED' && idx === 2) {
-                  stepState = 'warning';
-                }
+                if (status === 'REJECTED' || status === 'SUSPENDED') stepState = 'error';
+                else if (idx < currentStep) stepState = 'completed';
+                else if (idx === currentStep) stepState = 'active';
+                else if (status === 'CHANGES_REQUIRED' && idx === 2) stepState = 'warning';
 
                 const styles = {
                   completed: 'bg-emerald-500 text-white border-emerald-500 shadow-emerald-500/30',
@@ -104,294 +158,383 @@ function renderFarmerVerificationView(state, actions) {
         </div>
       ` : ''}
 
-      <!-- ═══ STATUS BANNER ═══ -->
-      <div class="${sc.bg} rounded-2xl p-6 mb-8 border border-${sc.color}-200 dark:border-${sc.color}-800/30">
-        <div class="flex items-center space-x-3">
-          <div class="w-12 h-12 rounded-2xl ${sc.text} bg-white dark:bg-slate-900 flex items-center justify-center text-xl shadow-md">
-            <i class="fa-solid ${sc.icon}"></i>
+      <!-- ═══ LIVE COMPLETION RATE TRACKER & STATUS BANNER ═══ -->
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 mb-8 border border-gray-200 dark:border-slate-800 shadow-sm space-y-5">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-12 h-12 rounded-2xl ${sc.text} ${sc.bg} flex items-center justify-center text-xl shadow-sm">
+              <i class="fa-solid ${sc.icon}"></i>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-gray-500">Application Status</div>
+              <div class="text-base font-heading font-extrabold ${sc.text}">${sc.dot} ${sc.label}</div>
+            </div>
           </div>
-          <div>
-            <div class="text-xs font-bold text-gray-500">Verification Status</div>
-            <div class="text-lg font-heading font-extrabold ${sc.text}">${sc.dot} ${sc.label}</div>
+
+          <!-- Live Completion Rate Badge -->
+          <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/80 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-slate-700">
+            <div class="text-right">
+              <div class="text-[10px] uppercase tracking-wider font-extrabold text-gray-400">Completion Rate</div>
+              <div class="text-lg font-heading font-extrabold ${isFullyComplete ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}">
+                ${completionPercent}%
+              </div>
+            </div>
+            <div class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-extrabold ${isFullyComplete ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'}">
+              ${isFullyComplete ? '<i class="fa-solid fa-check text-base"></i>' : `${completedCount}/${totalCount}`}
+            </div>
           </div>
         </div>
 
-        <!-- DRAFT: Show prompt to complete application -->
-        ${status === 'DRAFT' ? `
-          <div class="mt-4 p-4 rounded-xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700">
-            <div class="flex items-center space-x-2 text-gray-600 dark:text-gray-300 font-bold text-xs mb-2">
-              <i class="fa-solid fa-info-circle"></i>
-              <span>Getting Started</span>
-            </div>
-            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">Complete all 5 sections of the verification form below, then submit your application. Our team typically reviews applications within 18–24 hours.</p>
-            <div class="mt-3 flex items-center space-x-3">
-              <div class="flex-1 bg-gray-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
-                <div class="h-full bg-emerald-500 rounded-full transition-all duration-500" style="width: ${progressPercent}%"></div>
-              </div>
-              <span class="text-[10px] font-extrabold text-gray-500">${completedCount}/${sections.length} sections</span>
-            </div>
+        <!-- Real-time Progress Bar -->
+        <div>
+          <div class="flex items-center justify-between text-xs font-bold mb-2">
+            <span class="text-slate-700 dark:text-gray-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-list-check text-emerald-600"></i>
+              <span>Compulsory Verification Criteria</span>
+            </span>
+            <span class="${isFullyComplete ? 'text-emerald-600 font-extrabold' : 'text-gray-500'}">
+              ${completedCount} of ${totalCount} compulsory requirements filled
+            </span>
           </div>
-        ` : ''}
-
-        <!-- PENDING_REVIEW: Application submitted, awaiting admin -->
-        ${status === 'PENDING_REVIEW' ? `
-          <div class="mt-4 p-4 rounded-xl bg-amber-100 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700/40">
-            <div class="flex items-center space-x-2 text-amber-700 dark:text-amber-300 font-bold text-xs mb-2">
-              <i class="fa-solid fa-hourglass-half"></i>
-              <span>Application Submitted</span>
-            </div>
-            <p class="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">Your verification application has been submitted successfully. Our admin team will begin reviewing your documents within 18–24 hours. You will be notified once the review begins.</p>
-            ${app.submitted_at ? `
-              <div class="mt-2 text-[10px] text-amber-600 dark:text-amber-400">
-                <strong>Submitted:</strong> ${new Date(app.submitted_at).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </div>
-            ` : ''}
+          <div class="w-full h-3 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-gray-200 dark:border-slate-700">
+            <div class="h-full rounded-full transition-all duration-500 ${isFullyComplete ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' : 'bg-gradient-to-r from-amber-500 to-emerald-500'}"
+                 style="width: ${completionPercent}%"></div>
           </div>
-        ` : ''}
-
-        <!-- UNDER_REVIEW: Admin is actively reviewing -->
-        ${status === 'UNDER_REVIEW' ? `
-          <div class="mt-4 p-4 rounded-xl bg-blue-100 dark:bg-blue-950/50 border border-blue-300 dark:border-blue-700/40">
-            <div class="flex items-center space-x-2 text-blue-700 dark:text-blue-300 font-bold text-xs mb-2">
-              <i class="fa-solid fa-magnifying-glass animate-pulse"></i>
-              <span>Active Review in Progress</span>
-            </div>
-            <p class="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">An Agrein verification administrator is currently reviewing your application, documents, and farm location data. This process typically takes 4–12 hours. Please do not resubmit your application.</p>
-            ${app.reviewed_by ? `
-              <div class="mt-2 text-[10px] text-blue-600 dark:text-blue-400">
-                <strong>Reviewer:</strong> Agrein Verification Team
-              </div>
-            ` : ''}
-          </div>
-        ` : ''}
-
-        <!-- CHANGES_REQUIRED: Admin needs corrections -->
-        ${status === 'CHANGES_REQUIRED' ? `
-          <div class="mt-4 p-4 rounded-xl bg-orange-100 dark:bg-orange-950/50 border border-orange-300 dark:border-orange-700/40">
-            <div class="flex items-center space-x-2 text-orange-700 dark:text-orange-300 font-bold text-xs mb-1">
-              <i class="fa-solid fa-triangle-exclamation"></i>
-              <span>Admin Feedback — Action Required</span>
-            </div>
-            <p class="text-xs text-orange-800 dark:text-orange-200 leading-relaxed mt-2">"${app.changes_requested_notes || 'Please upload a clearer image of your government-issued ID.'}"</p>
-            ${app.reviewed_at ? `
-              <div class="mt-2 text-[10px] text-orange-600 dark:text-orange-400">
-                <strong>Feedback received:</strong> ${new Date(app.reviewed_at).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' })}
-              </div>
-            ` : ''}
-            <button onclick="actions.resubmitVerification()" class="mt-3 px-5 py-2.5 rounded-xl bg-orange-600 text-white font-bold text-xs shadow hover:bg-orange-700 transition-all inline-flex items-center space-x-2">
-              <i class="fa-solid fa-pen-to-square"></i>
-              <span>Update & Resubmit Application</span>
-            </button>
-          </div>
-        ` : ''}
-
-        <!-- APPROVED: Farmer verified -->
-        ${status === 'APPROVED' ? `
-          <div class="mt-4 p-4 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700/40 text-center">
-            <div class="flex items-center justify-center space-x-2 text-emerald-700 dark:text-emerald-300 font-extrabold text-sm mb-2">
-              <i class="fa-solid fa-circle-check"></i>
-              <span>You are an Agrein Verified Farmer</span>
-            </div>
-            <p class="text-xs text-emerald-800 dark:text-emerald-200">Your farm has been successfully verified. You can now list products on the marketplace.</p>
-            ${app.reviewed_at ? `
-              <div class="mt-2 text-[10px] text-emerald-600 dark:text-emerald-400">
-                <strong>Verified on:</strong> ${new Date(app.reviewed_at).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' })}
-              </div>
-            ` : ''}
-            <button onclick="actions.setView('farmer-dashboard')" class="mt-3 px-6 py-2.5 rounded-xl bg-emerald-700 text-white font-bold text-xs shadow hover:bg-emerald-800 transition-all">
-              <i class="fa-solid fa-store mr-1"></i> Start Listing Products
-            </button>
-          </div>
-        ` : ''}
-
-        <!-- REJECTED: Application denied -->
-        ${status === 'REJECTED' ? `
-          <div class="mt-4 p-4 rounded-xl bg-red-100 dark:bg-red-950/50 border border-red-300 dark:border-red-700/40">
-            <div class="flex items-center space-x-2 text-red-700 dark:text-red-300 font-bold text-xs mb-2">
-              <i class="fa-solid fa-circle-xmark"></i>
-              <span>Application Rejected</span>
-            </div>
-            <p class="text-xs text-red-800 dark:text-red-200 leading-relaxed"><strong>Reason:</strong> ${app.rejection_reason || 'Application did not meet verification criteria.'}</p>
-            ${app.reviewed_at ? `
-              <div class="mt-2 text-[10px] text-red-600 dark:text-red-400">
-                <strong>Decision date:</strong> ${new Date(app.reviewed_at).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' })}
-              </div>
-            ` : ''}
-            <div class="mt-3 flex items-center space-x-3">
-              <button onclick="actions.reapplyVerification()" class="px-5 py-2.5 rounded-xl bg-slate-700 text-white font-bold text-xs shadow hover:bg-slate-800 transition-all inline-flex items-center space-x-2">
-                <i class="fa-solid fa-rotate-right"></i>
-                <span>Submit New Application</span>
-              </button>
-              <button onclick="actions.openChatDrawer('Agrein Support')" class="px-5 py-2.5 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-gray-200 font-bold text-xs border border-gray-300 dark:border-slate-600 hover:bg-gray-50 transition-all inline-flex items-center space-x-2">
-                <i class="fa-solid fa-headset"></i>
-                <span>Contact Support</span>
-              </button>
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- SUSPENDED: Previously approved farmer restricted -->
-        ${status === 'SUSPENDED' ? `
-          <div class="mt-4 p-4 rounded-xl bg-red-100 dark:bg-red-950/50 border border-red-300 dark:border-red-700/40">
-            <div class="flex items-center space-x-2 text-red-700 dark:text-red-300 font-bold text-xs mb-2">
-              <i class="fa-solid fa-ban"></i>
-              <span>Account Suspended</span>
-            </div>
-            <p class="text-xs text-red-800 dark:text-red-200 leading-relaxed">Your farmer account has been temporarily suspended. Product listings have been unpublished and you cannot accept new orders during this period.</p>
-            ${app.admin_notes ? `
-              <div class="mt-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/30">
-                <p class="text-[10px] text-red-700 dark:text-red-300"><strong>Reason:</strong> ${app.admin_notes}</p>
-              </div>
-            ` : ''}
-            <button onclick="actions.openChatDrawer('Agrein Support')" class="mt-3 px-5 py-2.5 rounded-xl bg-red-700 text-white font-bold text-xs shadow hover:bg-red-800 transition-all inline-flex items-center space-x-2">
-              <i class="fa-solid fa-headset"></i>
-              <span>Appeal Suspension</span>
-            </button>
-          </div>
-        ` : ''}
-      </div>
-
-      <!-- ═══ APPLICATION SECTIONS CHECKLIST ═══ -->
-      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 mb-8 shadow-sm">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-sm font-heading font-extrabold text-slate-900 dark:text-white">Application Sections</h3>
-          <span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold ${completedCount === sections.length ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-gray-400'}">${completedCount}/${sections.length} Complete</span>
         </div>
-        <div class="space-y-3">
-          ${sections.map(s => `
-            <div class="flex items-center justify-between py-2 px-3 rounded-xl ${s.done ? 'bg-emerald-50 dark:bg-emerald-950/20' : 'bg-gray-50 dark:bg-slate-800'}">
-              <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 rounded-lg ${s.done ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600' : 'bg-gray-200 dark:bg-slate-700 text-gray-400'} flex items-center justify-center text-xs">
-                  <i class="fa-solid ${s.icon}"></i>
+
+        <!-- Section Pillars Breakdown -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-gray-100 dark:border-slate-800">
+          ${sections.map(s => {
+            const isSecDone = s.done === s.total;
+            return `
+              <div class="p-2.5 rounded-xl ${isSecDone ? 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40' : 'bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800'} text-center">
+                <div class="flex items-center justify-center space-x-1.5 text-xs font-bold ${isSecDone ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-600 dark:text-gray-400'}">
+                  <i class="fa-solid ${s.icon} text-[11px]"></i>
+                  <span class="truncate">${s.label.split(' ')[0]}</span>
                 </div>
-                <span class="text-xs font-bold ${s.done ? 'text-slate-900 dark:text-white' : 'text-gray-500'}">${s.label}</span>
+                <div class="mt-1 text-[11px] font-extrabold ${isSecDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500'}">
+                  ${s.done}/${s.total} ${isSecDone ? '✓' : ''}
+                </div>
               </div>
-              ${s.done ? '<i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>' : '<i class="fa-regular fa-circle text-gray-300 text-sm"></i>'}
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
 
-        ${app.submitted_at ? `
-          <div class="mt-4 pt-4 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-500 space-y-1">
-            <p><strong>Application submitted:</strong> ${new Date(app.submitted_at).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            ${status === 'PENDING_REVIEW' ? '<p><strong>Expected action:</strong> Your application is being reviewed by Agrein.</p>' : ''}
-            ${status === 'UNDER_REVIEW' ? '<p><strong>Status:</strong> An admin is currently reviewing your application.</p>' : ''}
+        ${!isFullyComplete && (status === 'DRAFT' || status === 'CHANGES_REQUIRED') ? `
+          <div class="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 flex items-start space-x-2.5 text-xs text-amber-800 dark:text-amber-200">
+            <i class="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5"></i>
+            <div>
+              <strong>Compulsory Submission Requirement:</strong> All mandatory fields marked with an asterisk (<span class="text-red-500 font-bold">*</span>) including Government ID, Farm Photo, and Profile Photo must be provided before submission is enabled.
+            </div>
+          </div>
+        ` : isFullyComplete && (status === 'DRAFT' || status === 'CHANGES_REQUIRED') ? `
+          <div class="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 flex items-center space-x-2.5 text-xs text-emerald-800 dark:text-emerald-200 font-bold animate-fade-in">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
+            <span>🎉 100% Complete! All compulsory verification details have been filled. You can now submit your application below.</span>
           </div>
         ` : ''}
       </div>
+
+      <!-- ═══ STATUS NOTICE BANNERS ═══ -->
+      ${status === 'PENDING_REVIEW' ? `
+        <div class="mb-8 p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40">
+          <div class="flex items-center space-x-2 text-amber-700 dark:text-amber-300 font-bold text-xs mb-1">
+            <i class="fa-solid fa-hourglass-half"></i>
+            <span>Application Submitted — Pending Admin Review</span>
+          </div>
+          <p class="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">Your verification application has been submitted successfully. Our admin team will begin reviewing your documents within 18–24 hours.</p>
+        </div>
+      ` : status === 'UNDER_REVIEW' ? `
+        <div class="mb-8 p-5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/40">
+          <div class="flex items-center space-x-2 text-blue-700 dark:text-blue-300 font-bold text-xs mb-1">
+            <i class="fa-solid fa-magnifying-glass animate-pulse"></i>
+            <span>Active Review in Progress</span>
+          </div>
+          <p class="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">An Agrein administrator is currently reviewing your documents, farm GPS location, and farmer credentials.</p>
+        </div>
+      ` : status === 'CHANGES_REQUIRED' ? `
+        <div class="mb-8 p-5 rounded-2xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/40">
+          <div class="flex items-center space-x-2 text-orange-700 dark:text-orange-300 font-bold text-xs mb-1">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>Admin Feedback — Action Required</span>
+          </div>
+          <p class="text-xs text-orange-800 dark:text-orange-200 leading-relaxed mt-1">"${app.changes_requested_notes || 'Please upload a clearer image of your government ID.'}"</p>
+        </div>
+      ` : status === 'APPROVED' ? `
+        <div class="mb-8 p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-center space-y-2">
+          <div class="inline-flex w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 items-center justify-center text-xl">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <h3 class="text-base font-heading font-extrabold text-emerald-800 dark:text-emerald-200">You are an Agrein Verified Farmer</h3>
+          <p class="text-xs text-emerald-700 dark:text-emerald-300">Your farm has been verified. You can now create and manage product listings on the marketplace.</p>
+          <button onclick="actions.setView('farmer-dashboard')" class="mt-3 px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow transition-all">
+            <i class="fa-solid fa-store mr-1.5"></i>Start Listing Produce
+          </button>
+        </div>
+      ` : ''}
 
       <!-- ═══ VERIFICATION APPLICATION FORM (DRAFT or CHANGES_REQUIRED) ═══ -->
       ${status === 'DRAFT' || status === 'CHANGES_REQUIRED' || !app.id ? `
-        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-6">
-          <div class="flex items-center justify-between">
-            <h3 class="text-sm font-heading font-extrabold text-slate-900 dark:text-white">Verify Your Farm</h3>
-            ${status === 'CHANGES_REQUIRED' ? `
-              <span class="px-3 py-1 rounded-lg bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 text-[10px] font-extrabold">
-                <i class="fa-solid fa-pen mr-1"></i>Update Required
-              </span>
-            ` : ''}
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-gray-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-8">
+          
+          <div class="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-4">
+            <div>
+              <h3 class="text-lg font-heading font-extrabold text-slate-900 dark:text-white">Farm Verification Application</h3>
+              <p class="text-xs text-gray-500 mt-0.5">Please fill all mandatory sections accurately. All fields with <span class="text-red-500 font-bold">*</span> are compulsory.</p>
+            </div>
+            <span class="px-3 py-1 rounded-xl text-xs font-extrabold ${isFullyComplete ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'}">
+              ${completionPercent}% Complete
+            </span>
           </div>
 
-          <!-- Personal Info -->
-          <div class="space-y-3">
-            <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1"><i class="fa-solid fa-user"></i><span>Personal Information</span></div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" id="personalFullName" placeholder="Full Name *" value="${app.farmer_name || (state.currentUser && state.currentUser.full_name) || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="email" id="personalEmail" placeholder="Email Address *" value="${app.email || (state.currentUser && state.currentUser.email) || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="tel" id="personalPhone" placeholder="Phone Number *" value="${app.phone || (state.currentUser && state.currentUser.phone_number) || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <select id="personalState" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-                <option value="">Select Residential State</option>
-                ${[
-                  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
-                  'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja', 'Gombe',
-                  'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
-                  'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
-                  'Taraba', 'Yobe', 'Zamfara'
-                ].map(st => `<option value="${st}" ${(app.state || (state.currentUser && state.currentUser.state)) === st ? 'selected' : ''}>${st}</option>`).join('')}
-              </select>
-              <input type="text" id="personalLga" placeholder="Residential LGA" value="${app.lga || (state.currentUser && state.currentUser.lga) || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="text" id="personalAddress" placeholder="Residential Street Address" value="${app.residential_address || (state.currentUser && state.currentUser.address) || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-            </div>
-          </div>
-
-          <!-- Farm Information -->
-          <div class="space-y-3">
-            <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1"><i class="fa-solid fa-tractor"></i><span>Farm Information</span></div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" id="farmName" placeholder="Farm / Business Name *" value="${app.farm_name || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <select id="farmType" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-                <option value="Crop Farming" ${(app.farm_type || '') === 'Crop Farming' ? 'selected' : ''}>Crop Farming</option>
-                <option value="Livestock" ${(app.farm_type || '') === 'Livestock' ? 'selected' : ''}>Livestock</option>
-                <option value="Mixed" ${(app.farm_type || '') === 'Mixed' ? 'selected' : ''}>Mixed Farming</option>
-                <option value="Horticulture" ${(app.farm_type || '') === 'Horticulture' ? 'selected' : ''}>Horticulture</option>
-                <option value="Aquaculture" ${(app.farm_type || '') === 'Aquaculture' ? 'selected' : ''}>Aquaculture & Fishery</option>
-                <option value="Poultry" ${(app.farm_type || '') === 'Poultry' ? 'selected' : ''}>Poultry</option>
-              </select>
-              <input type="number" id="farmSizeAcres" placeholder="Farm Size (Acres) *" value="${app.farm_size_acres || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="number" id="yearsExperience" placeholder="Years of Experience *" value="${app.years_experience || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="text" id="cropsProduced" placeholder="Crops / Livestock Produced (e.g. Maize, Soya Beans, Cassava) *" value="${Array.isArray(app.crops_produced) ? app.crops_produced.join(', ') : (app.crops_produced || '')}" class="md:col-span-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="text" id="intendedProducts" placeholder="Products Intended for Sale on Agrein" value="${app.intended_products || ''}" class="md:col-span-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-            </div>
-          </div>
-
-          <!-- Farm Location & GPS Coordinates -->
-          <div class="space-y-3">
-            <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1"><i class="fa-solid fa-map-location-dot"></i><span>Farm Location & GPS Coordinates</span></div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" id="farmAddress" placeholder="Farm Physical Address / Landmark *" value="${app.farm_location || ''}" class="md:col-span-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <select id="farmState" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-                <option value="">Select Farm State *</option>
-                ${[
-                  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
-                  'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja', 'Gombe',
-                  'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
-                  'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
-                  'Taraba', 'Yobe', 'Zamfara'
-                ].map(st => `<option value="${st}" ${(app.farm_state || app.state) === st ? 'selected' : ''}>${st}</option>`).join('')}
-              </select>
-              <input type="text" id="farmLga" placeholder="Farm LGA *" value="${app.farm_lga || app.lga || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="text" id="farmLat" placeholder="GPS Latitude (e.g. 11.1500° N)" value="${app.gps_latitude || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="text" id="farmLng" placeholder="GPS Longitude (e.g. 7.6500° E)" value="${app.gps_longitude || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-            </div>
-
-            <!-- Map Location Selector Box -->
-            <div class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-center space-y-2">
-              <div class="flex items-center justify-center space-x-2 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
-                <i class="fa-solid fa-location-crosshairs text-amber-500"></i>
-                <span>Live GPS Location Auto-Detection</span>
+          <!-- Section 1: Personal Info -->
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-[10px]">1</span>
+                <span>Personal Information (Compulsory)</span>
               </div>
-              <p class="text-[10px] text-gray-500">Click below to detect your current location and auto-populate your GPS coordinates, State, LGA, and address.</p>
-              <button type="button" id="detectLocationBtn" onclick="actions.detectGpsLocation()" class="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition-all inline-flex items-center space-x-2">
+              <span class="text-[10px] font-bold ${personalItems.every(i => i.done) ? 'text-emerald-600' : 'text-gray-400'}">
+                ${personalItems.filter(i => i.done).length}/${personalItems.length} Filled
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Full Name <span class="text-red-500">*</span></label>
+                <input type="text" id="personalFullName" placeholder="e.g. Ibrahim Bello"
+                       value="${farmerName}"
+                       oninput="actions.updateVerificationField('farmer_name', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmerName ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Email Address <span class="text-red-500">*</span></label>
+                <input type="email" id="personalEmail" placeholder="farmer@example.com"
+                       value="${emailVal}"
+                       oninput="actions.updateVerificationField('email', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${emailVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Phone Number <span class="text-red-500">*</span></label>
+                <input type="tel" id="personalPhone" placeholder="08034567890"
+                       value="${phoneVal}"
+                       oninput="actions.updateVerificationField('phone', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${phoneVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Residential State <span class="text-red-500">*</span></label>
+                <select id="personalState"
+                        onchange="actions.updateVerificationField('state', this.value)"
+                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${stateVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+                  <option value="">Select Residential State</option>
+                  ${[
+                    'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+                    'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja', 'Gombe',
+                    'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
+                    'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
+                    'Taraba', 'Yobe', 'Zamfara'
+                  ].map(st => `<option value="${st}" ${stateVal === st ? 'selected' : ''}>${st}</option>`).join('')}
+                </select>
+              </div>
+
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Residential LGA <span class="text-red-500">*</span></label>
+                <input type="text" id="personalLga" placeholder="e.g. Zaria"
+                       value="${lgaVal}"
+                       oninput="actions.updateVerificationField('lga', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${lgaVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Residential Street Address <span class="text-red-500">*</span></label>
+                <input type="text" id="personalAddress" placeholder="e.g. 14 Market Road"
+                       value="${addressVal}"
+                       oninput="actions.updateVerificationField('residential_address', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${addressVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Farm Information -->
+          <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-slate-800">
+            <div class="flex items-center justify-between">
+              <div class="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-[10px]">2</span>
+                <span>Farm Details (Compulsory)</span>
+              </div>
+              <span class="text-[10px] font-bold ${farmItems.every(i => i.done) ? 'text-emerald-600' : 'text-gray-400'}">
+                ${farmItems.filter(i => i.done).length}/${farmItems.length} Filled
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Farm / Business Name <span class="text-red-500">*</span></label>
+                <input type="text" id="farmName" placeholder="e.g. Green Gold Agro Farms"
+                       value="${farmNameVal}"
+                       oninput="actions.updateVerificationField('farm_name', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmNameVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Farm Type <span class="text-red-500">*</span></label>
+                <select id="farmType"
+                        onchange="actions.updateVerificationField('farm_type', this.value)"
+                        class="w-full mt-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+                  <option value="Crop Farming" ${farmTypeVal === 'Crop Farming' ? 'selected' : ''}>Crop Farming</option>
+                  <option value="Livestock" ${farmTypeVal === 'Livestock' ? 'selected' : ''}>Livestock</option>
+                  <option value="Mixed" ${farmTypeVal === 'Mixed' ? 'selected' : ''}>Mixed Farming</option>
+                  <option value="Horticulture" ${farmTypeVal === 'Horticulture' ? 'selected' : ''}>Horticulture</option>
+                  <option value="Aquaculture" ${farmTypeVal === 'Aquaculture' ? 'selected' : ''}>Aquaculture & Fishery</option>
+                  <option value="Poultry" ${farmTypeVal === 'Poultry' ? 'selected' : ''}>Poultry</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Farm Size in Acres <span class="text-red-500">*</span></label>
+                <input type="number" id="farmSizeAcres" placeholder="e.g. 50"
+                       value="${farmSizeVal}"
+                       oninput="actions.updateVerificationField('farm_size_acres', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmSizeVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Years of Experience <span class="text-red-500">*</span></label>
+                <input type="number" id="yearsExperience" placeholder="e.g. 6"
+                       value="${yearsExpVal}"
+                       oninput="actions.updateVerificationField('years_experience', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${yearsExpVal !== '' ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Crops / Livestock Produced <span class="text-red-500">*</span></label>
+                <input type="text" id="cropsProduced" placeholder="e.g. Yellow Maize, Soya Beans, Cassava, Cattle"
+                       value="${cropsVal}"
+                       oninput="actions.updateVerificationField('crops_produced', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${cropsVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Products Intended for Sale on Agrein</label>
+                <input type="text" id="intendedProducts" placeholder="e.g. Bagged Maize (50kg), Fresh Soya Beans"
+                       value="${app.intended_products || ''}"
+                       oninput="actions.updateVerificationField('intended_products', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Farm Location & GPS -->
+          <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-slate-800">
+            <div class="flex items-center justify-between">
+              <div class="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-[10px]">3</span>
+                <span>Farm Location & GPS Coordinates (Compulsory)</span>
+              </div>
+              <span class="text-[10px] font-bold ${locationItems.every(i => i.done) ? 'text-emerald-600' : 'text-gray-400'}">
+                ${locationItems.filter(i => i.done).length}/${locationItems.length} Filled
+              </span>
+            </div>
+
+            <!-- Auto-detect Action Box -->
+            <div class="p-4 rounded-2xl bg-gradient-to-r from-emerald-900/10 via-emerald-800/5 to-amber-500/10 border border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div class="text-center sm:text-left">
+                <div class="text-xs font-extrabold text-slate-900 dark:text-white flex items-center justify-center sm:justify-start gap-1.5">
+                  <i class="fa-solid fa-location-crosshairs text-amber-500"></i>
+                  <span>Live GPS Location Auto-Detection</span>
+                </div>
+                <p class="text-[11px] text-gray-500 mt-0.5">Click to auto-detect your current position and populate GPS coordinates, Farm State, and LGA.</p>
+              </div>
+              <button type="button" id="detectLocationBtn" onclick="actions.detectGpsLocation()"
+                      class="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition-all whitespace-nowrap flex items-center space-x-1.5">
                 <i class="fa-solid fa-location-crosshairs text-amber-300"></i>
-                <span>Detect & Auto-fill Current Location</span>
+                <span>Detect & Auto-fill Location</span>
               </button>
             </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div class="md:col-span-2">
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Farm Physical Address / Landmark <span class="text-red-500">*</span></label>
+                <input type="text" id="farmAddress" placeholder="e.g. Km 12 Zaria-Kano Expressway, Kaduna"
+                       value="${farmAddressVal}"
+                       oninput="actions.updateVerificationField('farm_location', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmAddressVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Farm State <span class="text-red-500">*</span></label>
+                <select id="farmState"
+                        onchange="actions.updateVerificationField('farm_state', this.value)"
+                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmStateVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+                  <option value="">Select Farm State *</option>
+                  ${[
+                    'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+                    'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja', 'Gombe',
+                    'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
+                    'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
+                    'Taraba', 'Yobe', 'Zamfara'
+                  ].map(st => `<option value="${st}" ${farmStateVal === st ? 'selected' : ''}>${st}</option>`).join('')}
+                </select>
+              </div>
+
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Farm LGA <span class="text-red-500">*</span></label>
+                <input type="text" id="farmLga" placeholder="e.g. Zaria"
+                       value="${farmLgaVal}"
+                       oninput="actions.updateVerificationField('farm_lga', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmLgaVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">GPS Latitude <span class="text-red-500">*</span></label>
+                <input type="text" id="farmLat" placeholder="e.g. 11.150000"
+                       value="${farmLatVal}"
+                       oninput="actions.updateVerificationField('gps_latitude', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmLatVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+
+              <div>
+                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">GPS Longitude <span class="text-red-500">*</span></label>
+                <input type="text" id="farmLng" placeholder="e.g. 7.650000"
+                       value="${farmLngVal}"
+                       oninput="actions.updateVerificationField('gps_longitude', this.value)"
+                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmLngVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+            </div>
           </div>
 
-          <!-- Documents Upload -->
-          <div class="space-y-3">
+          <!-- Section 4: Documents Upload -->
+          <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-slate-800">
             <div class="flex items-center justify-between">
-              <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1"><i class="fa-solid fa-file-arrow-up"></i><span>Verification Documents Upload</span></div>
+              <div class="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-[10px]">4</span>
+                <span>Verification Documents & Photos (Compulsory)</span>
+              </div>
               <span class="text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">Max 3MB per file</span>
             </div>
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
               ${[
-                { type: 'government_id', label: 'Government ID', desc: "NIN Slip, Voter's Card, Driver's License", icon: 'fa-id-card' },
-                { type: 'farm_photo', label: 'Farm Photos', desc: 'Overview, Crops, Infrastructure', icon: 'fa-image' },
-                { type: 'profile_photo', label: 'Profile Photo', desc: 'Clear headshot photograph', icon: 'fa-user-gear' },
-                { type: 'farm_deed', label: 'Proof of Ownership / Lease', desc: 'Land Title, C-of-O, or Lease Deed', icon: 'fa-file-contract' },
-                { type: 'agricultural_cert', label: 'Agricultural Certification', desc: 'Organic, GAP, or Harvest Certificate', icon: 'fa-award' },
-                { type: 'coop_proof', label: 'Cooperative Proof', desc: 'Membership ID or Letter', icon: 'fa-people-group' }
+                { type: 'government_id', label: 'Government ID', desc: "NIN Slip, Voter's Card, Driver's License", icon: 'fa-id-card', compulsory: true },
+                { type: 'farm_photo', label: 'Farm Overview Photos', desc: 'Overview, crops, infrastructure', icon: 'fa-image', compulsory: true },
+                { type: 'profile_photo', label: 'Farmer Profile Photo', desc: 'Clear headshot photograph', icon: 'fa-user-gear', compulsory: true },
+                { type: 'farm_deed', label: 'Proof of Ownership / Lease', desc: 'Land Title, C-of-O, or Lease Deed', icon: 'fa-file-contract', compulsory: false },
+                { type: 'agricultural_cert', label: 'Agricultural Certification', desc: 'Organic, GAP, or Harvest Certificate', icon: 'fa-award', compulsory: false },
+                { type: 'coop_proof', label: 'Cooperative Proof', desc: 'Membership ID or Letter', icon: 'fa-people-group', compulsory: false }
               ].map(slot => {
                 const isUploading = state.documentUploads && state.documentUploads[slot.type] && state.documentUploads[slot.type].isUploading;
                 const uploadedDoc = (app.documents || []).find(d => d.type === slot.type);
                 const progress = isUploading ? (state.documentUploads[slot.type].progress || 0) : 0;
 
                 return `
-                  <label class="p-3.5 rounded-xl border-2 border-dashed ${uploadedDoc ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20' : 'border-gray-300 dark:border-slate-700'} text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${isUploading ? 'opacity-60 pointer-events-none' : ''}">
+                  <label class="p-3.5 rounded-2xl border-2 border-dashed ${uploadedDoc ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20' : (slot.compulsory ? 'border-amber-400/80 bg-amber-50/20 dark:bg-amber-950/10 dark:border-amber-700/60' : 'border-gray-300 dark:border-slate-700')} text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${isUploading ? 'opacity-60 pointer-events-none' : ''}">
                     <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('${slot.type}', event)" class="hidden" ${isUploading ? 'disabled' : ''}>
+                    
                     ${isUploading ? `
-                      <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50/90 dark:bg-emerald-950/80 backdrop-blur-sm p-2">
+                      <div class="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-emerald-50/95 dark:bg-emerald-950/90 backdrop-blur-sm p-3">
                         <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-1">Uploading...</div>
                         <div class="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
                           <div class="h-full bg-emerald-500 rounded-full transition-all" style="width: ${progress}%"></div>
@@ -404,11 +547,14 @@ function renderFarmerVerificationView(state, actions) {
                       </div>
                       <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 truncate">${slot.label}</div>
                       <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium truncate mt-0.5">${uploadedDoc.name}</div>
-                      <div class="mt-1 text-[9px] text-gray-400 hover:text-emerald-600 font-bold"><i class="fa-solid fa-rotate mr-1"></i>Click to replace</div>
+                      <div class="mt-1.5 text-[9px] text-gray-400 hover:text-emerald-600 font-bold"><i class="fa-solid fa-rotate mr-1"></i>Click to change</div>
                     ` : `
-                      <i class="fa-solid ${slot.icon} text-xl text-emerald-600 mb-1"></i>
-                      <div class="text-xs font-bold text-gray-700 dark:text-gray-200">${slot.label}</div>
-                      <div class="text-[11px] text-gray-400">${slot.desc}</div>
+                      <div class="flex items-center justify-center gap-1.5 text-emerald-600 mb-1">
+                        <i class="fa-solid ${slot.icon} text-lg"></i>
+                        ${slot.compulsory ? '<span class="text-red-500 font-bold text-xs">*</span>' : ''}
+                      </div>
+                      <div class="text-xs font-bold text-gray-700 dark:text-gray-200">${slot.label} ${slot.compulsory ? '<span class="text-red-500 text-[10px] font-bold">(Compulsory)</span>' : ''}</div>
+                      <div class="text-[10px] text-gray-400 mt-0.5">${slot.desc}</div>
                     `}
                   </label>
                 `;
@@ -416,17 +562,26 @@ function renderFarmerVerificationView(state, actions) {
             </div>
           </div>
 
-          <!-- Submit -->
-          <button onclick="actions.submitFarmerVerification()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-700 to-emerald-900 text-white font-extrabold text-xs shadow-xl hover:shadow-2xl transition-all flex items-center justify-center space-x-2">
-            <i class="fa-solid fa-paper-plane text-amber-300"></i>
-            <span>${status === 'CHANGES_REQUIRED' ? 'Resubmit Updated Application' : 'Submit Verification Application'}</span>
-          </button>
+          <!-- Submit Verification Button -->
+          <div class="pt-4 border-t border-gray-100 dark:border-slate-800 space-y-3">
+            <button onclick="actions.submitFarmerVerification()"
+                    class="w-full py-4 rounded-2xl ${isFullyComplete ? 'bg-gradient-to-r from-emerald-700 to-emerald-900 hover:shadow-2xl shadow-emerald-700/30' : 'bg-gradient-to-r from-slate-700 to-slate-800 opacity-90'} text-white font-extrabold text-xs shadow-xl transition-all flex items-center justify-center space-x-2">
+              <i class="fa-solid ${isFullyComplete ? 'fa-paper-plane text-amber-300' : 'fa-lock text-amber-300'}"></i>
+              <span>${isFullyComplete ? (status === 'CHANGES_REQUIRED' ? 'Resubmit Verification Application' : 'Submit Verification Application') : `Submit Verification Application (${completionPercent}% Complete — ${totalCount - completedCount} items remaining)`}</span>
+            </button>
+
+            ${!isFullyComplete ? `
+              <p class="text-[11px] text-center text-gray-500 dark:text-gray-400 font-medium">
+                Please complete all compulsory items (${completionPercent}%) to submit your verification to Agrein administrators.
+              </p>
+            ` : ''}
+          </div>
         </div>
       ` : ''}
 
       <!-- ═══ SUBMITTED APPLICATION SUMMARY (read-only for non-editable statuses) ═══ -->
       ${(status === 'PENDING_REVIEW' || status === 'UNDER_REVIEW' || status === 'APPROVED') && app.id ? `
-        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-5">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-5">
           <h3 class="text-sm font-heading font-extrabold text-slate-900 dark:text-white flex items-center space-x-2">
             <i class="fa-solid fa-file-lines text-emerald-500"></i>
             <span>Submitted Application Details</span>
@@ -451,8 +606,8 @@ function renderFarmerVerificationView(state, actions) {
           </div>
 
           <!-- GPS Location Summary -->
-          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600">
+          <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600">
               <i class="fa-solid fa-map-location-dot"></i>
             </div>
             <div>
@@ -464,10 +619,10 @@ function renderFarmerVerificationView(state, actions) {
           <!-- Documents Summary -->
           ${(app.documents || []).length > 0 ? `
             <div>
-              <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-2">Uploaded Documents</div>
+              <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-2">Uploaded Verification Documents</div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                 ${(app.documents || []).map(doc => `
-                  <div class="flex items-center space-x-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700">
+                  <div class="flex items-center space-x-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700">
                     <i class="fa-solid ${doc.type === 'government_id' ? 'fa-id-card' : (doc.type === 'farm_deed' ? 'fa-file-contract' : 'fa-image')} text-emerald-500 text-xs"></i>
                     <span class="text-[10px] font-bold text-slate-700 dark:text-gray-300 truncate">${doc.name}</span>
                   </div>
