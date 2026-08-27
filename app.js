@@ -767,9 +767,7 @@ const actions = {
         return;
       }
 
-      // Call API to create account. Email verification has been removed, so a
-      // successful register response includes the user + JWT — drop them
-      // straight into the dashboard.
+      // Call API to create account and send 6-digit OTP
       fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -778,43 +776,22 @@ const actions = {
       .then(res => res.json())
       .then(data => {
         if (!data.success) {
-          actions.triggerToast(`❌ ${data.message}`);
+          actions.triggerToast(`❌ ${data.message || 'Registration failed.'}`);
           return;
         }
 
-        const user = data.user || {};
-        if (!user.token) {
-          actions.triggerToast('❌ Account created but auto-login failed. Please log in.');
-          state.authModalMode = 'login';
-          renderApp();
-          return;
-        }
-
-        state.currentUser = {
-          id: user.id,
-          full_name: user.full_name,
-          email: user.email,
-          role: (user.role || role || 'BUYER').toUpperCase(),
-          token: user.token,
-          verification_status: user.verification_status
-        };
-        state.activeRole = (state.currentUser.role || 'buyer').toLowerCase();
-        state.authModalActive = false;
-        state.authModalMode = null;
-        state.otpEmail = null;
-        state.otpFlow = null;
-
-        try { localStorage.setItem('agrein_user', JSON.stringify(state.currentUser)); } catch (_) {}
-
-        actions.triggerToast(`✅ Welcome to Agrein, ${state.currentUser.full_name || state.currentUser.email}!`);
-
-        // Farmers must complete KYC before listing; everyone else goes to home.
-        if (state.activeRole === 'farmer') {
-          state.activeView = 'farmer-verification';
-        } else {
-          state.activeView = 'home';
-        }
-
+        // Transition to 6-digit OTP verification view
+        state.otpEmail = email;
+        state.otpRole = (role || 'BUYER').toUpperCase();
+        state.otpFlow = 'register';
+        state.authModalMode = 'verify-otp';
+        state.otpDigits = ['', '', '', '', '', ''];
+        state.otpError = null;
+        state.otpSuccess = false;
+        state.otpTimerSeconds = 300;
+        state.otpCooldownSeconds = 60;
+        actions.startOtpCountdown();
+        actions.triggerToast(`📧 A 6-digit verification code has been sent to ${email}.`);
         renderApp();
       })
       .catch(err => {

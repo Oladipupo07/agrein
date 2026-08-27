@@ -431,15 +431,14 @@ const authController = {
       const { salt, hash } = passwordService.hashPassword(password);
       const localId = `usr-${Date.now()}`;
 
-      // Compose the payload that will live in Supabase. Email verification has
-      // been removed — accounts land in the DB as fully usable on first
-      // registration. (Farmers still go through admin KYC for `is_verified`.)
+      // Compose the payload that will live in Supabase.
+      // Both Farmers and Buyers require Email OTP verification.
       const profilePayload = {
         email: normalizedEmail,
         full_name: fullName,
         phone_number: phone || null,
         role: normalizedRole,
-        email_verified: true,
+        email_verified: false,
         is_verified: false,
         verification_status: normalizedRole === 'FARMER' ? 'NOT_STARTED' : 'APPROVED'
       };
@@ -468,20 +467,16 @@ const authController = {
 
       const target = profileToRecord(persisted);
 
-      // Auto-login: mint a token so the client can drop straight into the
-      // dashboard without an OTP round-trip.
-      const token = mintToken(target);
+      // Dispatch 6-digit Email OTP to both Farmers and Buyers
+      otpService.generateOtp(normalizedEmail);
 
       res.status(201).json({
         success: true,
-        message: `Account created for ${target.email}.`,
+        requiresOtp: true,
+        message: `Account created for ${target.email}. A 6-digit verification code has been sent to your email.`,
         email: target.email,
         role: target.role,
-        passwordPersisted,
-        user: {
-          ...toClientUser(target),
-          token
-        }
+        passwordPersisted
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -612,9 +607,17 @@ const authController = {
         return res.status(401).json({ success: false, message: 'Invalid email or password.' });
       }
 
-      // Email verification gate has been removed — accounts are usable on
-      // first registration. Farmers still need admin KYC for `is_verified`,
-      // but that is enforced by the marketplace flows, not login.
+      // Check if email has been verified via 6-digit OTP
+      if (!user.email_verified) {
+        otpService.generateOtp(normalizedEmail);
+        return res.status(403).json({
+          success: false,
+          emailVerificationRequired: true,
+          email: user.email,
+          role: user.role,
+          message: 'Please verify your email address. A 6-digit verification code has been sent to your email.'
+        });
+      }
 
       res.json({
         success: true,
