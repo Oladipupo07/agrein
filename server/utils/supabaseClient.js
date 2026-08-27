@@ -82,20 +82,27 @@ async function profilesHasPasswordColumns() {
   const sb = getSupabaseAdmin();
   if (!sb) return { ok: false, missing: ['password_hash', 'password_salt'], reason: 'No Supabase admin client (missing service-role key).' };
   try {
-    const { data, error } = await sb
-      .from('information_schema.columns')
-      .select('column_name')
-      .eq('table_schema', 'public')
-      .eq('table_name', 'profiles')
-      .in('column_name', ['password_hash', 'password_salt']);
+    const { error } = await sb
+      .from('profiles')
+      .select('password_hash, password_salt')
+      .limit(1);
 
-    if (error) {
-      return { ok: false, missing: ['password_hash', 'password_salt'], reason: error.message };
+    if (!error) {
+      return { ok: true, missing: [] };
     }
 
-    const found = new Set((data || []).map(r => r.column_name));
-    const missing = ['password_hash', 'password_salt'].filter(c => !found.has(c));
-    return { ok: missing.length === 0, missing };
+    const missing = [];
+    const { error: hashErr } = await sb.from('profiles').select('password_hash').limit(1);
+    if (hashErr) missing.push('password_hash');
+
+    const { error: saltErr } = await sb.from('profiles').select('password_salt').limit(1);
+    if (saltErr) missing.push('password_salt');
+
+    if (missing.length > 0) {
+      return { ok: false, missing, reason: error.message };
+    }
+
+    return { ok: true, missing: [] };
   } catch (e) {
     return { ok: false, missing: ['password_hash', 'password_salt'], reason: e.message };
   }
