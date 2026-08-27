@@ -3126,6 +3126,27 @@ const actions = {
     renderApp();
   },
 
+  triggerPwaInstall() {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (isStandalone) {
+      actions.triggerToast('✅ You are already using the installed Agrein App!');
+      return;
+    }
+
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (window._agreinInstallPrompt) {
+      actions.promptAndroidInstall();
+    } else if (isIos) {
+      state.showIosInstallHint = true;
+      state.mobileMenuOpen = false;
+      renderApp();
+    } else {
+      state.showAndroidInstallPrompt = true;
+      state.mobileMenuOpen = false;
+      renderApp();
+    }
+  },
+
   dismissPwaHint() {
     state.pwaHintDismissed = true;
     state.showIosInstallHint = false;
@@ -3138,6 +3159,7 @@ const actions = {
     const prompt = window._agreinInstallPrompt;
     state.showAndroidInstallPrompt = false;
     if (!prompt) {
+      actions.triggerToast('📱 To install on this device, tap your browser menu (⋮ or Share) and select "Add to Home Screen" or "Install App".');
       renderApp();
       return;
     }
@@ -3163,6 +3185,7 @@ const actions = {
     renderApp();
   }
 };
+
 
 // Lightweight, robust zero-dependency DOM reconciliation engine
 function morphDOM(target, source) {
@@ -4305,4 +4328,77 @@ function loadAdminDashboard(state, actions) {
     console.warn('[admin dashboard load] failed:', err.message);
   });
 }
+
+// ═══════════════════════════════════════════════════════════════
+// PWA INITIALIZATION & SERVICE WORKER LIFECYCLE FOR ALL DEVICES
+// ═══════════════════════════════════════════════════════════════
+
+function _initPwaAndMobileExperience() {
+  // 1. Register Progressive Web App Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(registration => {
+          console.log('[Agrein PWA] Service Worker registered with scope:', registration.scope);
+
+          // Check for Service Worker updates
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  state.swUpdateAvailable = true;
+                  renderApp();
+                }
+              });
+            }
+          });
+        })
+        .catch(err => {
+          console.warn('[Agrein PWA] Service Worker registration failed:', err.message);
+        });
+    });
+  }
+
+  // 2. Intercept native beforeinstallprompt (Android / Chrome / Edge / Samsung Internet)
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    window._agreinInstallPrompt = e;
+    const dismissed = localStorage.getItem('agrein_pwa_hint_dismissed');
+    if (!dismissed) {
+      state.showAndroidInstallPrompt = true;
+      renderApp();
+    }
+  });
+
+  // 3. Handle App Installed event
+  window.addEventListener('appinstalled', () => {
+    window._agreinInstallPrompt = null;
+    state.showAndroidInstallPrompt = false;
+    state.showIosInstallHint = false;
+    actions.triggerToast('🎉 Agrein installed successfully! You can now launch it directly from your home screen.');
+    renderApp();
+  });
+
+  // 4. Online / Offline network transition detection
+  window.addEventListener('online', () => {
+    actions.setOnlineStatus(true);
+    actions.triggerToast('🟢 Reconnected to the internet.');
+  });
+  window.addEventListener('offline', () => {
+    actions.setOnlineStatus(false);
+    actions.triggerToast('🟡 You are offline. Browsing cached Agrein data.');
+  });
+
+  // 5. Initial App Render
+  renderApp();
+}
+
+// Boot application
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _initPwaAndMobileExperience);
+} else {
+  _initPwaAndMobileExperience();
+}
+
 

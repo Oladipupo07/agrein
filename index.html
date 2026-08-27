@@ -107,12 +107,14 @@
   <!-- Deferred so it doesn't block parsing; first paint can show hero while this streams -->
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.min.js"></script>
 
-  <!-- PWA Manifest & Icons -->
+  <!-- PWA Manifest & Multi-Device Icons -->
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23059669'/><text x='32' y='46' font-size='40' text-anchor='middle' fill='white'>🌾</text></svg>">
-  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%23059669'/><text x='90' y='128' font-size='110' text-anchor='middle' fill='white'>🌾</text></svg>">
+  <link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%23059669'/><text x='90' y='128' font-size='110' text-anchor='middle' fill='white'>🌾</text></svg>">
+  <link rel="apple-touch-icon" sizes="152x152" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 152 152'><rect width='152' height='152' rx='30' fill='%23059669'/><text x='76' y='108' font-size='90' text-anchor='middle' fill='white'>🌾</text></svg>">
+  <link rel="mask-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23059669'/><text x='32' y='46' font-size='40' text-anchor='middle' fill='white'>🌾</text></svg>" color="#059669">
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-gray-100 antialiased selection:bg-emerald-500 selection:text-white">
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-gray-100 antialiased selection:bg-emerald-500 selection:text-white touch-scroll">
   
   <!-- Root App Container -->
   <div id="app"></div>

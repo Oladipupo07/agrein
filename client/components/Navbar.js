@@ -346,10 +346,14 @@ function renderNavbar(state, actions) {
           ` : ''}
           ${activeRole === 'admin' ? `
             ${sectionHeader('Admin Portal')}
-            ${navItem({ icon: 'fa-shield-halved', iconColor: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300',  label: 'Admin Dashboard', desc: 'Platform metrics & moderation',          onclick: "actions.guardViewAndCloseMobile('admin-dashboard')", active: currentView === 'admin-dashboard' })}
-            ${navItem({ icon: 'fa-user-check',    iconColor: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300',  label: 'Verify Queue',    desc: 'Audit pending farmer verifications',     onclick: "actions.guardViewAndCloseMobile('admin-verification')", active: currentView === 'admin-verification' })}
+            ${navItem({ icon: 'fa-shield-halved', iconColor: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300', label: 'Admin Dashboard', desc: 'Platform metrics & moderation', onclick: "actions.guardViewAndCloseMobile('admin-dashboard')", active: currentView === 'admin-dashboard' })}
+            ${navItem({ icon: 'fa-user-check', iconColor: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300', label: 'Verify Queue', desc: 'Audit pending farmer verifications', onclick: "actions.guardViewAndCloseMobile('admin-verification')", active: currentView === 'admin-verification' })}
           ` : ''}
+
+          ${sectionHeader('Mobile App')}
+          ${navItem({ icon: 'fa-mobile-screen-button', iconColor: 'bg-emerald-600 text-white', label: 'Install Agrein App', desc: 'Add to Home Screen for offline access & speed', onclick: 'actions.triggerPwaInstall()', active: false })}
         </nav>
+
 
         <!-- Account / Auth footer (slim: sectioned drawer already covers role portals) -->
         <div class="p-3 border-t border-gray-200 dark:border-slate-800 safe-area-bottom">
