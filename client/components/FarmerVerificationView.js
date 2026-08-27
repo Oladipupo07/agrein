@@ -296,14 +296,21 @@ function renderFarmerVerificationView(state, actions) {
           <div class="space-y-3">
             <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1"><i class="fa-solid fa-user"></i><span>Personal Information</span></div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" placeholder="Full Name" value="${app.farmer_name || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="email" placeholder="Email Address" value="${app.email || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="tel" placeholder="Phone Number" value="${app.phone || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <select class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none">
-                <option>State</option><option>Kaduna</option><option>Benue</option><option>Oyo</option><option>Plateau</option><option>Lagos</option><option>Kano</option>
+              <input type="text" id="personalFullName" placeholder="Full Name *" value="${app.farmer_name || (state.currentUser && state.currentUser.full_name) || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <input type="email" id="personalEmail" placeholder="Email Address *" value="${app.email || (state.currentUser && state.currentUser.email) || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <input type="tel" id="personalPhone" placeholder="Phone Number *" value="${app.phone || (state.currentUser && state.currentUser.phone_number) || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <select id="personalState" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="">Select Residential State</option>
+                ${[
+                  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+                  'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja', 'Gombe',
+                  'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
+                  'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
+                  'Taraba', 'Yobe', 'Zamfara'
+                ].map(st => `<option value="${st}" ${(app.state || (state.currentUser && state.currentUser.state)) === st ? 'selected' : ''}>${st}</option>`).join('')}
               </select>
-              <input type="text" placeholder="LGA" value="${app.lga || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="text" placeholder="Residential Address" value="${app.residential_address || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <input type="text" id="personalLga" placeholder="Residential LGA" value="${app.lga || (state.currentUser && state.currentUser.lga) || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <input type="text" id="personalAddress" placeholder="Residential Street Address" value="${app.residential_address || (state.currentUser && state.currentUser.address) || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
             </div>
           </div>
 
@@ -311,14 +318,19 @@ function renderFarmerVerificationView(state, actions) {
           <div class="space-y-3">
             <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1"><i class="fa-solid fa-tractor"></i><span>Farm Information</span></div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" placeholder="Farm Name" value="${app.farm_name || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <select class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none">
-                <option>Farm Type</option><option>Crop Farming</option><option>Livestock</option><option>Mixed</option><option>Horticulture</option><option>Aquaculture</option>
+              <input type="text" id="farmName" placeholder="Farm / Business Name *" value="${app.farm_name || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <select id="farmType" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="Crop Farming" ${(app.farm_type || '') === 'Crop Farming' ? 'selected' : ''}>Crop Farming</option>
+                <option value="Livestock" ${(app.farm_type || '') === 'Livestock' ? 'selected' : ''}>Livestock</option>
+                <option value="Mixed" ${(app.farm_type || '') === 'Mixed' ? 'selected' : ''}>Mixed Farming</option>
+                <option value="Horticulture" ${(app.farm_type || '') === 'Horticulture' ? 'selected' : ''}>Horticulture</option>
+                <option value="Aquaculture" ${(app.farm_type || '') === 'Aquaculture' ? 'selected' : ''}>Aquaculture & Fishery</option>
+                <option value="Poultry" ${(app.farm_type || '') === 'Poultry' ? 'selected' : ''}>Poultry</option>
               </select>
-              <input type="number" placeholder="Farm Size (Acres)" value="${app.farm_size_acres || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="number" placeholder="Years of Experience" value="${app.years_experience || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="text" placeholder="Crops / Livestock Produced" value="${(app.crops_produced || []).join(', ')}" class="md:col-span-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="text" placeholder="Products Intended for Sale" value="${app.intended_products || ''}" class="md:col-span-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <input type="number" id="farmSizeAcres" placeholder="Farm Size (Acres) *" value="${app.farm_size_acres || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <input type="number" id="yearsExperience" placeholder="Years of Experience *" value="${app.years_experience || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <input type="text" id="cropsProduced" placeholder="Crops / Livestock Produced (e.g. Maize, Soya Beans, Cassava) *" value="${Array.isArray(app.crops_produced) ? app.crops_produced.join(', ') : (app.crops_produced || '')}" class="md:col-span-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <input type="text" id="intendedProducts" placeholder="Products Intended for Sale on Agrein" value="${app.intended_products || ''}" class="md:col-span-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
             </div>
           </div>
 
@@ -326,25 +338,32 @@ function renderFarmerVerificationView(state, actions) {
           <div class="space-y-3">
             <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1"><i class="fa-solid fa-map-location-dot"></i><span>Farm Location & GPS Coordinates</span></div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" placeholder="Farm Physical Address" value="${app.farm_location || ''}" class="md:col-span-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <select class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none">
-                <option>Farm State</option><option>Kaduna</option><option>Benue</option><option>Oyo</option><option>Plateau</option><option>Lagos</option><option>Kano</option>
+              <input type="text" id="farmAddress" placeholder="Farm Physical Address / Landmark *" value="${app.farm_location || ''}" class="md:col-span-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <select id="farmState" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="">Select Farm State *</option>
+                ${[
+                  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+                  'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja', 'Gombe',
+                  'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
+                  'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
+                  'Taraba', 'Yobe', 'Zamfara'
+                ].map(st => `<option value="${st}" ${(app.farm_state || app.state) === st ? 'selected' : ''}>${st}</option>`).join('')}
               </select>
-              <input type="text" placeholder="Farm LGA" value="${app.farm_lga || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="text" id="farmLat" placeholder="GPS Latitude (e.g. 11.1500° N)" value="${app.gps_latitude || '11.1500'}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              <input type="text" id="farmLng" placeholder="GPS Longitude (e.g. 7.6500° E)" value="${app.gps_longitude || '7.6500'}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <input type="text" id="farmLga" placeholder="Farm LGA *" value="${app.farm_lga || app.lga || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <input type="text" id="farmLat" placeholder="GPS Latitude (e.g. 11.1500° N)" value="${app.gps_latitude || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+              <input type="text" id="farmLng" placeholder="GPS Longitude (e.g. 7.6500° E)" value="${app.gps_longitude || ''}" class="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
             </div>
 
             <!-- Map Location Selector Box -->
             <div class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-center space-y-2">
               <div class="flex items-center justify-center space-x-2 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
                 <i class="fa-solid fa-location-crosshairs text-amber-500"></i>
-                <span>Interactive Map Location Selector</span>
+                <span>Live GPS Location Auto-Detection</span>
               </div>
-              <p class="text-[10px] text-gray-500">Click to pin exact GPS land boundary coordinates for admin satellite verification.</p>
-              <button onclick="actions.detectGpsLocation()" class="px-4 py-2 rounded-xl bg-emerald-700 text-white font-bold text-xs shadow hover:bg-emerald-800 transition-all inline-flex items-center space-x-1.5">
-                <i class="fa-solid fa-location-crosshairs"></i>
-                <span>Detect / Pin Farm Location</span>
+              <p class="text-[10px] text-gray-500">Click below to detect your current location and auto-populate your GPS coordinates, State, LGA, and address.</p>
+              <button type="button" id="detectLocationBtn" onclick="actions.detectGpsLocation()" class="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition-all inline-flex items-center space-x-2">
+                <i class="fa-solid fa-location-crosshairs text-amber-300"></i>
+                <span>Detect & Auto-fill Current Location</span>
               </button>
             </div>
           </div>
@@ -356,113 +375,44 @@ function renderFarmerVerificationView(state, actions) {
               <span class="text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">Max 3MB per file</span>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${state.documentUploads['government_id']?.isUploading ? 'opacity-50 pointer-events-none' : ''}">
-                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('government_id', event)" class="hidden" ${state.documentUploads['government_id']?.isUploading ? 'disabled' : ''}>
-                ${state.documentUploads['government_id']?.isUploading ? `
-                  <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30 backdrop-blur-sm">
-                    <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">Uploading...</div>
-                    <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all" style="width: ${state.documentUploads['government_id'].progress}%"></div>
-                    </div>
-                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${state.documentUploads['government_id'].progress}%</div>
-                    <div class="text-[10px] text-gray-500 mt-1 px-2 truncate">${state.documentUploads['government_id'].fileName}</div>
-                  </div>
-                ` : `
-                  <i class="fa-solid fa-id-card text-xl text-emerald-600 mb-1"></i>
-                  <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Government ID</div>
-                  <div class="text-[11px] text-gray-400">NIN Slip, Voter's Card, Driver's License</div>
-                `}
-              </label>
+              ${[
+                { type: 'government_id', label: 'Government ID', desc: "NIN Slip, Voter's Card, Driver's License", icon: 'fa-id-card' },
+                { type: 'farm_photo', label: 'Farm Photos', desc: 'Overview, Crops, Infrastructure', icon: 'fa-image' },
+                { type: 'profile_photo', label: 'Profile Photo', desc: 'Clear headshot photograph', icon: 'fa-user-gear' },
+                { type: 'farm_deed', label: 'Proof of Ownership / Lease', desc: 'Land Title, C-of-O, or Lease Deed', icon: 'fa-file-contract' },
+                { type: 'agricultural_cert', label: 'Agricultural Certification', desc: 'Organic, GAP, or Harvest Certificate', icon: 'fa-award' },
+                { type: 'coop_proof', label: 'Cooperative Proof', desc: 'Membership ID or Letter', icon: 'fa-people-group' }
+              ].map(slot => {
+                const isUploading = state.documentUploads && state.documentUploads[slot.type] && state.documentUploads[slot.type].isUploading;
+                const uploadedDoc = (app.documents || []).find(d => d.type === slot.type);
+                const progress = isUploading ? (state.documentUploads[slot.type].progress || 0) : 0;
 
-              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${state.documentUploads['farm_photo']?.isUploading ? 'opacity-50 pointer-events-none' : ''}">
-                <input type="file" accept="image/*" onchange="actions.handleDocumentUpload('farm_photo', event)" class="hidden" ${state.documentUploads['farm_photo']?.isUploading ? 'disabled' : ''}>
-                ${state.documentUploads['farm_photo']?.isUploading ? `
-                  <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30 backdrop-blur-sm">
-                    <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">Uploading...</div>
-                    <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all" style="width: ${state.documentUploads['farm_photo'].progress}%"></div>
-                    </div>
-                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${state.documentUploads['farm_photo'].progress}%</div>
-                    <div class="text-[10px] text-gray-500 mt-1 px-2 truncate">${state.documentUploads['farm_photo'].fileName}</div>
-                  </div>
-                ` : `
-                  <i class="fa-solid fa-image text-xl text-emerald-600 mb-1"></i>
-                  <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Farm Photos</div>
-                  <div class="text-[11px] text-gray-400">Overview, Crops, Infrastructure</div>
-                `}
-              </label>
-
-              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${state.documentUploads['profile_photo']?.isUploading ? 'opacity-50 pointer-events-none' : ''}">
-                <input type="file" accept="image/*" onchange="actions.handleDocumentUpload('profile_photo', event)" class="hidden" ${state.documentUploads['profile_photo']?.isUploading ? 'disabled' : ''}>
-                ${state.documentUploads['profile_photo']?.isUploading ? `
-                  <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30 backdrop-blur-sm">
-                    <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">Uploading...</div>
-                    <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all" style="width: ${state.documentUploads['profile_photo'].progress}%"></div>
-                    </div>
-                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${state.documentUploads['profile_photo'].progress}%</div>
-                    <div class="text-[10px] text-gray-500 mt-1 px-2 truncate">${state.documentUploads['profile_photo'].fileName}</div>
-                  </div>
-                ` : `
-                  <i class="fa-solid fa-user-gear text-xl text-emerald-600 mb-1"></i>
-                  <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Profile Photo</div>
-                  <div class="text-[11px] text-gray-400">Clear headshot photograph</div>
-                `}
-              </label>
-
-              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${state.documentUploads['farm_deed']?.isUploading ? 'opacity-50 pointer-events-none' : ''}">
-                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('farm_deed', event)" class="hidden" ${state.documentUploads['farm_deed']?.isUploading ? 'disabled' : ''}>
-                ${state.documentUploads['farm_deed']?.isUploading ? `
-                  <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30 backdrop-blur-sm">
-                    <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">Uploading...</div>
-                    <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all" style="width: ${state.documentUploads['farm_deed'].progress}%"></div>
-                    </div>
-                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${state.documentUploads['farm_deed'].progress}%</div>
-                    <div class="text-[10px] text-gray-500 mt-1 px-2 truncate">${state.documentUploads['farm_deed'].fileName}</div>
-                  </div>
-                ` : `
-                  <i class="fa-solid fa-file-contract text-xl text-emerald-600 mb-1"></i>
-                  <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Proof of Ownership / Lease</div>
-                  <div class="text-[11px] text-gray-400">Land Title, C-of-O, or Lease Deed</div>
-                `}
-              </label>
-
-              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${state.documentUploads['agricultural_cert']?.isUploading ? 'opacity-50 pointer-events-none' : ''}">
-                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('agricultural_cert', event)" class="hidden" ${state.documentUploads['agricultural_cert']?.isUploading ? 'disabled' : ''}>
-                ${state.documentUploads['agricultural_cert']?.isUploading ? `
-                  <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30 backdrop-blur-sm">
-                    <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">Uploading...</div>
-                    <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all" style="width: ${state.documentUploads['agricultural_cert'].progress}%"></div>
-                    </div>
-                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${state.documentUploads['agricultural_cert'].progress}%</div>
-                    <div class="text-[10px] text-gray-500 mt-1 px-2 truncate">${state.documentUploads['agricultural_cert'].fileName}</div>
-                  </div>
-                ` : `
-                  <i class="fa-solid fa-award text-xl text-emerald-600 mb-1"></i>
-                  <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Agricultural Certification</div>
-                  <div class="text-[11px] text-gray-400">Organic, GAP, or Harvest Certificate</div>
-                `}
-              </label>
-
-              <label class="p-3.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-700 text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${state.documentUploads['coop_proof']?.isUploading ? 'opacity-50 pointer-events-none' : ''}">
-                <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('coop_proof', event)" class="hidden" ${state.documentUploads['coop_proof']?.isUploading ? 'disabled' : ''}>
-                ${state.documentUploads['coop_proof']?.isUploading ? `
-                  <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30 backdrop-blur-sm">
-                    <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">Uploading...</div>
-                    <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all" style="width: ${state.documentUploads['coop_proof'].progress}%"></div>
-                    </div>
-                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${state.documentUploads['coop_proof'].progress}%</div>
-                    <div class="text-[10px] text-gray-500 mt-1 px-2 truncate">${state.documentUploads['coop_proof'].fileName}</div>
-                  </div>
-                ` : `
-                  <i class="fa-solid fa-people-group text-xl text-emerald-600 mb-1"></i>
-                  <div class="text-xs font-bold text-gray-700 dark:text-gray-200">Cooperative Proof</div>
-                  <div class="text-[11px] text-gray-400">Membership ID or Letter</div>
-                `}
-              </label>
+                return `
+                  <label class="p-3.5 rounded-xl border-2 border-dashed ${uploadedDoc ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20' : 'border-gray-300 dark:border-slate-700'} text-center cursor-pointer hover:border-emerald-500 transition-all block relative ${isUploading ? 'opacity-60 pointer-events-none' : ''}">
+                    <input type="file" accept="image/*,.pdf" onchange="actions.handleDocumentUpload('${slot.type}', event)" class="hidden" ${isUploading ? 'disabled' : ''}>
+                    ${isUploading ? `
+                      <div class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-emerald-50/90 dark:bg-emerald-950/80 backdrop-blur-sm p-2">
+                        <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-1">Uploading...</div>
+                        <div class="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                          <div class="h-full bg-emerald-500 rounded-full transition-all" style="width: ${progress}%"></div>
+                        </div>
+                        <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">${progress}%</div>
+                      </div>
+                    ` : uploadedDoc ? `
+                      <div class="flex items-center justify-center mb-1 text-emerald-600">
+                        <i class="fa-solid fa-circle-check text-xl"></i>
+                      </div>
+                      <div class="text-xs font-bold text-emerald-700 dark:text-emerald-300 truncate">${slot.label}</div>
+                      <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium truncate mt-0.5">${uploadedDoc.name}</div>
+                      <div class="mt-1 text-[9px] text-gray-400 hover:text-emerald-600 font-bold"><i class="fa-solid fa-rotate mr-1"></i>Click to replace</div>
+                    ` : `
+                      <i class="fa-solid ${slot.icon} text-xl text-emerald-600 mb-1"></i>
+                      <div class="text-xs font-bold text-gray-700 dark:text-gray-200">${slot.label}</div>
+                      <div class="text-[11px] text-gray-400">${slot.desc}</div>
+                    `}
+                  </label>
+                `;
+              }).join('')}
             </div>
           </div>
 

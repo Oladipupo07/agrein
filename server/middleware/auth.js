@@ -43,15 +43,15 @@ async function authenticateToken(req, res, next) {
 
   // ---- Backward-compat bridge: x-user-* headers ----
   const xUserId = req.headers['x-user-id'];
-  if (xUserId) {
+  const lookupEmail = (req.headers['x-user-email'] || '').toLowerCase().trim();
+  if (xUserId || lookupEmail) {
     try {
       const supabase = getSupabaseAdmin();
       if (supabase) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, email, role, verification_status')
-          .eq('id', xUserId)
-          .maybeSingle();
+        let query = supabase.from('profiles').select('id, email, role, verification_status');
+        if (xUserId) query = query.eq('id', xUserId);
+        else if (lookupEmail) query = query.eq('email', lookupEmail);
+        const { data, error } = await query.maybeSingle();
         if (!error && data) {
           req.user = {
             id: data.id,
@@ -62,23 +62,12 @@ async function authenticateToken(req, res, next) {
           return next();
         }
       }
-      // Fall back to in-memory store for seeded/local accounts that have not
-      // yet been mirrored to Supabase.
-      const lookupId = String(xUserId);
-      const lookupEmail = (req.headers['x-user-email'] || '').toLowerCase();
+      // Fall back to in-memory store for seeded/local accounts
       let user = null;
       if (lookupEmail && authController.findUserByEmail) {
         try {
           user = await authController.findUserByEmail(lookupEmail);
         } catch (_) { /* swallow */ }
-      }
-      // As a last resort, scan via getRegisteredUsers if findUserById is missing.
-      if (!user && lookupEmail) {
-        try {
-          const fakeReq = { query: {} };
-          const fakeRes = { json: (body) => { user = body && body.users && body.users.find((u) => u.email.toLowerCase() === lookupEmail); } };
-          await authController.getRegisteredUsers(fakeReq, fakeRes);
-        } catch (_) { /* ignore */ }
       }
       if (user) {
         req.user = {

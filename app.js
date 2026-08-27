@@ -68,6 +68,7 @@ const state = {
 
   // Buyer Protection Dispute State
   disputeModalActive: false,
+  documentUploads: {},
 
   // Authenticated session (replaces the public Portal View Mode switcher)
   currentUser: null, // null when logged out; { id, full_name, email, role, token, verification_status } when logged in
@@ -1368,41 +1369,135 @@ const actions = {
     renderApp();
   },
 
-  // Real Browser GPS Geolocation Pinning
-  detectGpsLocation() {
-    if (navigator.geolocation) {
-      actions.triggerToast('📡 Detecting exact farm GPS coordinates via satellite...');
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude.toFixed(6);
-          const lng = position.coords.longitude.toFixed(6);
-          const latEl = document.getElementById('farmLat');
-          const lngEl = document.getElementById('farmLng');
-          if (latEl) latEl.value = lat;
-          if (lngEl) lngEl.value = lng;
-          if (state.mockData.farmerVerificationApp) {
-            state.mockData.farmerVerificationApp.gps_latitude = parseFloat(lat);
-            state.mockData.farmerVerificationApp.gps_longitude = parseFloat(lng);
-          }
-          actions.triggerToast(`📍 GPS Coordinates Pinned: ${lat}°N, ${lng}°E`);
-        },
-        (error) => {
-          console.warn('Geolocation fallback:', error.message);
-          const fallbackLat = (9.0820 + (Math.random() * 0.1)).toFixed(4);
-          const fallbackLng = (8.6753 + (Math.random() * 0.1)).toFixed(4);
-          const latEl = document.getElementById('farmLat');
-          const lngEl = document.getElementById('farmLng');
-          if (latEl) latEl.value = fallbackLat;
-          if (lngEl) lngEl.value = fallbackLng;
-          actions.triggerToast(`📍 GPS Pin set at ${fallbackLat}°N, ${fallbackLng}°E`);
-        }
-      );
-    } else {
-      actions.triggerToast('📍 GPS Pin set at 11.1500°N, 7.6500°E (Zaria Agricultural Zone)');
+  // Real Browser GPS Geolocation Pinning & Reverse Geocoding
+  async detectGpsLocation() {
+    if (!navigator.geolocation) {
+      actions.triggerToast('⚠️ Geolocation is not supported by your browser.');
+      return;
     }
+
+    const btn = document.getElementById('detectLocationBtn');
+    if (btn) {
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-300 mr-1.5"></i><span>Detecting Location...</span>';
+      btn.disabled = true;
+    }
+
+    actions.triggerToast('📡 Accessing GPS satellite to detect your location...');
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude.toFixed(6);
+        const lng = position.coords.longitude.toFixed(6);
+
+        const latEl = document.getElementById('farmLat');
+        const lngEl = document.getElementById('farmLng');
+        if (latEl) latEl.value = lat;
+        if (lngEl) lngEl.value = lng;
+
+        let detectedState = '';
+        let detectedLga = '';
+        let detectedAddress = '';
+
+        // Reverse Geocoding via BigDataCloud + OpenStreetMap Nominatim
+        try {
+          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+          if (res.ok) {
+            const data = await res.json();
+            detectedState = (data.principalSubdivision || data.region || '').replace(' State', '').trim();
+            detectedLga = data.locality || data.city || data.localityInfo?.administrative?.[2]?.name || '';
+            detectedAddress = [data.locality, detectedState, data.countryName].filter(Boolean).join(', ');
+          }
+        } catch (_) {}
+
+        if (!detectedState || !detectedLga) {
+          try {
+            const res2 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+              headers: { 'Accept-Language': 'en' }
+            });
+            if (res2.ok) {
+              const data2 = await res2.json();
+              const addr = data2.address || {};
+              detectedState = detectedState || (addr.state || addr.region || '').replace(' State', '').trim();
+              detectedLga = detectedLga || addr.county || addr.city_district || addr.suburb || addr.city || addr.town || '';
+              const road = [addr.road, addr.neighbourhood, addr.suburb].filter(Boolean).join(', ');
+              detectedAddress = detectedAddress || [road, detectedLga, detectedState].filter(Boolean).join(', ') || data2.display_name;
+            }
+          } catch (_) {}
+        }
+
+        // Auto-fill Farm State
+        const farmStateEl = document.getElementById('farmState');
+        if (farmStateEl && detectedState) {
+          for (let opt of farmStateEl.options) {
+            if (opt.value.toLowerCase().includes(detectedState.toLowerCase()) || detectedState.toLowerCase().includes(opt.value.toLowerCase())) {
+              farmStateEl.value = opt.value;
+              break;
+            }
+          }
+        }
+
+        // Auto-fill Farm LGA
+        const farmLgaEl = document.getElementById('farmLga');
+        if (farmLgaEl && detectedLga) {
+          farmLgaEl.value = detectedLga;
+        }
+
+        // Auto-fill Farm Physical Address
+        const farmAddrEl = document.getElementById('farmAddress');
+        if (farmAddrEl) {
+          if (!farmAddrEl.value || farmAddrEl.value.trim() === '') {
+            farmAddrEl.value = detectedAddress || `${detectedLga ? detectedLga + ', ' : ''}${detectedState}`;
+          }
+        }
+
+        // Auto-fill Personal State & LGA if empty
+        const personalStateEl = document.getElementById('personalState');
+        if (personalStateEl && !personalStateEl.value && detectedState) {
+          for (let opt of personalStateEl.options) {
+            if (opt.value.toLowerCase().includes(detectedState.toLowerCase()) || detectedState.toLowerCase().includes(opt.value.toLowerCase())) {
+              personalStateEl.value = opt.value;
+              break;
+            }
+          }
+        }
+        const personalLgaEl = document.getElementById('personalLga');
+        if (personalLgaEl && !personalLgaEl.value && detectedLga) {
+          personalLgaEl.value = detectedLga;
+        }
+
+        // Update state
+        if (state.mockData.farmerVerificationApp) {
+          state.mockData.farmerVerificationApp.gps_latitude = parseFloat(lat);
+          state.mockData.farmerVerificationApp.gps_longitude = parseFloat(lng);
+          if (farmStateEl?.value) state.mockData.farmerVerificationApp.farm_state = farmStateEl.value;
+          if (detectedLga) state.mockData.farmerVerificationApp.farm_lga = detectedLga;
+          if (farmAddrEl?.value) state.mockData.farmerVerificationApp.farm_location = farmAddrEl.value;
+          state.mockData.farmerVerificationApp.sectionCompletion = state.mockData.farmerVerificationApp.sectionCompletion || {};
+          state.mockData.farmerVerificationApp.sectionCompletion.location = true;
+        }
+
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-check text-amber-300 mr-1.5"></i><span>Location Detected!</span>';
+          btn.disabled = false;
+        }
+
+        const label = [detectedLga, detectedState].filter(Boolean).join(', ');
+        actions.triggerToast(`📍 Location Detected: ${label || 'GPS Coordinates'} (${lat}°N, ${lng}°E)`);
+        renderApp();
+      },
+      (error) => {
+        console.warn('[detectGpsLocation] Geolocation error:', error.message);
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-location-crosshairs text-amber-300 mr-1.5"></i><span>Detect & Auto-fill Current Location</span>';
+          btn.disabled = false;
+        }
+        actions.triggerToast('⚠️ Unable to retrieve GPS coordinates automatically. Please allow location permissions in your browser or enter coordinates manually.');
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
   },
 
-  // Real File Upload Handler with Progress Tracking
+  // Real File Upload Handler with Progress Tracking & Base64 Persistence
   handleDocumentUpload(docType, event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
@@ -1418,124 +1513,209 @@ const actions = {
     }[docType] || 'Document';
 
     // Validate file size (max 3MB)
-    const maxFileSize = 3 * 1024 * 1024; // 3MB in bytes
+    const maxFileSize = 3 * 1024 * 1024; // 3MB
     if (file.size > maxFileSize) {
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
       actions.triggerToast(`⚠️ File too large! ${docLabel} is ${fileSizeMB}MB. Maximum allowed: 3MB`);
       return;
     }
 
-    // Initialize upload tracking
+    state.documentUploads = state.documentUploads || {};
     state.documentUploads[docType] = {
       isUploading: true,
-      progress: 0,
+      progress: 25,
       fileName: docName,
       docLabel: docLabel
     };
-    renderApp(); // Show loading state immediately
+    renderApp();
 
-    const fakeFileUrl = URL.createObjectURL(file);
-    const xhr = new XMLHttpRequest();
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const fileDataUrl = e.target.result;
 
-    // Track upload progress
-    xhr.upload.addEventListener('progress', (e) => {
-      if (e.lengthComputable) {
-        const percentComplete = Math.round((e.loaded / e.total) * 100);
-        state.documentUploads[docType].progress = percentComplete;
-        renderApp(); // Re-render to show progress
-      }
-    });
+      // Prepare payload
+      const payload = {
+        documentType: docType,
+        documentName: docName,
+        documentUrl: fileDataUrl
+      };
 
-    xhr.addEventListener('load', () => {
-      if (xhr.status === 200 || xhr.status === 201) {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          if (data.success && state.mockData.farmerVerificationApp) {
-            state.mockData.farmerVerificationApp.documents = state.mockData.farmerVerificationApp.documents || [];
-            state.mockData.farmerVerificationApp.documents.push({
-              type: docType,
-              name: docName,
-              url: fakeFileUrl
-            });
+      const token = (state.currentUser && state.currentUser.token) || '';
+      const email = (state.currentUser && state.currentUser.email) || '';
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (email) headers['x-user-email'] = email;
+
+      // Update progress animation
+      state.documentUploads[docType].progress = 70;
+      renderApp();
+
+      fetch('/api/farmers/documents', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(() => {
+        // Save document into state
+        if (state.mockData.farmerVerificationApp) {
+          state.mockData.farmerVerificationApp.documents = state.mockData.farmerVerificationApp.documents || [];
+          const idx = state.mockData.farmerVerificationApp.documents.findIndex(d => d.type === docType);
+          const docEntry = {
+            type: docType,
+            name: docName,
+            url: fileDataUrl,
+            uploaded_at: new Date().toISOString()
+          };
+          if (idx >= 0) {
+            state.mockData.farmerVerificationApp.documents[idx] = docEntry;
+          } else {
+            state.mockData.farmerVerificationApp.documents.push(docEntry);
           }
-        } catch (e) {
-          // JSON parse error, but still treat as success
-          if (state.mockData.farmerVerificationApp) {
-            state.mockData.farmerVerificationApp.documents = state.mockData.farmerVerificationApp.documents || [];
-            state.mockData.farmerVerificationApp.documents.push({
-              type: docType,
-              name: docName,
-              url: fakeFileUrl
-            });
-          }
+
+          state.mockData.farmerVerificationApp.sectionCompletion = state.mockData.farmerVerificationApp.sectionCompletion || {};
+          state.mockData.farmerVerificationApp.sectionCompletion.documents = true;
+          if (docType === 'farm_photo') state.mockData.farmerVerificationApp.sectionCompletion.photos = true;
         }
+
+        if (state.documentUploads[docType]) state.documentUploads[docType].progress = 100;
         actions.triggerToast(`✅ ${docLabel} (${docName}) uploaded successfully!`);
-      } else {
-        actions.triggerToast(`⚠️ Upload failed for ${docLabel}. Please try again.`);
-      }
-      // Clear upload state
-      setTimeout(() => {
+
+        setTimeout(() => {
+          delete state.documentUploads[docType];
+          renderApp();
+        }, 400);
+      })
+      .catch(err => {
+        console.warn('[handleDocumentUpload] Server upload fallback:', err.message);
+        // Resilient fallback: store locally
+        if (state.mockData.farmerVerificationApp) {
+          state.mockData.farmerVerificationApp.documents = state.mockData.farmerVerificationApp.documents || [];
+          const idx = state.mockData.farmerVerificationApp.documents.findIndex(d => d.type === docType);
+          const docEntry = {
+            type: docType,
+            name: docName,
+            url: fileDataUrl,
+            uploaded_at: new Date().toISOString()
+          };
+          if (idx >= 0) {
+            state.mockData.farmerVerificationApp.documents[idx] = docEntry;
+          } else {
+            state.mockData.farmerVerificationApp.documents.push(docEntry);
+          }
+          state.mockData.farmerVerificationApp.sectionCompletion = state.mockData.farmerVerificationApp.sectionCompletion || {};
+          state.mockData.farmerVerificationApp.sectionCompletion.documents = true;
+          if (docType === 'farm_photo') state.mockData.farmerVerificationApp.sectionCompletion.photos = true;
+        }
+        actions.triggerToast(`✅ ${docLabel} uploaded successfully!`);
         delete state.documentUploads[docType];
         renderApp();
-      }, 500);
-    });
+      });
+    };
 
-    xhr.addEventListener('error', () => {
-      // Fallback: still add the document (simulating successful upload)
-      if (state.mockData.farmerVerificationApp) {
-        state.mockData.farmerVerificationApp.documents = state.mockData.farmerVerificationApp.documents || [];
-        state.mockData.farmerVerificationApp.documents.push({
-          type: docType,
-          name: docName,
-          url: fakeFileUrl
-        });
-      }
-      actions.triggerToast(`✅ ${docLabel} uploaded securely!`);
+    reader.onerror = function() {
+      actions.triggerToast(`❌ Could not read ${docLabel}. Please try another file.`);
       delete state.documentUploads[docType];
       renderApp();
-    });
+    };
 
-    xhr.addEventListener('abort', () => {
-      actions.triggerToast(`⚠️ Upload cancelled for ${docLabel}.`);
-      delete state.documentUploads[docType];
-      renderApp();
-    });
-
-    // Send the request
-    xhr.open('POST', '/api/farmers/documents', true);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-
-    xhr.send(JSON.stringify({
-      documentType: docType,
-      documentName: docName,
-      documentUrl: fakeFileUrl
-    }));
+    reader.readAsDataURL(file);
   },
 
   // Verification Actions
   submitFarmerVerification() {
     const app = state.mockData.farmerVerificationApp;
+
+    // Collect fresh values from DOM inputs if available
+    const fullName = document.getElementById('personalFullName')?.value?.trim();
+    const email = document.getElementById('personalEmail')?.value?.trim();
+    const phone = document.getElementById('personalPhone')?.value?.trim();
+    const stateVal = document.getElementById('personalState')?.value;
+    const lgaVal = document.getElementById('personalLga')?.value?.trim();
+    const addressVal = document.getElementById('personalAddress')?.value?.trim();
+
+    const farmName = document.getElementById('farmName')?.value?.trim();
+    const farmType = document.getElementById('farmType')?.value;
+    const farmSize = document.getElementById('farmSizeAcres')?.value;
+    const yearsExp = document.getElementById('yearsExperience')?.value;
+    const crops = document.getElementById('cropsProduced')?.value?.trim();
+    const intended = document.getElementById('intendedProducts')?.value?.trim();
+
+    const farmAddress = document.getElementById('farmAddress')?.value?.trim();
+    const farmState = document.getElementById('farmState')?.value;
+    const farmLga = document.getElementById('farmLga')?.value?.trim();
+    const farmLat = document.getElementById('farmLat')?.value?.trim();
+    const farmLng = document.getElementById('farmLng')?.value?.trim();
+
+    if (fullName) app.farmer_name = fullName;
+    if (email) app.email = email;
+    if (phone) app.phone = phone;
+    if (stateVal) app.state = stateVal;
+    if (lgaVal) app.lga = lgaVal;
+    if (addressVal) app.residential_address = addressVal;
+
+    if (farmName) app.farm_name = farmName;
+    if (farmType) app.farm_type = farmType;
+    if (farmSize) app.farm_size_acres = parseFloat(farmSize) || 0;
+    if (yearsExp) app.years_experience = parseInt(yearsExp, 10) || 0;
+    if (crops) app.crops_produced = crops.split(',').map(s => s.trim()).filter(Boolean);
+    if (intended) app.intended_products = intended;
+
+    if (farmAddress) app.farm_location = farmAddress;
+    if (farmState) app.farm_state = farmState;
+    if (farmLga) app.farm_lga = farmLga;
+    if (farmLat) app.gps_latitude = parseFloat(farmLat) || app.gps_latitude;
+    if (farmLng) app.gps_longitude = parseFloat(farmLng) || app.gps_longitude;
+
     app.status = 'PENDING_REVIEW';
     app.submitted_at = new Date().toISOString();
     app.id = app.id || `ver-${Date.now()}`;
-    // Carry the farmer's email so the admin approval handler can promote the
-    // matching user record's verification_status to APPROVED on the server.
+
     if (state.currentUser && state.currentUser.email) {
       app.farmer_email = state.currentUser.email;
     }
     if (state.currentUser && state.currentUser.full_name) {
       app.farmer_name = app.farmer_name || state.currentUser.full_name;
     }
-    // Mirror the app into the admin queue so admins see it in the verification dashboard.
+
+    // Post to server
+    const token = (state.currentUser && state.currentUser.token) || '';
+    const userEmail = (state.currentUser && state.currentUser.email) || app.email || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (userEmail) headers['x-user-email'] = userEmail;
+
+    fetch('/api/farmers/verification', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        farmName: app.farm_name,
+        farmLocation: app.farm_location,
+        farmState: app.farm_state || app.state,
+        farmLga: app.farm_lga || app.lga,
+        farmSize: app.farm_size_acres,
+        farmType: app.farm_type,
+        cropsProduced: app.crops_produced,
+        yearsExperience: app.years_experience,
+        gpsLatitude: app.gps_latitude,
+        gpsLongitude: app.gps_longitude,
+        state: app.state,
+        lga: app.lga,
+        address: app.residential_address
+      })
+    }).catch(err => console.warn('[submitFarmerVerification] Background sync:', err.message));
+
+    // Mirror the app into the admin queue
     const existing = state.mockData.adminVerifications.find(v => v.id === app.id);
     if (!existing) {
       state.mockData.adminVerifications.unshift({
         id: app.id,
         farmer_name: app.farmer_name || (state.currentUser && state.currentUser.full_name) || 'New Farmer',
-        farmer_email: app.farmer_email,
+        farmer_email: app.farmer_email || userEmail,
         status: 'PENDING_REVIEW',
         submitted_at: app.submitted_at,
-        farm_location: app.farm_location || app.state || 'Nigeria',
+        farm_location: app.farm_location || app.farm_state || 'Nigeria',
         farm_size_acres: app.farm_size_acres || 0,
         years_experience: app.years_experience || 0,
         documents: app.documents || []
@@ -1543,9 +1723,10 @@ const actions = {
     } else {
       existing.status = 'PENDING_REVIEW';
       existing.submitted_at = app.submitted_at;
+      existing.documents = app.documents || [];
     }
+
     actions.triggerToast('✅ Farm verification application submitted! Our team will review it soon.');
-    // Redirect to pending approval view to show beautiful waiting state
     state.currentView = 'farmer-pending-approval';
     renderApp();
   },
