@@ -7,19 +7,12 @@ const state = {
   //                        'farmer-verification', 'admin-verification', 'admin-review', 'account-settings'
   activeRole: 'visitor', // 'visitor', 'farmer', 'buyer', 'admin'
   darkMode: false,
-  cart: [
-    {
-      id: 'prod-001',
-      title: 'Grade-A Sun-Dried Yellow Maize',
-      price: 480,
-      unit: 'kg',
-      cartQty: 100,
-      farmName: 'Zaria Agro-Gold Farms',
-      originState: 'Kaduna',
-      image: 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80'
-    }
-  ],
-  wishlist: ['prod-002', 'prod-004'],
+  // Cart & wishlist start empty — the user populates them by tapping "Add to
+  // Cart" or the heart icon on real products. Earlier demo builds seeded fake
+  // items here at boot, which made a fresh install look like the user had
+  // already shopped.
+  cart: [],
+  wishlist: [],
   
   // Catalog filters
   selectedCategory: 'All',
@@ -774,7 +767,9 @@ const actions = {
         return;
       }
 
-      // Call API to generate and send OTP
+      // Call API to create account. Email verification has been removed, so a
+      // successful register response includes the user + JWT — drop them
+      // straight into the dashboard.
       fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -787,39 +782,44 @@ const actions = {
           return;
         }
 
-        // Store user pending state and transition to OTP screen
-        state.otpEmail = email;
-        state.otpRole = role;
-        state.otpFlow = 'register';
-        state.demoOtp = data.demoOtp || '482913';
-        state.authModalMode = 'verify-otp';
-        state.otpDigits = ['', '', '', '', '', ''];
-        state.otpError = null;
-        state.otpSuccess = false;
-        state.otpTimerSeconds = 300;
-        state.otpCooldownSeconds = 0;
+        const user = data.user || {};
+        if (!user.token) {
+          actions.triggerToast('❌ Account created but auto-login failed. Please log in.');
+          state.authModalMode = 'login';
+          renderApp();
+          return;
+        }
 
-        actions.startOtpCountdown();
-        actions.triggerToast(`📧 Verification code sent to ${email}`);
+        state.currentUser = {
+          id: user.id,
+          full_name: user.full_name,
+          email: user.email,
+          role: (user.role || role || 'BUYER').toUpperCase(),
+          token: user.token,
+          verification_status: user.verification_status
+        };
+        state.activeRole = (state.currentUser.role || 'buyer').toLowerCase();
+        state.authModalActive = false;
+        state.authModalMode = null;
+        state.otpEmail = null;
+        state.otpFlow = null;
+
+        try { localStorage.setItem('agrein_user', JSON.stringify(state.currentUser)); } catch (_) {}
+
+        actions.triggerToast(`✅ Welcome to Agrein, ${state.currentUser.full_name || state.currentUser.email}!`);
+
+        // Farmers must complete KYC before listing; everyone else goes to home.
+        if (state.activeRole === 'farmer') {
+          state.activeView = 'farmer-verification';
+        } else {
+          state.activeView = 'home';
+        }
+
         renderApp();
       })
-      .catch(() => {
-        // Fallback for offline client state
-        const fallbackDemoOtp = Math.floor(100000 + Math.random() * 900000).toString();
-        state.otpEmail = email;
-        state.otpRole = role;
-        state.otpFlow = 'register';
-        state.demoOtp = fallbackDemoOtp;
-        state.authModalMode = 'verify-otp';
-        state.otpDigits = ['', '', '', '', '', ''];
-        state.otpError = null;
-        state.otpSuccess = false;
-        state.otpTimerSeconds = 300;
-        state.otpCooldownSeconds = 0;
-
-        actions.startOtpCountdown();
-        actions.triggerToast(`📧 Verification code sent to ${email}`);
-        renderApp();
+      .catch(err => {
+        console.error('[register] failed:', err);
+        actions.triggerToast('❌ Could not reach the server. Please try again.');
       });
     } else {
       const email = document.getElementById('authEmail')?.value?.trim();
@@ -1248,6 +1248,38 @@ const actions = {
         }
       }
     });
+  },
+
+  // Live password-mismatch indicator for register + forgot-password-reset.
+  //
+  // Toggles a red border + inline "Passwords do not match." message under the
+  // confirm field as the user types. The check only runs once both fields
+  // have content; an empty confirm field hides the indicator entirely so the
+  // user isn't shown an error before they've finished typing.
+  checkPasswordMatch(passwordId, confirmId, errorId) {
+    const pwEl = document.getElementById(passwordId);
+    const confirmEl = document.getElementById(confirmId);
+    const errorEl = document.getElementById(errorId);
+    if (!pwEl || !confirmEl || !errorEl) return;
+
+    const pw = pwEl.value || '';
+    const confirm = confirmEl.value || '';
+
+    if (confirm.length === 0) {
+      errorEl.classList.add('hidden');
+      confirmEl.classList.remove('border-red-500', 'dark:border-red-500', 'ring-1', 'ring-red-500');
+      confirmEl.classList.add('border-gray-300', 'dark:border-slate-700');
+      return;
+    }
+
+    if (pw === confirm) {
+      errorEl.classList.add('hidden');
+      confirmEl.classList.remove('border-red-500', 'dark:border-red-500', 'ring-1', 'ring-red-500');
+    } else {
+      errorEl.classList.remove('hidden');
+      confirmEl.classList.remove('border-gray-300', 'dark:border-slate-700');
+      confirmEl.classList.add('border-red-500', 'dark:border-red-500', 'ring-1', 'ring-red-500');
+    }
   },
 
   // Live Crop Product Listing Modal Handlers
@@ -2397,12 +2429,20 @@ const actions = {
 
       if (resData && resData.success && resData.payment) {
         const p = resData.payment;
+
+        // Server guarantees payment_url / merchant_code / pay_item_id are
+        // populated (or it would have returned 503). Defensive null check
+        // only — we don't auto-fake a redirect if the payload is broken.
+        if (!p.payment_url || !p.merchant_code || !p.pay_item_id) {
+          throw new Error('Payment gateway returned an incomplete payload.');
+        }
+
         actions.triggerToast('🔄 Redirecting to Interswitch Payment Gateway...');
 
         // Create standard HTML Web Redirect form dynamically as specified by Interswitch
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = p.payment_url || 'https://newwebpay.interswitchng.com/collections/w/pay';
+        form.action = p.payment_url;
         form.style.display = 'none';
 
         const fields = {
@@ -2437,13 +2477,13 @@ const actions = {
         throw new Error((resData && resData.message) || 'Failed to initialize Interswitch payment');
       }
     } catch (err) {
-      console.warn('[Interswitch Checkout] Direct redirect error:', err.message);
-      // Fallback for offline demo testing
-      const fallbackTxnRef = `AGR-${Date.now()}`;
-      actions.triggerToast(`🔄 Redirecting to Interswitch Payment...`);
-      setTimeout(() => {
-        actions.executePayment(fallbackTxnRef, finalAmount);
-      }, 1000);
+      // Hard fail — never fabricate a successful payment client-side. In LIVE
+      // mode that would let a payment "succeed" without ever talking to
+      // Interswitch. Leave the modal open so the user can retry.
+      console.error('[Interswitch Checkout] Direct redirect error:', err.message);
+      state.checkoutProcessing = false;
+      actions.triggerToast(`❌ ${err.message || 'Could not start payment. Please try again.'}`);
+      renderApp();
     }
   },
 
@@ -3195,6 +3235,17 @@ document.addEventListener('DOMContentLoaded', () => {
       // /api/products returns { success, count, data: [...] }
       if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
         state.mockData.products = data.data;
+        // One-shot migration: drop any cart/wishlist items whose IDs are not
+        // present in the live catalog. Removes the placeholder product IDs
+        // (prod-001, prod-002, etc.) that older demo builds seeded into
+        // localStorage so returning users don't see ghost items.
+        const validIds = new Set(data.data.map(p => p.id));
+        const cartBefore = state.cart.length;
+        const wishBefore = state.wishlist.length;
+        state.cart = state.cart.filter(item => validIds.has(item.id));
+        state.wishlist = state.wishlist.filter(id => validIds.has(id));
+        if (state.cart.length !== cartBefore) StorageManager.saveCart(state.cart);
+        if (state.wishlist.length !== wishBefore) StorageManager.saveWishlist(state.wishlist);
         renderApp();
       }
     })

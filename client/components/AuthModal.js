@@ -61,7 +61,7 @@ function renderAuthModal(state, actions) {
               <label class="text-xs font-bold text-gray-500 dark:text-gray-400">New Password *</label>
               <div class="relative mt-1">
                 <input type="password" id="resetNewPassword" placeholder="••••••••"
-                       oninput="actions.checkPasswordRequirements(this.value, 'reset')"
+                       oninput="actions.checkPasswordRequirements(this.value, 'reset'); actions.checkPasswordMatch('resetNewPassword', 'resetConfirmPassword', 'resetConfirmMatchError');"
                        class="w-full pl-4 pr-11 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
                 <button type="button" onclick="actions.togglePasswordVisibility('resetNewPassword', 'resetNewPasswordEye')" class="absolute right-3 top-2.5 text-gray-400 hover:text-emerald-600 transition-colors p-1" title="Toggle password visibility">
                   <i id="resetNewPasswordEye" class="fa-solid fa-eye text-xs"></i>
@@ -83,11 +83,16 @@ function renderAuthModal(state, actions) {
               <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Confirm New Password *</label>
               <div class="relative mt-1">
                 <input type="password" id="resetConfirmPassword" placeholder="••••••••"
-                       class="w-full pl-4 pr-11 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                       oninput="actions.checkPasswordMatch('resetNewPassword', 'resetConfirmPassword', 'resetConfirmMatchError')"
+                       class="w-full pl-4 pr-11 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-colors">
                 <button type="button" onclick="actions.togglePasswordVisibility('resetConfirmPassword', 'resetConfirmPasswordEye')" class="absolute right-3 top-2.5 text-gray-400 hover:text-emerald-600 transition-colors p-1" title="Toggle password visibility">
                   <i id="resetConfirmPasswordEye" class="fa-solid fa-eye text-xs"></i>
                 </button>
               </div>
+              <p id="resetConfirmMatchError" class="hidden mt-1.5 text-[11px] font-bold text-red-600 dark:text-red-400 flex items-center space-x-1.5">
+                <i class="fa-solid fa-circle-xmark"></i>
+                <span>Passwords do not match.</span>
+              </p>
             </div>
 
             <button onclick="actions.submitPasswordReset()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-700 to-emerald-900 text-white font-extrabold text-xs shadow-xl hover:shadow-2xl transition-all flex items-center justify-center space-x-2">
@@ -261,11 +266,17 @@ function renderAuthModal(state, actions) {
               <div>
                 <label class="text-xs font-bold text-gray-500 dark:text-gray-400">Confirm Password *</label>
                 <div class="relative mt-1">
-                  <input type="password" id="regConfirmPassword" placeholder="••••••••" class="w-full pl-4 pr-11 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                  <input type="password" id="regConfirmPassword" placeholder="••••••••"
+                         oninput="actions.checkPasswordMatch('authPassword', 'regConfirmPassword', 'regConfirmMatchError')"
+                         class="w-full pl-4 pr-11 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-colors">
                   <button type="button" onclick="actions.togglePasswordVisibility('regConfirmPassword', 'regConfirmPasswordEye')" class="absolute right-3 top-2.5 text-gray-400 hover:text-emerald-600 transition-colors p-1" title="Toggle password visibility">
                     <i id="regConfirmPasswordEye" class="fa-solid fa-eye text-xs"></i>
                   </button>
                 </div>
+                <p id="regConfirmMatchError" class="hidden mt-1.5 text-[11px] font-bold text-red-600 dark:text-red-400 flex items-center space-x-1.5">
+                  <i class="fa-solid fa-circle-xmark"></i>
+                  <span>Passwords do not match.</span>
+                </p>
               </div>
             ` : ''}
 
