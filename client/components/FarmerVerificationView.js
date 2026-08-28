@@ -7,6 +7,8 @@ function renderFarmerVerificationView(state, actions) {
 
   const statusConfig = {
     'DRAFT':             { color: 'gray',    icon: 'fa-file-pen',              label: 'Draft',              bg: 'bg-gray-100 dark:bg-gray-800',            text: 'text-gray-600 dark:text-gray-300',       dot: '⚪', step: 0 },
+    'NOT_STARTED':       { color: 'gray',    icon: 'fa-file-pen',              label: 'Draft',              bg: 'bg-gray-100 dark:bg-gray-800',            text: 'text-gray-600 dark:text-gray-300',       dot: '⚪', step: 0 },
+    'PENDING':           { color: 'amber',   icon: 'fa-clock',                 label: 'Pending Review',     bg: 'bg-amber-50 dark:bg-amber-950/30',        text: 'text-amber-700 dark:text-amber-300',     dot: '🟡', step: 1 },
     'PENDING_REVIEW':    { color: 'amber',   icon: 'fa-clock',                 label: 'Pending Review',     bg: 'bg-amber-50 dark:bg-amber-950/30',        text: 'text-amber-700 dark:text-amber-300',     dot: '🟡', step: 1 },
     'UNDER_REVIEW':      { color: 'blue',    icon: 'fa-magnifying-glass',      label: 'Under Review',       bg: 'bg-blue-50 dark:bg-blue-950/30',          text: 'text-blue-700 dark:text-blue-300',       dot: '🔵', step: 2 },
     'CHANGES_REQUIRED':  { color: 'orange',  icon: 'fa-triangle-exclamation',  label: 'Changes Required',   bg: 'bg-orange-50 dark:bg-orange-950/30',      text: 'text-orange-700 dark:text-orange-300',   dot: '🟠', step: 2 },
@@ -300,8 +302,8 @@ function renderFarmerVerificationView(state, actions) {
         </div>
       ` : ''}
 
-      <!-- ═══ VERIFICATION APPLICATION FORM (DRAFT or CHANGES_REQUIRED) ═══ -->
-      ${status === 'DRAFT' || status === 'CHANGES_REQUIRED' || !app.id ? `
+      <!-- ═══ VERIFICATION APPLICATION FORM (Fillable & Editable) ═══ -->
+      ${status !== 'APPROVED' ? `
         <div class="bg-white dark:bg-slate-900 rounded-3xl border border-gray-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-8">
           
           <div class="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-4">
@@ -594,7 +596,7 @@ function renderFarmerVerificationView(state, actions) {
             <button onclick="actions.submitFarmerVerification()"
                     class="w-full py-4 rounded-2xl ${isFullyComplete ? 'bg-gradient-to-r from-emerald-700 to-emerald-900 hover:shadow-2xl shadow-emerald-700/30' : 'bg-gradient-to-r from-slate-700 to-slate-800 opacity-90'} text-white font-extrabold text-xs shadow-xl transition-all flex items-center justify-center space-x-2">
               <i class="fa-solid ${isFullyComplete ? 'fa-paper-plane text-amber-300' : 'fa-lock text-amber-300'}"></i>
-              <span>${isFullyComplete ? (status === 'CHANGES_REQUIRED' ? 'Resubmit Verification Application' : 'Submit Verification Application') : `Submit Verification Application (${completionPercent}% Complete — ${totalCount - completedCount} items remaining)`}</span>
+              <span>${isFullyComplete ? (status === 'CHANGES_REQUIRED' ? 'Resubmit Corrected Application' : (status === 'PENDING_REVIEW' || status === 'UNDER_REVIEW' ? 'Update & Save Verification Application' : (status === 'REJECTED' ? 'Submit Revised Application' : 'Submit Verification Application'))) : `Submit Verification Application (${completionPercent}% Complete — ${totalCount - completedCount} items remaining)`}</span>
             </button>
 
             ${!isFullyComplete ? `
@@ -606,8 +608,8 @@ function renderFarmerVerificationView(state, actions) {
         </div>
       ` : ''}
 
-      <!-- ═══ SUBMITTED APPLICATION SUMMARY (read-only for non-editable statuses) ═══ -->
-      ${(status === 'PENDING_REVIEW' || status === 'UNDER_REVIEW' || status === 'APPROVED') && app.id ? `
+      <!-- ═══ SUBMITTED APPLICATION SUMMARY (For Approved Farmers) ═══ -->
+      ${status === 'APPROVED' && app.id ? `
         <div class="bg-white dark:bg-slate-900 rounded-3xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-5">
           <h3 class="text-sm font-heading font-extrabold text-slate-900 dark:text-white flex items-center space-x-2">
             <i class="fa-solid fa-file-lines text-emerald-500"></i>
