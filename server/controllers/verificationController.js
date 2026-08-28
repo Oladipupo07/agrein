@@ -469,26 +469,52 @@ const verificationController = {
   },
 
   // Helper to resolve verification row or create one for target ID/email
-  async resolveVerificationTarget(id) {
-    if (!id) return null;
-    // 1. Try finding by id
-    let { data: row } = await supabase.from('farmer_verifications').select('*').eq('id', id).maybeSingle();
-    if (row) return row;
+  async resolveVerificationTarget(id, emailHint) {
+    if (!id && !emailHint) return null;
+    const sb = supabase || getSupabaseAdmin();
+    if (!sb) return null;
 
-    // 2. Try finding by user_id
-    let { data: rowByUid } = await supabase.from('farmer_verifications').select('*').eq('user_id', id).maybeSingle();
-    if (rowByUid) return rowByUid;
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const rawId = String(id || '').trim();
+    const cleanId = rawId.startsWith('ver-') ? rawId.slice(4) : rawId;
+    const cleanEmail = String(emailHint || (rawId.includes('@') ? rawId : (cleanId.includes('@') ? cleanId : ''))).toLowerCase().trim();
 
-    // 3. Try finding profile by email or ID
-    let { data: profile } = await supabase.from('profiles').select('id, email, verification_status').or(`id.eq.${id},email.eq.${id}`).maybeSingle();
+    // 1. If valid UUID, look up by verification row id or user_id
+    if (UUID_REGEX.test(rawId)) {
+      let { data: row } = await sb.from('farmer_verifications').select('*').or(`id.eq.${rawId},user_id.eq.${rawId}`).maybeSingle();
+      if (row) return row;
+    }
+    if (cleanId && UUID_REGEX.test(cleanId)) {
+      let { data: row } = await sb.from('farmer_verifications').select('*').or(`id.eq.${cleanId},user_id.eq.${cleanId}`).maybeSingle();
+      if (row) return row;
+    }
+
+    // 2. Try finding profile by email, UUID, or local_id
+    let profile = null;
+    if (cleanEmail) {
+      const { data: p } = await sb.from('profiles').select('id, email, verification_status').eq('email', cleanEmail).maybeSingle();
+      if (p) profile = p;
+    }
+    if (!profile && cleanId) {
+      if (UUID_REGEX.test(cleanId)) {
+        const { data: p } = await sb.from('profiles').select('id, email, verification_status').eq('id', cleanId).maybeSingle();
+        if (p) profile = p;
+      } else {
+        const { data: p } = await sb.from('profiles').select('id, email, verification_status').or(`local_id.eq.${cleanId},email.eq.${cleanId}`).maybeSingle();
+        if (p) profile = p;
+      }
+    }
+
     if (profile) {
-      // Upsert a verification row
-      const { data: newRow } = await supabase.from('farmer_verifications').upsert({
+      let { data: existingRow } = await sb.from('farmer_verifications').select('*').eq('user_id', profile.id).maybeSingle();
+      if (existingRow) return existingRow;
+
+      const { data: newRow } = await sb.from('farmer_verifications').upsert({
         user_id: profile.id,
         status: profile.verification_status || 'PENDING_REVIEW',
         submitted_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' }).select('*').single();
+      }, { onConflict: 'user_id' }).select('*').maybeSingle();
       return newRow;
     }
 
@@ -498,7 +524,8 @@ const verificationController = {
   async startReview(req, res) {
     try {
       const { id } = req.params;
-      const target = await verificationController.resolveVerificationTarget(id);
+      const emailHint = req.body?.email || req.query?.email;
+      const target = await verificationController.resolveVerificationTarget(id, emailHint);
       if (!target) return res.status(404).json({ success: false, message: 'Application not found.' });
 
       const { data: row, error } = await supabase
@@ -521,8 +548,9 @@ const verificationController = {
   async approveFarmer(req, res) {
     try {
       const { id } = req.params;
-      const { adminNotes } = req.body || {};
-      const target = await verificationController.resolveVerificationTarget(id);
+      const { adminNotes, email } = req.body || {};
+      const emailHint = email || req.query?.email;
+      const target = await verificationController.resolveVerificationTarget(id, emailHint);
       if (!target) return res.status(404).json({ success: false, message: 'Application not found.' });
 
       const prevStatus = target.status;
@@ -558,10 +586,11 @@ const verificationController = {
   async requestChanges(req, res) {
     try {
       const { id } = req.params;
-      const { reason } = req.body || {};
+      const { reason, email } = req.body || {};
       if (!reason || !reason.trim()) return res.status(400).json({ success: false, message: 'Correction note/reason is required.' });
       
-      const target = await verificationController.resolveVerificationTarget(id);
+      const emailHint = email || req.query?.email;
+      const target = await verificationController.resolveVerificationTarget(id, emailHint);
       if (!target) return res.status(404).json({ success: false, message: 'Application not found.' });
 
       const prevStatus = target.status;
@@ -593,10 +622,11 @@ const verificationController = {
   async rejectFarmer(req, res) {
     try {
       const { id } = req.params;
-      const { reason } = req.body || {};
+      const { reason, email } = req.body || {};
       if (!reason || !reason.trim()) return res.status(400).json({ success: false, message: 'Rejection reason is mandatory.' });
 
-      const target = await verificationController.resolveVerificationTarget(id);
+      const emailHint = email || req.query?.email;
+      const target = await verificationController.resolveVerificationTarget(id, emailHint);
       if (!target) return res.status(404).json({ success: false, message: 'Application not found.' });
 
       const prevStatus = target.status;
@@ -628,8 +658,9 @@ const verificationController = {
   async suspendFarmer(req, res) {
     try {
       const { id } = req.params;
-      const { reason } = req.body || {};
-      const target = await verificationController.resolveVerificationTarget(id);
+      const { reason, email } = req.body || {};
+      const emailHint = email || req.query?.email;
+      const target = await verificationController.resolveVerificationTarget(id, emailHint);
       if (!target) return res.status(404).json({ success: false, message: 'Farmer not found.' });
 
       const cleanReason = (reason || 'Quality or compliance dispute under investigation').trim();

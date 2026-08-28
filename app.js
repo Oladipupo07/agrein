@@ -859,6 +859,9 @@ const actions = {
 
         if (state.currentUser.role === 'FARMER' && typeof actions.fetchFarmerVerification === 'function') {
           actions.fetchFarmerVerification();
+          if (typeof actions.startFarmerVerificationPolling === 'function') {
+            actions.startFarmerVerificationPolling();
+          }
         } else if (state.currentUser.role === 'ADMIN' && typeof actions.fetchAdminVerifications === 'function') {
           actions.fetchAdminVerifications();
           actions.fetchRegisteredUsers();
@@ -1675,7 +1678,7 @@ const actions = {
 
   // Load existing Farmer Verification from Server & LocalStorage
   fetchFarmerVerification() {
-    if (!state.currentUser) return;
+    if (!state.currentUser || state.currentUser.role !== 'FARMER') return;
     const token = state.currentUser.token || '';
     const email = state.currentUser.email || '';
     const headers = {};
@@ -1699,8 +1702,19 @@ const actions = {
           StorageManager.saveFarmerVerification(merged);
 
           if (app.status && state.currentUser) {
+            const statusChanged = state.currentUser.verification_status !== app.status;
             state.currentUser.verification_status = app.status;
             StorageManager.saveUser(state.currentUser);
+            if (statusChanged) {
+              if (app.status === 'APPROVED' && (state.currentView === 'farmer-verification' || state.currentView === 'farmer-pending-approval')) {
+                actions.triggerToast('🎉 Congratulations! Your farm has been verified and approved.');
+                state.currentView = 'farmer-dashboard';
+              } else if (app.status === 'CHANGES_REQUIRED') {
+                actions.triggerToast('⚠️ Admin requested corrections on your verification application.');
+              } else if (app.status === 'REJECTED') {
+                actions.triggerToast('❌ Your verification application was rejected by the admin team.');
+              }
+            }
           }
           console.log('✅ Farmer verification data loaded:', merged.status);
           renderApp();
@@ -1714,6 +1728,15 @@ const actions = {
           renderApp();
         }
       });
+  },
+
+  startFarmerVerificationPolling() {
+    if (window._farmerVerifPollTimer) clearInterval(window._farmerVerifPollTimer);
+    window._farmerVerifPollTimer = setInterval(() => {
+      if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
+        actions.fetchFarmerVerification();
+      }
+    }, 6000);
   },
 
   // Verification Actions with Strict Compulsory Field Checks
@@ -1949,84 +1972,17 @@ const actions = {
     renderApp();
   },
 
-  openAdminReview(verificationId) {
-    const dossier = state.mockData.adminVerifications.find(v => v.id === verificationId);
-    state.adminReviewDossier = dossier || state.mockData.adminVerifications[0];
-    // Auto-transition PENDING_REVIEW → UNDER_REVIEW when admin opens the dossier
-    if (state.adminReviewDossier && state.adminReviewDossier.status === 'PENDING_REVIEW') {
-      const prevStatus = state.adminReviewDossier.status;
-      state.adminReviewDossier.status = 'UNDER_REVIEW';
-      state.adminReviewDossier.reviewed_by = 'admin@agrein.ng';
-      state.mockData.verificationAuditLogs.unshift({
-        id: `log-${Date.now()}`,
-        verification_id: state.adminReviewDossier.id,
-        farmer_name: state.adminReviewDossier.farmer_name,
-        admin_email: 'admin@agrein.ng',
-        action: 'STARTED_REVIEW',
-        previous_status: prevStatus,
-        new_status: 'UNDER_REVIEW',
-        reason: 'Admin opened dossier for review.',
-        created_at: new Date().toISOString()
-      });
-    }
-    state.currentView = 'admin-review';
-    renderApp();
-  },
-
-  adminApproveFarmer(id) {
-    const v = state.mockData.adminVerifications.find(app => app.id === id);
-    if (v) {
-      const prevStatus = v.status;
-      v.status = 'APPROVED';
-      v.reviewed_at = new Date().toISOString();
-      v.reviewed_by = 'admin@agrein.ng';
-      
-      // Also update the farmer's verification app
-      if (state.mockData.farmerVerificationApp && state.mockData.farmerVerificationApp.id === id) {
-        state.mockData.farmerVerificationApp.status = 'APPROVED';
-        state.mockData.farmerVerificationApp.reviewed_at = v.reviewed_at;
-        state.mockData.farmerVerificationApp.reviewed_by = v.reviewed_by;
-      }
-      
-      state.mockData.verificationAuditLogs.unshift({
-        id: `log-${Date.now()}`,
-        verification_id: v.id,
-        farmer_name: v.farmer_name,
-        admin_email: 'admin@agrein.ng',
-        action: 'APPROVED',
-        previous_status: prevStatus,
-        new_status: 'APPROVED',
-        reason: 'Farm location and documents confirmed legitimate.',
-        created_at: new Date().toISOString()
-      });
-      actions.triggerToast(`🟢 Farmer ${v.farmer_name} APPROVED! They will be redirected to their dashboard.`);
-
-      // Push the approval to the backend so the user's verification_status
-      // flips to APPROVED on the server. The locked farmer's 10-second poll
-      // (app.js startFarmerVerificationPolling) sees this and auto-routes
-      // them to farmer-dashboard.
-      if (v.farmer_email) {
-        fetch('/api/admin/users/update-verification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: v.farmer_email, status: 'APPROVED' })
-        }).catch(() => {});
-      }
-
-      renderApp();
-    }
-  },
-
-  // One-click approve from the admin user directory — used when a farmer shows
-  // PENDING but hasn't submitted a full KYC dossier yet. Promotes the user-level
-  // verification_status to APPROVED on the server so the locked farmer's poll
-  // can detect the change and auto-route them to farmer-dashboard.
   adminQuickApproveFarmer(email, fullName) {
     if (!email) return;
     const safeName = (fullName || email).replace(/[<>"']/g, '');
+    const token = state.currentUser?.token || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (state.currentUser?.email) headers['x-user-email'] = state.currentUser.email;
+
     fetch('/api/admin/users/update-verification', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ email, status: 'APPROVED' })
     })
       .then(r => r.json())
@@ -2034,6 +1990,7 @@ const actions = {
         if (data && data.success) {
           actions.triggerToast(`🟢 ${safeName} approved. They will land on the Farmer Dashboard automatically.`);
           actions.fetchRegisteredUsers();
+          actions.fetchAdminVerifications();
         } else {
           actions.triggerToast(`⚠️ ${data && data.message ? data.message : 'Could not approve farmer.'}`);
         }
@@ -2046,7 +2003,7 @@ const actions = {
   adminRequestChanges(id) {
     state.adminActionTargetId = id;
     state.adminActionType = 'REQUEST_CHANGES';
-    state.adminActionReasonText = 'Please upload a clearer image of your government-issued ID card.';
+    state.adminActionReasonText = 'Please upload a clearer image of your government ID or update farm operational details.';
     state.adminActionModalActive = true;
     renderApp();
   },
@@ -2054,16 +2011,60 @@ const actions = {
   adminRejectFarmer(id) {
     state.adminActionTargetId = id;
     state.adminActionType = 'REJECT';
-    state.adminActionReasonText = 'Land ownership deed could not be verified against state land registry.';
+    state.adminActionReasonText = 'Land ownership or credentials could not be verified.';
     state.adminActionModalActive = true;
     renderApp();
   },
 
-  adminSuspendFarmer(id) {
-    state.adminActionTargetId = id;
-    state.adminActionType = 'SUSPEND';
-    state.adminActionReasonText = 'Quality dispute reported on crop harvest batch under investigation.';
-    state.adminActionModalActive = true;
+  adminSuspendFarmer(id, optionalReason) {
+    if (!optionalReason && optionalReason !== '') {
+      state.adminActionTargetId = id;
+      state.adminActionType = 'SUSPEND';
+      state.adminActionReasonText = 'Quality dispute reported on crop harvest batch under investigation.';
+      state.adminActionModalActive = true;
+      renderApp();
+      return;
+    }
+
+    const reason = optionalReason || 'Quality dispute reported on crop harvest batch under investigation.';
+    const vList = state.mockData.adminVerifications || [];
+    const dossier = vList.find(v => v.id === id) || state.mockData.farmerVerificationApp || state.adminInspectedDossier || state.adminReviewDossier;
+    const targetEmail = dossier?.farmer_email || dossier?.email;
+
+    if (dossier) {
+      dossier.status = 'SUSPENDED';
+      dossier.admin_notes = reason;
+      dossier.reviewed_at = new Date().toISOString();
+    }
+    if (state.mockData.farmerVerificationApp && (state.mockData.farmerVerificationApp.id === id || state.mockData.farmerVerificationApp.email === targetEmail || state.mockData.farmerVerificationApp.farmer_email === targetEmail)) {
+      state.mockData.farmerVerificationApp.status = 'SUSPENDED';
+      state.mockData.farmerVerificationApp.admin_notes = reason;
+      StorageManager.saveFarmerVerification(state.mockData.farmerVerificationApp);
+    }
+    if (state.currentUser && (state.currentUser.email === targetEmail || state.currentUser.role === 'FARMER')) {
+      state.currentUser.verification_status = 'SUSPENDED';
+      StorageManager.saveUser(state.currentUser);
+    }
+
+    const token = state.currentUser?.token || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (state.currentUser?.email) headers['x-user-email'] = state.currentUser.email;
+
+    fetch(`/api/admin/farmer-verifications/${encodeURIComponent(id)}/suspend`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ reason, email: targetEmail })
+    })
+    .then(r => r.json())
+    .then(() => {
+      actions.fetchAdminVerifications();
+      actions.fetchRegisteredUsers();
+    })
+    .catch(() => {});
+
+    state.adminInspectionModalActive = false;
+    actions.triggerToast(`🔴 Farmer suspended.`);
     renderApp();
   },
 
@@ -2080,12 +2081,11 @@ const actions = {
     const type = state.adminActionType;
     const reason = document.getElementById('adminReasonInput')?.value?.trim() || state.adminActionReasonText;
 
-    if (!reason) {
+    if (!reason && type !== 'APPROVE') {
       actions.triggerToast('❌ Please provide a detailed decision note.');
       return;
     }
 
-    // Deletion-request actions short-circuit; they target a user, not a verification.
     if (type === 'APPROVE_DELETION' || type === 'REJECT_DELETION') {
       const decision = type === 'APPROVE_DELETION' ? 'APPROVE' : 'CANCEL';
       actions.adminResolveDeletionRequest(id, decision, reason);
@@ -2097,58 +2097,14 @@ const actions = {
       return;
     }
 
-    const v = state.mockData.adminVerifications.find(app => app.id === id);
-    if (!v) return;
-
-    const prevStatus = v.status;
-    v.reviewed_at = new Date().toISOString();
-    v.reviewed_by = 'admin@agrein.ng';
-
-    if (type === 'REQUEST_CHANGES') {
-      v.status = 'CHANGES_REQUIRED';
-      v.changes_requested_notes = reason;
-      state.mockData.verificationAuditLogs.unshift({
-        id: `log-${Date.now()}`,
-        verification_id: v.id,
-        farmer_name: v.farmer_name,
-        admin_email: 'admin@agrein.ng',
-        action: 'REQUESTED_CHANGES',
-        previous_status: prevStatus,
-        new_status: 'CHANGES_REQUIRED',
-        reason,
-        created_at: new Date().toISOString()
-      });
-      actions.triggerToast(`🟠 Requested changes for ${v.farmer_name}.`);
+    if (type === 'APPROVE') {
+      actions.adminApproveFarmer(id);
+    } else if (type === 'REQUEST_CHANGES') {
+      actions.adminPromptRequestChanges(id, reason);
     } else if (type === 'REJECT') {
-      v.status = 'REJECTED';
-      v.rejection_reason = reason;
-      state.mockData.verificationAuditLogs.unshift({
-        id: `log-${Date.now()}`,
-        verification_id: v.id,
-        farmer_name: v.farmer_name,
-        admin_email: 'admin@agrein.ng',
-        action: 'REJECTED',
-        previous_status: prevStatus,
-        new_status: 'REJECTED',
-        reason,
-        created_at: new Date().toISOString()
-      });
-      actions.triggerToast(`🔴 Farmer application REJECTED.`);
+      actions.adminPromptReject(id, reason);
     } else if (type === 'SUSPEND') {
-      v.status = 'SUSPENDED';
-      v.admin_notes = `SUSPENDED: ${reason}`;
-      state.mockData.verificationAuditLogs.unshift({
-        id: `log-${Date.now()}`,
-        verification_id: v.id,
-        farmer_name: v.farmer_name,
-        admin_email: 'admin@agrein.ng',
-        action: 'SUSPENDED',
-        previous_status: prevStatus,
-        new_status: 'SUSPENDED',
-        reason,
-        created_at: new Date().toISOString()
-      });
-      actions.triggerToast(`🔴 Farmer ${v.farmer_name} SUSPENDED.`);
+      actions.adminSuspendFarmer(id, reason);
     }
 
     state.adminActionModalActive = false;
@@ -2159,23 +2115,7 @@ const actions = {
   },
 
   adminReinstateFarmer(id) {
-    const v = state.mockData.adminVerifications.find(app => app.id === id);
-    if (v) {
-      v.status = 'APPROVED';
-      state.mockData.verificationAuditLogs.unshift({
-        id: `log-${Date.now()}`,
-        verification_id: v.id,
-        farmer_name: v.farmer_name,
-        admin_email: 'admin@agrein.ng',
-        action: 'REINSTATED',
-        previous_status: 'SUSPENDED',
-        new_status: 'APPROVED',
-        reason: 'Reinstated after quality review.',
-        created_at: new Date().toISOString()
-      });
-      actions.triggerToast(`🟢 Farmer ${v.farmer_name} reinstated.`);
-      renderApp();
-    }
+    actions.adminApproveFarmer(id);
   },
 
   // Dispute Actions
@@ -2657,8 +2597,11 @@ const actions = {
     renderApp();
   },
 
-  adminPromptRequestChanges(verificationId) {
-    const reason = prompt('Enter notes or instructions for the farmer (e.g. Please re-upload a clearer NIN slip or farm deed):');
+  adminPromptRequestChanges(verificationId, optionalReason) {
+    let reason = optionalReason;
+    if (!reason || typeof reason !== 'string' || !reason.trim()) {
+      reason = prompt('Enter notes or instructions for the farmer (e.g. Please re-upload a clearer NIN slip or farm deed):');
+    }
     if (!reason || !reason.trim()) return;
 
     const vList = state.mockData.adminVerifications || [];
@@ -2709,8 +2652,11 @@ const actions = {
     renderApp();
   },
 
-  adminPromptReject(verificationId) {
-    const reason = prompt('Enter reason for rejecting this verification application:');
+  adminPromptReject(verificationId, optionalReason) {
+    let reason = optionalReason;
+    if (!reason || typeof reason !== 'string' || !reason.trim()) {
+      reason = prompt('Enter reason for rejecting this verification application:');
+    }
     if (!reason || !reason.trim()) {
       actions.triggerToast('⚠️ A rejection reason is required.');
       return;
@@ -4536,6 +4482,9 @@ function _initPwaAndMobileExperience() {
       }
       if (typeof actions.fetchFarmerVerification === 'function') {
         actions.fetchFarmerVerification();
+        if (typeof actions.startFarmerVerificationPolling === 'function') {
+          actions.startFarmerVerificationPolling();
+        }
       }
     } else if (state.currentUser && state.currentUser.role === 'ADMIN') {
       const hash = window.location.hash.replace('#', '').trim();
