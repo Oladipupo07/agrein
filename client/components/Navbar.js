@@ -512,17 +512,14 @@ function renderNavbar(state, actions) {
     </div>
     ` : ''}
 
-    <!-- ═══ FLOATING 24/7 AGREIN SUPPORT TRIGGER (Bottom Right) ═══ -->
+    <!-- ═══ FLOATING AGREIN SUPPORT TRIGGER (Bottom Right — Logo Only) ═══ -->
     <div class="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 flex items-center animate-fade-in">
       <button onclick="actions.openChatDrawer('Agrein Support')"
               title="Open 24/7 Agrein Agricultural AI Support & Customer Care"
-              class="relative p-3 sm:px-4 sm:py-3 rounded-full bg-gradient-to-r from-emerald-700 via-emerald-800 to-slate-900 text-white font-extrabold text-xs shadow-2xl shadow-emerald-950/70 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2 border border-emerald-400/50 group backdrop-blur-md">
-        <!-- Live status ping -->
-        <span class="absolute -top-1 -right-1 sm:static w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-sm"></span>
-        <div class="w-6 h-6 rounded-full bg-emerald-500/30 flex items-center justify-center text-amber-300 group-hover:rotate-12 transition-transform">
-          <i class="fa-solid fa-headset text-xs"></i>
-        </div>
-        <span class="hidden sm:inline font-bold">Agrein Support</span>
+              class="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 text-white shadow-2xl shadow-emerald-950/60 hover:scale-110 active:scale-95 transition-all flex items-center justify-center border border-emerald-400/40 group">
+        <!-- Live online ping -->
+        <span class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white dark:border-slate-900 animate-pulse shadow-sm"></span>
+        <i class="fa-solid fa-wheat-awn text-base group-hover:rotate-12 transition-transform duration-300"></i>
       </button>
     </div>
   `;
