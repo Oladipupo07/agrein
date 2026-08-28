@@ -1648,7 +1648,7 @@ const actions = {
     reader.readAsDataURL(file);
   },
 
-  // Real-time verification field synchronization with Auto-Save
+  // Real-time verification field synchronization with Auto-Save (smooth typing without full-page re-renders)
   updateVerificationField(field, value) {
     if (!state.mockData.farmerVerificationApp) {
       state.mockData.farmerVerificationApp = StorageManager.getFarmerVerification() || {
@@ -1671,9 +1671,8 @@ const actions = {
       if (field === 'residential_address') state.currentUser.address = value;
       StorageManager.saveUser(state.currentUser);
     }
-    // Auto-save draft so reload preserves every keystroke
+    // Auto-save draft silently so reload preserves every keystroke without resetting focus
     StorageManager.saveFarmerVerification(app);
-    renderApp();
   },
 
   // Load existing Farmer Verification from Server & LocalStorage
@@ -1692,10 +1691,14 @@ const actions = {
           const app = data.application;
           const local = StorageManager.getFarmerVerification() || {};
           
-          // Merge server application with local cache
+          // Merge server application with local cache — preserve local in-progress edits
           const merged = {
-            ...local,
             ...app,
+            ...local,
+            status: app.status || local.status || 'DRAFT',
+            rejection_reason: app.rejection_reason !== undefined ? app.rejection_reason : local.rejection_reason,
+            changes_requested_notes: app.changes_requested_notes !== undefined ? app.changes_requested_notes : local.changes_requested_notes,
+            admin_notes: app.admin_notes !== undefined ? app.admin_notes : local.admin_notes,
             documents: (app.documents && app.documents.length > 0) ? app.documents : (local.documents || [])
           };
           state.mockData.farmerVerificationApp = merged;
@@ -1709,15 +1712,16 @@ const actions = {
               if (app.status === 'APPROVED' && (state.currentView === 'farmer-verification' || state.currentView === 'farmer-pending-approval')) {
                 actions.triggerToast('🎉 Congratulations! Your farm has been verified and approved.');
                 state.currentView = 'farmer-dashboard';
+                renderApp();
               } else if (app.status === 'CHANGES_REQUIRED') {
                 actions.triggerToast('⚠️ Admin requested corrections on your verification application.');
+                renderApp();
               } else if (app.status === 'REJECTED') {
                 actions.triggerToast('❌ Your verification application was rejected by the admin team.');
+                renderApp();
               }
             }
           }
-          console.log('✅ Farmer verification data loaded:', merged.status);
-          renderApp();
         }
       })
       .catch(err => {
@@ -1725,7 +1729,6 @@ const actions = {
         const local = StorageManager.getFarmerVerification();
         if (local) {
           state.mockData.farmerVerificationApp = local;
-          renderApp();
         }
       });
   },
