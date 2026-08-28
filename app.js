@@ -848,14 +848,21 @@ const actions = {
           email: user.email,
           role: (user.role || '').toUpperCase(),
           token: user.token,
-          verification_status: user.verification_status
+          verification_status: user.verification_status || (user.role === 'FARMER' ? 'NOT_STARTED' : 'APPROVED')
         };
         state.activeRole = (state.currentUser.role || 'visitor').toLowerCase();
         state.authModalActive = false;
 
-        try {
-          localStorage.setItem('agrein_user_session', JSON.stringify(state.currentUser));
-        } catch (e) {}
+        // ✅ Save user to localStorage using StorageManager
+        StorageManager.saveUser(state.currentUser);
+        console.log('✅ Logged in & user saved to localStorage:', state.currentUser.email);
+
+        if (state.currentUser.role === 'FARMER' && typeof actions.fetchFarmerVerification === 'function') {
+          actions.fetchFarmerVerification();
+        } else if (state.currentUser.role === 'ADMIN' && typeof actions.fetchAdminVerifications === 'function') {
+          actions.fetchAdminVerifications();
+          actions.fetchRegisteredUsers();
+        }
 
         actions.triggerToast(`✅ Logged in as ${state.currentUser.full_name || state.currentUser.email}.`);
 
@@ -1586,6 +1593,9 @@ const actions = {
           state.mockData.farmerVerificationApp.sectionCompletion = state.mockData.farmerVerificationApp.sectionCompletion || {};
           state.mockData.farmerVerificationApp.sectionCompletion.documents = true;
           if (docType === 'farm_photo') state.mockData.farmerVerificationApp.sectionCompletion.photos = true;
+
+          // Auto-save to LocalStorage
+          StorageManager.saveFarmerVerification(state.mockData.farmerVerificationApp);
         }
 
         if (state.documentUploads[docType]) state.documentUploads[docType].progress = 100;
@@ -1616,6 +1626,9 @@ const actions = {
           state.mockData.farmerVerificationApp.sectionCompletion = state.mockData.farmerVerificationApp.sectionCompletion || {};
           state.mockData.farmerVerificationApp.sectionCompletion.documents = true;
           if (docType === 'farm_photo') state.mockData.farmerVerificationApp.sectionCompletion.photos = true;
+
+          // Auto-save to LocalStorage
+          StorageManager.saveFarmerVerification(state.mockData.farmerVerificationApp);
         }
         actions.triggerToast(`✅ ${docLabel} uploaded successfully!`);
         delete state.documentUploads[docType];
@@ -1632,10 +1645,10 @@ const actions = {
     reader.readAsDataURL(file);
   },
 
-  // Real-time verification field synchronization
+  // Real-time verification field synchronization with Auto-Save
   updateVerificationField(field, value) {
     if (!state.mockData.farmerVerificationApp) {
-      state.mockData.farmerVerificationApp = {
+      state.mockData.farmerVerificationApp = StorageManager.getFarmerVerification() || {
         status: 'DRAFT',
         documents: []
       };
@@ -1653,13 +1666,59 @@ const actions = {
       if (field === 'state') state.currentUser.state = value;
       if (field === 'lga') state.currentUser.lga = value;
       if (field === 'residential_address') state.currentUser.address = value;
+      StorageManager.saveUser(state.currentUser);
     }
+    // Auto-save draft so reload preserves every keystroke
+    StorageManager.saveFarmerVerification(app);
     renderApp();
+  },
+
+  // Load existing Farmer Verification from Server & LocalStorage
+  fetchFarmerVerification() {
+    if (!state.currentUser) return;
+    const token = state.currentUser.token || '';
+    const email = state.currentUser.email || '';
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (email) headers['x-user-email'] = email;
+
+    fetch('/api/farmers/verification', { headers })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success && data.application) {
+          const app = data.application;
+          const local = StorageManager.getFarmerVerification() || {};
+          
+          // Merge server application with local cache
+          const merged = {
+            ...local,
+            ...app,
+            documents: (app.documents && app.documents.length > 0) ? app.documents : (local.documents || [])
+          };
+          state.mockData.farmerVerificationApp = merged;
+          StorageManager.saveFarmerVerification(merged);
+
+          if (app.status && state.currentUser) {
+            state.currentUser.verification_status = app.status;
+            StorageManager.saveUser(state.currentUser);
+          }
+          console.log('✅ Farmer verification data loaded:', merged.status);
+          renderApp();
+        }
+      })
+      .catch(err => {
+        console.warn('[fetchFarmerVerification] Offline fallback:', err.message);
+        const local = StorageManager.getFarmerVerification();
+        if (local) {
+          state.mockData.farmerVerificationApp = local;
+          renderApp();
+        }
+      });
   },
 
   // Verification Actions with Strict Compulsory Field Checks
   submitFarmerVerification() {
-    const app = state.mockData.farmerVerificationApp || (state.mockData.farmerVerificationApp = { status: 'DRAFT', documents: [] });
+    const app = state.mockData.farmerVerificationApp || (state.mockData.farmerVerificationApp = StorageManager.getFarmerVerification() || { status: 'DRAFT', documents: [] });
 
     // Collect fresh values from DOM inputs if available
     const fullName = (document.getElementById('personalFullName')?.value || app.farmer_name || state.currentUser?.full_name || '').trim();
@@ -1764,40 +1823,13 @@ const actions = {
       app.farmer_name = app.farmer_name || state.currentUser.full_name;
     }
 
-    // Post to server
-    const token = (state.currentUser && state.currentUser.token) || '';
-    const userEmail = (state.currentUser && state.currentUser.email) || app.email || '';
-    const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (userEmail) headers['x-user-email'] = userEmail;
-
-    fetch('/api/farmers/verification', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        farmName: app.farm_name,
-        farmLocation: app.farm_location,
-        farmState: app.farm_state || app.state,
-        farmLga: app.farm_lga || app.lga,
-        farmSize: app.farm_size_acres,
-        farmType: app.farm_type,
-        cropsProduced: app.crops_produced,
-        yearsExperience: app.years_experience,
-        gpsLatitude: app.gps_latitude,
-        gpsLongitude: app.gps_longitude,
-        state: app.state,
-        lga: app.lga,
-        address: app.residential_address
-      })
-    }).catch(err => console.warn('[submitFarmerVerification] Background sync:', err.message));
-
-    // Mirror the complete app into the admin queue
+    // Mirror the complete app into the admin queue & local storage
     const fullAppRecord = {
       ...app,
       id: app.id,
       farmer_name: app.farmer_name || (state.currentUser && state.currentUser.full_name) || 'New Farmer',
-      farmer_email: app.farmer_email || userEmail,
-      email: app.email || userEmail,
+      farmer_email: app.farmer_email || (state.currentUser && state.currentUser.email) || '',
+      email: app.email || (state.currentUser && state.currentUser.email) || '',
       phone: app.phone || (state.currentUser && state.currentUser.phone_number) || '',
       state: app.state || '',
       lga: app.lga || '',
@@ -1818,6 +1850,53 @@ const actions = {
       submitted_at: app.submitted_at
     };
 
+    // Save full record to localStorage
+    StorageManager.saveFarmerVerification(fullAppRecord);
+
+    if (state.currentUser) {
+      state.currentUser.verification_status = 'PENDING_REVIEW';
+      StorageManager.saveUser(state.currentUser);
+    }
+
+    // Post to server
+    const token = (state.currentUser && state.currentUser.token) || '';
+    const userEmail = (state.currentUser && state.currentUser.email) || app.email || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (userEmail) headers['x-user-email'] = userEmail;
+
+    fetch('/api/farmers/verification', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        fullName: app.farmer_name,
+        phone: app.phone,
+        email: app.email,
+        farmName: app.farm_name,
+        farmLocation: app.farm_location,
+        farmState: app.farm_state || app.state,
+        farmLga: app.farm_lga || app.lga,
+        farmSize: app.farm_size_acres,
+        farmType: app.farm_type,
+        cropsProduced: app.crops_produced,
+        intendedProducts: app.intended_products,
+        yearsExperience: app.years_experience,
+        gpsLatitude: app.gps_latitude,
+        gpsLongitude: app.gps_longitude,
+        state: app.state,
+        lga: app.lga,
+        address: app.residential_address
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data && data.success && data.application) {
+        state.mockData.farmerVerificationApp = data.application;
+        StorageManager.saveFarmerVerification(data.application);
+      }
+    })
+    .catch(err => console.warn('[submitFarmerVerification] Background sync:', err.message));
+
     if (!state.mockData.adminVerifications) state.mockData.adminVerifications = [];
     const existingIdx = state.mockData.adminVerifications.findIndex(v => v.id === app.id || (v.farmer_email && v.farmer_email === userEmail));
     if (existingIdx >= 0) {
@@ -1833,25 +1912,40 @@ const actions = {
 
   // Farmer: Resubmit after CHANGES_REQUIRED
   resubmitVerification() {
-    const app = state.mockData.farmerVerificationApp;
+    const app = state.mockData.farmerVerificationApp || StorageManager.getFarmerVerification();
     if (app && app.status === 'CHANGES_REQUIRED') {
       app.status = 'PENDING_REVIEW';
       app.submitted_at = new Date().toISOString();
       app.changes_requested_notes = null;
+      StorageManager.saveFarmerVerification(app);
+
+      if (state.currentUser) {
+        state.currentUser.verification_status = 'PENDING_REVIEW';
+        StorageManager.saveUser(state.currentUser);
+      }
+
       actions.triggerToast('✅ Updated application resubmitted! Our team will review it again.');
-      // Redirect to pending approval view
       state.currentView = 'farmer-pending-approval';
       renderApp();
     }
   },
 
-  // Farmer: Re-apply after REJECTED
+  // Farmer: Re-apply after REJECTED (Preserves previous inputs for easy editing)
   reapplyVerification() {
+    const prev = state.mockData.farmerVerificationApp || StorageManager.getFarmerVerification() || {};
     state.mockData.farmerVerificationApp = {
+      ...prev,
       status: 'DRAFT',
-      sectionCompletion: { personal: false, farm: false, location: false, documents: false, photos: false }
+      rejection_reason: null,
+      admin_notes: null
     };
-    actions.triggerToast('📝 New verification application started. Complete all sections to submit.');
+    StorageManager.saveFarmerVerification(state.mockData.farmerVerificationApp);
+    if (state.currentUser) {
+      state.currentUser.verification_status = 'DRAFT';
+      StorageManager.saveUser(state.currentUser);
+    }
+    actions.triggerToast('📝 Application reopened in draft mode. Update any necessary fields and submit.');
+    state.currentView = 'farmer-verification';
     renderApp();
   },
 
@@ -2512,19 +2606,25 @@ const actions = {
 
   adminApproveFarmer(verificationId) {
     const vList = state.mockData.adminVerifications || [];
-    const dossier = vList.find(v => v.id === verificationId) || state.mockData.farmerVerificationApp;
+    const dossier = vList.find(v => v.id === verificationId) || state.mockData.farmerVerificationApp || state.adminInspectedDossier || state.adminReviewDossier;
     const targetEmail = dossier?.farmer_email || dossier?.email;
 
     if (dossier) {
       dossier.status = 'APPROVED';
+      dossier.rejection_reason = null;
+      dossier.changes_requested_notes = null;
       dossier.reviewed_at = new Date().toISOString();
     }
-    if (state.mockData.farmerVerificationApp) {
+    if (state.mockData.farmerVerificationApp && (state.mockData.farmerVerificationApp.id === verificationId || state.mockData.farmerVerificationApp.email === targetEmail || state.mockData.farmerVerificationApp.farmer_email === targetEmail)) {
       state.mockData.farmerVerificationApp.status = 'APPROVED';
+      state.mockData.farmerVerificationApp.rejection_reason = null;
+      state.mockData.farmerVerificationApp.changes_requested_notes = null;
       state.mockData.farmerVerificationApp.reviewed_at = new Date().toISOString();
+      StorageManager.saveFarmerVerification(state.mockData.farmerVerificationApp);
     }
     if (state.currentUser && (state.currentUser.email === targetEmail || state.currentUser.role === 'FARMER')) {
       state.currentUser.verification_status = 'APPROVED';
+      StorageManager.saveUser(state.currentUser);
     }
 
     if (targetEmail && state.registeredUsersList) {
@@ -2540,11 +2640,17 @@ const actions = {
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (state.currentUser?.email) headers['x-user-email'] = state.currentUser.email;
 
-    fetch(`/api/admin/farmer-verifications/${verificationId}/approve`, {
+    fetch(`/api/admin/farmer-verifications/${encodeURIComponent(verificationId)}/approve`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ adminNotes: 'Verified by SuperAdmin' })
-    }).catch(err => console.warn('[adminApproveFarmer] API Sync:', err.message));
+      body: JSON.stringify({ adminNotes: 'Verified by SuperAdmin', email: targetEmail })
+    })
+    .then(r => r.json())
+    .then(() => {
+      actions.fetchAdminVerifications();
+      actions.fetchRegisteredUsers();
+    })
+    .catch(err => console.warn('[adminApproveFarmer] API Sync:', err.message));
 
     state.adminInspectionModalActive = false;
     actions.triggerToast(`✅ ${dossier?.farmer_name || 'Farmer'} has been Approved & granted Golden Verified Status!`);
@@ -2556,15 +2662,29 @@ const actions = {
     if (!reason || !reason.trim()) return;
 
     const vList = state.mockData.adminVerifications || [];
-    const dossier = vList.find(v => v.id === verificationId) || state.mockData.farmerVerificationApp;
+    const dossier = vList.find(v => v.id === verificationId) || state.mockData.farmerVerificationApp || state.adminInspectedDossier || state.adminReviewDossier;
+    const targetEmail = dossier?.farmer_email || dossier?.email;
+
     if (dossier) {
       dossier.status = 'CHANGES_REQUIRED';
       dossier.changes_requested_notes = reason.trim();
       dossier.reviewed_at = new Date().toISOString();
     }
-    if (state.mockData.farmerVerificationApp) {
+    if (state.mockData.farmerVerificationApp && (state.mockData.farmerVerificationApp.id === verificationId || state.mockData.farmerVerificationApp.email === targetEmail || state.mockData.farmerVerificationApp.farmer_email === targetEmail)) {
       state.mockData.farmerVerificationApp.status = 'CHANGES_REQUIRED';
       state.mockData.farmerVerificationApp.changes_requested_notes = reason.trim();
+      StorageManager.saveFarmerVerification(state.mockData.farmerVerificationApp);
+    }
+    if (state.currentUser && (state.currentUser.email === targetEmail || state.currentUser.role === 'FARMER')) {
+      state.currentUser.verification_status = 'CHANGES_REQUIRED';
+      StorageManager.saveUser(state.currentUser);
+    }
+
+    if (targetEmail && state.registeredUsersList) {
+      const u = state.registeredUsersList.find(user => user.email.toLowerCase() === targetEmail.toLowerCase());
+      if (u) {
+        u.verification_status = 'CHANGES_REQUIRED';
+      }
     }
 
     const token = state.currentUser?.token || '';
@@ -2572,11 +2692,17 @@ const actions = {
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (state.currentUser?.email) headers['x-user-email'] = state.currentUser.email;
 
-    fetch(`/api/admin/farmer-verifications/${verificationId}/request-changes`, {
+    fetch(`/api/admin/farmer-verifications/${encodeURIComponent(verificationId)}/request-changes`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ reason: reason.trim() })
-    }).catch(() => {});
+      body: JSON.stringify({ reason: reason.trim(), email: targetEmail })
+    })
+    .then(r => r.json())
+    .then(() => {
+      actions.fetchAdminVerifications();
+      actions.fetchRegisteredUsers();
+    })
+    .catch(() => {});
 
     state.adminInspectionModalActive = false;
     actions.triggerToast(`🟠 Changes requested from ${dossier?.farmer_name || 'farmer'}.`);
@@ -2585,18 +2711,35 @@ const actions = {
 
   adminPromptReject(verificationId) {
     const reason = prompt('Enter reason for rejecting this verification application:');
-    if (!reason || !reason.trim()) return;
+    if (!reason || !reason.trim()) {
+      actions.triggerToast('⚠️ A rejection reason is required.');
+      return;
+    }
 
     const vList = state.mockData.adminVerifications || [];
-    const dossier = vList.find(v => v.id === verificationId) || state.mockData.farmerVerificationApp;
+    const dossier = vList.find(v => v.id === verificationId) || state.mockData.farmerVerificationApp || state.adminInspectedDossier || state.adminReviewDossier;
+    const targetEmail = dossier?.farmer_email || dossier?.email;
+
     if (dossier) {
       dossier.status = 'REJECTED';
       dossier.rejection_reason = reason.trim();
       dossier.reviewed_at = new Date().toISOString();
     }
-    if (state.mockData.farmerVerificationApp) {
+    if (state.mockData.farmerVerificationApp && (state.mockData.farmerVerificationApp.id === verificationId || state.mockData.farmerVerificationApp.email === targetEmail || state.mockData.farmerVerificationApp.farmer_email === targetEmail)) {
       state.mockData.farmerVerificationApp.status = 'REJECTED';
       state.mockData.farmerVerificationApp.rejection_reason = reason.trim();
+      StorageManager.saveFarmerVerification(state.mockData.farmerVerificationApp);
+    }
+    if (state.currentUser && (state.currentUser.email === targetEmail || state.currentUser.role === 'FARMER')) {
+      state.currentUser.verification_status = 'REJECTED';
+      StorageManager.saveUser(state.currentUser);
+    }
+
+    if (targetEmail && state.registeredUsersList) {
+      const u = state.registeredUsersList.find(user => user.email.toLowerCase() === targetEmail.toLowerCase());
+      if (u) {
+        u.verification_status = 'REJECTED';
+      }
     }
 
     const token = state.currentUser?.token || '';
@@ -2604,11 +2747,17 @@ const actions = {
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (state.currentUser?.email) headers['x-user-email'] = state.currentUser.email;
 
-    fetch(`/api/admin/farmer-verifications/${verificationId}/reject`, {
+    fetch(`/api/admin/farmer-verifications/${encodeURIComponent(verificationId)}/reject`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ reason: reason.trim() })
-    }).catch(() => {});
+      body: JSON.stringify({ reason: reason.trim(), email: targetEmail })
+    })
+    .then(r => r.json())
+    .then(() => {
+      actions.fetchAdminVerifications();
+      actions.fetchRegisteredUsers();
+    })
+    .catch(() => {});
 
     state.adminInspectionModalActive = false;
     actions.triggerToast(`🔴 Application rejected.`);
@@ -4334,6 +4483,76 @@ function loadAdminDashboard(state, actions) {
 // ═══════════════════════════════════════════════════════════════
 
 function _initPwaAndMobileExperience() {
+  // 0. Session, Verification Data & State Restoration from StorageManager
+  try {
+    const savedUser = StorageManager.getUser();
+    if (savedUser && savedUser.email) {
+      state.currentUser = savedUser;
+      state.activeRole = (savedUser.role || 'visitor').toLowerCase();
+      console.log('✅ User session restored:', savedUser.email, savedUser.role);
+    }
+  } catch (e) {
+    console.warn('⚠️ User restoration error:', e);
+  }
+
+  try {
+    const savedVerification = StorageManager.getFarmerVerification();
+    if (savedVerification) {
+      state.mockData.farmerVerificationApp = savedVerification;
+      console.log('✅ Farmer verification form data restored from local storage');
+    }
+  } catch (e) {}
+
+  try {
+    const savedCart = StorageManager.getCart();
+    if (Array.isArray(savedCart) && savedCart.length > 0) {
+      state.cart = savedCart;
+    }
+  } catch (e) {}
+
+  try {
+    const savedWishlist = StorageManager.getWishlist();
+    if (Array.isArray(savedWishlist) && savedWishlist.length > 0) {
+      state.wishlist = savedWishlist;
+    }
+  } catch (e) {}
+
+  try {
+    if (StorageManager.isDarkMode()) {
+      state.darkMode = true;
+      document.documentElement.classList.add('dark');
+    }
+  } catch (e) {}
+
+  // View routing & role synchronization on boot
+  try {
+    if (state.currentUser && state.currentUser.role === 'FARMER') {
+      const isApproved = state.currentUser.verification_status === 'APPROVED';
+      const hash = window.location.hash.replace('#', '').trim();
+      if (!isApproved) {
+        state.currentView = 'farmer-verification';
+      } else {
+        state.currentView = hash || 'farmer-dashboard';
+      }
+      if (typeof actions.fetchFarmerVerification === 'function') {
+        actions.fetchFarmerVerification();
+      }
+    } else if (state.currentUser && state.currentUser.role === 'ADMIN') {
+      const hash = window.location.hash.replace('#', '').trim();
+      state.currentView = hash || 'admin-dashboard';
+      if (typeof actions.fetchAdminVerifications === 'function') {
+        actions.fetchAdminVerifications();
+        actions.fetchRegisteredUsers();
+      }
+    } else if (state.currentUser && state.currentUser.role === 'BUYER') {
+      const hash = window.location.hash.replace('#', '').trim();
+      state.currentView = hash || 'buyer-dashboard';
+    } else {
+      const hash = window.location.hash.replace('#', '').trim();
+      if (hash) state.currentView = hash;
+    }
+  } catch (e) {}
+
   // 1. Register Progressive Web App Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

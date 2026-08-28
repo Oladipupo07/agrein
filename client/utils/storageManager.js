@@ -6,6 +6,7 @@ const StorageManager = {
   // Storage keys
   KEYS: {
     CURRENT_USER: 'agrein_user',
+    CURRENT_USER_ALT: 'agrein_user_session',
     USER_TOKEN: 'agrein_token',
     USER_ROLE: 'agrein_role',
     CART: 'agrein_cart',
@@ -14,6 +15,7 @@ const StorageManager = {
     DARK_MODE: 'agrein_dark_mode',
     CURRENT_VIEW: 'agrein_current_view',
     ALL_USERS: 'agrein_all_users', // Local user database backup
+    FARMER_VERIFICATION: 'agrein_farmer_verification_app', // Local draft/submitted verification
   },
 
   /**
@@ -23,7 +25,9 @@ const StorageManager = {
   saveUser(user) {
     if (!user || !user.email) return false;
     try {
-      localStorage.setItem(this.KEYS.CURRENT_USER, JSON.stringify(user));
+      const json = JSON.stringify(user);
+      localStorage.setItem(this.KEYS.CURRENT_USER, json);
+      localStorage.setItem(this.KEYS.CURRENT_USER_ALT, json);
       localStorage.setItem(this.KEYS.USER_TOKEN, user.token || '');
       localStorage.setItem(this.KEYS.USER_ROLE, user.role || 'BUYER');
       return true;
@@ -39,7 +43,7 @@ const StorageManager = {
    */
   getUser() {
     try {
-      const userJson = localStorage.getItem(this.KEYS.CURRENT_USER);
+      const userJson = localStorage.getItem(this.KEYS.CURRENT_USER) || localStorage.getItem(this.KEYS.CURRENT_USER_ALT);
       if (!userJson) return null;
       
       const user = JSON.parse(userJson);
@@ -60,11 +64,54 @@ const StorageManager = {
   clearUser() {
     try {
       localStorage.removeItem(this.KEYS.CURRENT_USER);
+      localStorage.removeItem(this.KEYS.CURRENT_USER_ALT);
       localStorage.removeItem(this.KEYS.USER_TOKEN);
       localStorage.removeItem(this.KEYS.USER_ROLE);
+      localStorage.removeItem(this.KEYS.FARMER_VERIFICATION);
       return true;
     } catch (e) {
       console.warn('❌ Failed to clear user from localStorage:', e.message);
+      return false;
+    }
+  },
+
+  /**
+   * Save farmer verification application draft/submitted state
+   * @param {Object} app - Verification application object
+   */
+  saveFarmerVerification(app) {
+    if (!app) return false;
+    try {
+      localStorage.setItem(this.KEYS.FARMER_VERIFICATION, JSON.stringify(app));
+      return true;
+    } catch (e) {
+      console.warn('⚠️ Failed to save farmer verification to localStorage:', e.message);
+      return false;
+    }
+  },
+
+  /**
+   * Retrieve farmer verification application from localStorage
+   * @returns {Object|null} Application object or null
+   */
+  getFarmerVerification() {
+    try {
+      const appJson = localStorage.getItem(this.KEYS.FARMER_VERIFICATION);
+      return appJson ? JSON.parse(appJson) : null;
+    } catch (e) {
+      console.warn('⚠️ Failed to retrieve farmer verification from localStorage:', e.message);
+      return null;
+    }
+  },
+
+  /**
+   * Clear farmer verification application from localStorage
+   */
+  clearFarmerVerification() {
+    try {
+      localStorage.removeItem(this.KEYS.FARMER_VERIFICATION);
+      return true;
+    } catch (e) {
       return false;
     }
   },

@@ -361,7 +361,7 @@ const authController = {
   // Admin: Update a farmer's verification status.
   async updateUserVerificationStatus(req, res) {
     try {
-      const { email, status } = req.body;
+      const { email, status, reason, adminNotes } = req.body;
       if (!email || !status) {
         return res.status(400).json({ success: false, message: 'Email and verification status are required.' });
       }
@@ -381,6 +381,23 @@ const authController = {
         .maybeSingle();
       if (error) throw error;
       if (!data) return res.status(404).json({ success: false, message: 'User not found in database.' });
+
+      // Keep farmer_verifications table in sync
+      const vUpdates = {
+        user_id: data.id,
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+        reviewed_at: new Date().toISOString(),
+        admin_notes: adminNotes || reason || null
+      };
+      if (newStatus === 'REJECTED') vUpdates.rejection_reason = reason || adminNotes || 'Rejected by admin';
+      if (newStatus === 'CHANGES_REQUIRED') vUpdates.changes_requested_notes = reason || adminNotes || 'Corrections requested';
+      if (newStatus === 'APPROVED') {
+        vUpdates.rejection_reason = null;
+        vUpdates.changes_requested_notes = null;
+      }
+
+      await sb.from('farmer_verifications').upsert(vUpdates, { onConflict: 'user_id' });
 
       const updated = profileToRecord(data);
       res.json({

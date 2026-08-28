@@ -3,36 +3,39 @@
 const supabase = require('../utils/supabaseClient');
 
 function dossierForClient(row, profile, docs, farmProfile) {
-  const fp = farmProfile || (row && row.farmer_profiles) || {};
+  const r = row || {};
+  const p = profile || (r && r.profiles) || {};
+  const fp = farmProfile || (r && r.farmer_profiles) || {};
   return {
-    id: row.id,
-    farmer_id: row.user_id,
-    farmer_name: (profile && profile.full_name) || row.farmer_name || 'New Agrein Farmer',
-    email: (profile && profile.email) || row.email || (row.profiles && row.profiles.email) || null,
-    phone: (profile && profile.phone_number) || row.phone || (row.profiles && row.profiles.phone_number) || null,
-    state: (profile && profile.state) || row.state || fp.farm_state || null,
-    lga: (profile && profile.lga) || row.lga || fp.farm_lga || null,
-    residential_address: (profile && profile.address) || row.residential_address || null,
-    farm_name: fp.farm_name || row.farm_name || 'Agro Farm',
-    farm_type: fp.farm_type || row.farm_type || 'Crop Farming',
-    farm_size_acres: fp.farm_size_acres || row.farm_size_acres || 0,
-    years_experience: fp.years_experience !== undefined ? fp.years_experience : (row.years_experience || 0),
-    crops_produced: fp.crops_produced || row.crops_produced || [],
-    intended_products: fp.intended_products || row.intended_products || null,
-    farm_location: fp.farm_location || row.farm_location || row.farm_state || null,
-    farm_state: fp.farm_state || row.farm_state || row.state || (profile ? profile.state : null),
-    farm_lga: fp.farm_lga || row.farm_lga || row.lga || (profile ? profile.lga : null),
-    gps_latitude: fp.gps_latitude || row.gps_latitude || null,
-    gps_longitude: fp.gps_longitude || row.gps_longitude || null,
-    status: row.status || 'PENDING_REVIEW',
-    nin_masked: row.nin_number ? `••••••••${String(row.nin_number).slice(-3)}` : '••••••••789',
-    bvn_masked: row.bvn_number ? `••••••••${String(row.bvn_number).slice(-3)}` : '••••••••456',
-    submitted_at: row.submitted_at,
-    reviewed_at: row.reviewed_at,
-    reviewed_by: row.reviewed_by,
-    admin_notes: row.admin_notes,
-    rejection_reason: row.rejection_reason,
-    changes_requested_notes: row.changes_requested_notes,
+    id: r.id || `ver-${p.id || p.email || 'new'}`,
+    farmer_id: r.user_id || p.id,
+    farmer_name: (p && p.full_name) || r.farmer_name || (p && p.email ? p.email.split('@')[0] : 'New Agrein Farmer'),
+    email: (p && p.email) || r.email || r.farmer_email || null,
+    farmer_email: (p && p.email) || r.email || r.farmer_email || null,
+    phone: (p && p.phone_number) || r.phone || null,
+    state: (p && p.state) || r.state || fp.farm_state || null,
+    lga: (p && p.lga) || r.lga || fp.farm_lga || null,
+    residential_address: (p && p.address) || r.residential_address || null,
+    farm_name: fp.farm_name || r.farm_name || 'Agro Farm',
+    farm_type: fp.farm_type || r.farm_type || 'Crop Farming',
+    farm_size_acres: fp.farm_size_acres !== undefined ? Number(fp.farm_size_acres) : (r.farm_size_acres ? Number(r.farm_size_acres) : 0),
+    years_experience: fp.years_experience !== undefined ? Number(fp.years_experience) : (r.years_experience !== undefined ? Number(r.years_experience) : 0),
+    crops_produced: Array.isArray(fp.crops_produced) ? fp.crops_produced : (Array.isArray(r.crops_produced) ? r.crops_produced : (typeof fp.crops_produced === 'string' ? fp.crops_produced.split(',').map(s => s.trim()).filter(Boolean) : [])),
+    intended_products: fp.intended_products || r.intended_products || null,
+    farm_location: fp.farm_location || r.farm_location || (p && p.address) || fp.farm_state || 'Nigeria',
+    farm_state: fp.farm_state || r.farm_state || (p && p.state) || 'Nigeria',
+    farm_lga: fp.farm_lga || r.farm_lga || (p && p.lga) || '',
+    gps_latitude: fp.gps_latitude !== undefined && fp.gps_latitude !== null ? Number(fp.gps_latitude) : (r.gps_latitude ? Number(r.gps_latitude) : null),
+    gps_longitude: fp.gps_longitude !== undefined && fp.gps_longitude !== null ? Number(fp.gps_longitude) : (r.gps_longitude ? Number(r.gps_longitude) : null),
+    status: (p && p.verification_status) || r.status || 'PENDING_REVIEW',
+    nin_masked: r.nin_number ? `••••••••${String(r.nin_number).slice(-3)}` : '••••••••789',
+    bvn_masked: r.bvn_number ? `••••••••${String(r.bvn_number).slice(-3)}` : '••••••••456',
+    submitted_at: r.submitted_at || p.created_at || new Date().toISOString(),
+    reviewed_at: r.reviewed_at || null,
+    reviewed_by: r.reviewed_by || null,
+    admin_notes: r.admin_notes || null,
+    rejection_reason: r.rejection_reason || null,
+    changes_requested_notes: r.changes_requested_notes || null,
     documents: (docs || []).map((d) => ({
       id: d.id,
       type: d.document_type,
@@ -74,21 +77,27 @@ const verificationController = {
         .limit(1)
         .maybeSingle();
 
-      // No record yet — synthesize a stub so the dashboard can render.
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', farmerId).maybeSingle();
+      const { data: farmProf } = await supabase.from('farmer_profiles').select('*').eq('user_id', farmerId).maybeSingle();
+      
+      let docs = [];
+      if (row && row.id) {
+        const { data: docRows } = await supabase.from('verification_documents').select('*').eq('verification_id', row.id);
+        docs = docRows || [];
+      }
+
       if (!row) {
         return res.json({
           success: true,
-          application: {
-            farmer_id: farmerId,
-            farmer_name: (req.user.email || '').split('@')[0],
-            status: 'NOT_STARTED',
-            documents: []
-          }
+          application: dossierForClient({
+            user_id: farmerId,
+            status: (profile && profile.verification_status) || 'DRAFT',
+            farmer_name: (profile && profile.full_name) || (req.user.email || '').split('@')[0]
+          }, profile, docs, farmProf)
         });
       }
-      const { data: profile } = await supabase.from('profiles').select('*').eq('id', farmerId).maybeSingle();
-      const { data: docs } = await supabase.from('verification_documents').select('*').eq('verification_id', row.id);
-      return res.json({ success: true, application: dossierForClient(row, profile, docs) });
+
+      return res.json({ success: true, application: dossierForClient(row, profile, docs, farmProf) });
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -99,22 +108,33 @@ const verificationController = {
       if (!req.user || !req.user.id) return res.status(401).json({ success: false, message: 'Login required.' });
       const { data: row } = await supabase
         .from('farmer_verifications')
-        .select('status, submitted_at, reviewed_at, changes_requested_notes, rejection_reason')
+        .select('status, submitted_at, reviewed_at, changes_requested_notes, rejection_reason, admin_notes')
         .eq('user_id', req.user.id)
         .order('submitted_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (!row) return res.json({ success: true, status: 'NOT_STARTED' });
-      return res.json({ success: true, ...row });
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('verification_status')
+        .eq('id', req.user.id)
+        .maybeSingle();
+
+      if (!row && !profile) return res.json({ success: true, status: 'NOT_STARTED' });
+      return res.json({
+        success: true,
+        status: (profile && profile.verification_status) || (row && row.status) || 'NOT_STARTED',
+        submitted_at: row && row.submitted_at,
+        reviewed_at: row && row.reviewed_at,
+        changes_requested_notes: row && row.changes_requested_notes,
+        rejection_reason: row && row.rejection_reason,
+        admin_notes: row && row.admin_notes
+      });
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });
     }
   },
 
-  // Public-by-email lookup used by the farmer verification-status polling
-  // loop. Returns ONLY the verification_status (and role) — no PII. This
-  // replaces the previous approach of calling /api/admin/users every 10s
-  // from a non-admin farmer, which 401'd on every poll.
   async getPublicVerificationStatus(req, res) {
     try {
       const email = String((req.query && req.query.email) || '').trim().toLowerCase();
@@ -123,16 +143,35 @@ const verificationController = {
       }
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('role, verification_status')
+        .select('id, role, verification_status')
         .eq('email', email)
         .maybeSingle();
       if (error) throw error;
       if (!profile) return res.json({ success: true, found: false, verification_status: null });
+
+      let rejectionReason = null;
+      let changesRequestedNotes = null;
+      if (profile.id) {
+        const { data: vRow } = await supabase
+          .from('farmer_verifications')
+          .select('rejection_reason, changes_requested_notes')
+          .eq('user_id', profile.id)
+          .order('submitted_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (vRow) {
+          rejectionReason = vRow.rejection_reason;
+          changesRequestedNotes = vRow.changes_requested_notes;
+        }
+      }
+
       return res.json({
         success: true,
         found: true,
         role: (profile.role || '').toUpperCase(),
-        verification_status: profile.verification_status || 'NOT_STARTED'
+        verification_status: profile.verification_status || 'NOT_STARTED',
+        rejection_reason: rejectionReason,
+        changes_requested_notes: changesRequestedNotes
       });
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });
@@ -191,21 +230,32 @@ const verificationController = {
       if (!req.user || !req.user.id) return res.status(401).json({ success: false, message: 'Login required.' });
       const farmerId = req.user.id;
       const {
+        fullName, phone,
         nin, bvn, adminNotes,
         farmName, farmLocation, farmSize, farmType, cropsProduced, yearsExperience,
-        state, lga, address, farmState, farmLga, gpsLatitude, gpsLongitude
+        state, lga, address, farmState, farmLga, gpsLatitude, gpsLongitude, intendedProducts
       } = req.body || {};
       const cleanNin = (nin && String(nin).trim()) || '12345678901';
       const cleanBvn = (bvn && String(bvn).trim()) || '12345678901';
 
-      // Update the profile with the residential/farm info submitted.
-      await supabase.from('profiles').update({
+      // Update the profile with personal & contact details
+      const profileUpdates = {
         state: state || null,
         lga: lga || null,
-        address: address || null
-      }).eq('id', farmerId);
+        address: address || null,
+        verification_status: 'PENDING_REVIEW',
+        updated_at: new Date().toISOString()
+      };
+      if (fullName && fullName.trim()) profileUpdates.full_name = fullName.trim();
+      if (phone && phone.trim()) profileUpdates.phone_number = phone.trim();
 
-      // Persist the farmer map profile so Nearby Farms can render real GPS points.
+      await supabase.from('profiles').update(profileUpdates).eq('id', farmerId);
+
+      // Persist the farmer profile so Nearby Farms and Admin can inspect real operational details
+      const parsedCrops = Array.isArray(cropsProduced)
+        ? cropsProduced
+        : String(cropsProduced || '').split(',').map((x) => x.trim()).filter(Boolean);
+
       await supabase.from('farmer_profiles').upsert({
         user_id: farmerId,
         farm_name: farmName || 'Agrein Verified Farm',
@@ -213,32 +263,27 @@ const verificationController = {
         farm_state: farmState || state || 'Unknown',
         farm_lga: farmLga || lga || 'Unknown',
         farm_size_acres: Number(farmSize || 0),
-        farm_type: farmType || 'Crop',
-        crops_produced: Array.isArray(cropsProduced)
-          ? cropsProduced
-          : String(cropsProduced || '').split(',').map((x) => x.trim()).filter(Boolean),
+        farm_type: farmType || 'Crop Farming',
+        crops_produced: parsedCrops,
         years_experience: Number(yearsExperience || 0),
         gps_latitude: gpsLatitude != null && gpsLatitude !== '' ? Number(gpsLatitude) : null,
         gps_longitude: gpsLongitude != null && gpsLongitude !== '' ? Number(gpsLongitude) : null,
-        intended_products: Array.isArray(cropsProduced)
-          ? cropsProduced.join(', ')
-          : (cropsProduced || null)
+        intended_products: intendedProducts || (Array.isArray(cropsProduced) ? cropsProduced.join(', ') : (cropsProduced || null))
       }, { onConflict: 'user_id' });
 
-      // Upsert a verification row in PENDING_REVIEW.
+      // Upsert verification row in PENDING_REVIEW
       const { data: row, error } = await supabase.from('farmer_verifications').upsert({
         user_id: farmerId,
         status: 'PENDING_REVIEW',
         nin_number: cleanNin,
         bvn_number: cleanBvn,
         admin_notes: adminNotes || null,
+        rejection_reason: null,
+        changes_requested_notes: null,
         submitted_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id' }).select('*').single();
       if (error) throw error;
-
-      // Move the profile into PENDING so the dashboards flip.
-      await supabase.from('profiles').update({ verification_status: 'PENDING_REVIEW' }).eq('id', farmerId);
 
       const { data: docs } = await supabase
         .from('verification_documents')
@@ -249,7 +294,7 @@ const verificationController = {
 
       return res.status(201).json({
         success: true,
-        message: 'Verification submitted. Our team will review.',
+        message: 'Verification application submitted successfully. Our team will review.',
         application: dossierForClient(row, profile, docs, farmProf)
       });
     } catch (err) {
@@ -267,13 +312,17 @@ const verificationController = {
           status: 'PENDING_REVIEW',
           submitted_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          admin_notes: response_message || null
+          admin_notes: response_message || null,
+          changes_requested_notes: null
         })
         .eq('id', application_id)
         .select('*')
         .maybeSingle();
       if (error) throw error;
       if (!data) return res.status(404).json({ success: false, message: 'Application not found.' });
+
+      await supabase.from('profiles').update({ verification_status: 'PENDING_REVIEW' }).eq('id', req.user.id);
+
       if (updated_documents_url) {
         await supabase.from('verification_documents').insert({
           verification_id: application_id,
@@ -290,30 +339,64 @@ const verificationController = {
   async getAdminFarmerVerifications(req, res) {
     try {
       const { status } = req.query;
+      
+      // Fetch all verification rows
       let query = supabase
         .from('farmer_verifications')
-        .select('*, profiles:user_id (id, email, full_name, phone_number, role, address, state, lga), farmer_profiles:user_id (*), verification_documents(*)')
+        .select('*, profiles:user_id (id, email, full_name, phone_number, role, address, state, lga, verification_status), farmer_profiles:user_id (*), verification_documents(*)')
         .order('submitted_at', { ascending: false });
       if (status && status !== 'ALL') query = query.eq('status', status);
       const { data, error } = await query;
       if (error) throw error;
 
-      const all = data || [];
+      let all = data || [];
+
+      // Also ensure all registered farmers in profiles are included if not already in verification table
+      const { data: allFarmerProfiles } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, phone_number, role, address, state, lga, verification_status, created_at')
+        .eq('role', 'FARMER');
+
+      const { data: allFarmProfiles } = await supabase.from('farmer_profiles').select('*');
+      const { data: allDocs } = await supabase.from('verification_documents').select('*');
+
+      const existingUserIds = new Set(all.map(v => v.user_id).filter(Boolean));
+      
+      if (Array.isArray(allFarmerProfiles)) {
+        for (const fProfile of allFarmerProfiles) {
+          if (!existingUserIds.has(fProfile.id)) {
+            const fp = (allFarmProfiles || []).find(fpItem => fpItem.user_id === fProfile.id) || {};
+            const docs = (allDocs || []).filter(d => d.verification_id === fProfile.id);
+            all.push({
+              id: `ver-${fProfile.id}`,
+              user_id: fProfile.id,
+              status: fProfile.verification_status || 'PENDING_REVIEW',
+              submitted_at: fProfile.created_at,
+              profiles: fProfile,
+              farmer_profiles: fp,
+              verification_documents: docs
+            });
+          }
+        }
+      }
+
       const metrics = {
         total_farmers: all.length,
-        verified_farmers: all.filter((v) => v.status === 'APPROVED').length,
-        pending_review: all.filter((v) => v.status === 'PENDING_REVIEW').length,
+        verified_farmers: all.filter((v) => (v.status === 'APPROVED' || (v.profiles && v.profiles.verification_status === 'APPROVED'))).length,
+        pending_review: all.filter((v) => (v.status === 'PENDING_REVIEW' || v.status === 'PENDING' || (v.profiles && v.profiles.verification_status === 'PENDING_REVIEW'))).length,
         under_review: all.filter((v) => v.status === 'UNDER_REVIEW').length,
-        changes_required: all.filter((v) => v.status === 'CHANGES_REQUIRED').length,
-        rejected: all.filter((v) => v.status === 'REJECTED').length,
+        changes_required: all.filter((v) => (v.status === 'CHANGES_REQUIRED' || (v.profiles && v.profiles.verification_status === 'CHANGES_REQUIRED'))).length,
+        rejected: all.filter((v) => (v.status === 'REJECTED' || (v.profiles && v.profiles.verification_status === 'REJECTED'))).length,
         suspended: all.filter((v) => v.status === 'SUSPENDED').length,
         approval_rate_percent: all.length ? `${Math.round((all.filter((v) => v.status === 'APPROVED').length / all.length) * 1000) / 10}%` : '0%',
         avg_review_time: '18 hours'
       };
+
       const applications = all.map((row) => {
         const fp = Array.isArray(row.farmer_profiles) ? row.farmer_profiles[0] : row.farmer_profiles;
         return dossierForClient(row, row.profiles, row.verification_documents, fp);
       });
+
       return res.json({ success: true, metrics, applications });
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });
@@ -323,23 +406,45 @@ const verificationController = {
   async getFarmerVerificationDossier(req, res) {
     try {
       const { id } = req.params;
-      const { data, error } = await supabase
+      let targetId = id;
+      
+      let { data, error } = await supabase
         .from('farmer_verifications')
-        .select('*, profiles:user_id (id, email, full_name, phone_number, role), verification_documents(*)')
-        .eq('id', id)
+        .select('*, profiles:user_id (id, email, full_name, phone_number, role, address, state, lga, verification_status), farmer_profiles:user_id (*), verification_documents(*)')
+        .or(`id.eq.${targetId},user_id.eq.${targetId}`)
         .maybeSingle();
-      if (error) throw error;
-      if (!data) return res.status(404).json({ success: false, message: 'Dossier not found.' });
+
+      if (!data) {
+        // Try looking up profile by email or ID
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('*')
+          .or(`id.eq.${targetId},email.eq.${targetId}`)
+          .maybeSingle();
+
+        if (prof) {
+          const { data: farmProf } = await supabase.from('farmer_profiles').select('*').eq('user_id', prof.id).maybeSingle();
+          const { data: docs } = await supabase.from('verification_documents').select('*').eq('verification_id', prof.id);
+          return res.json({
+            success: true,
+            dossier: dossierForClient({ user_id: prof.id, status: prof.verification_status || 'PENDING_REVIEW' }, prof, docs || [], farmProf),
+            auditLogs: []
+          });
+        }
+        return res.status(404).json({ success: false, message: 'Dossier not found.' });
+      }
 
       const { data: auditLogs } = await supabase
         .from('verification_audit_logs')
         .select('*')
-        .eq('verification_id', id)
+        .eq('verification_id', data.id)
         .order('created_at', { ascending: false });
+
+      const fp = Array.isArray(data.farmer_profiles) ? data.farmer_profiles[0] : data.farmer_profiles;
 
       return res.json({
         success: true,
-        dossier: dossierForClient(data, data.profiles, data.verification_documents),
+        dossier: dossierForClient(data, data.profiles, data.verification_documents, fp),
         auditLogs: auditLogs || []
       });
     } catch (err) {
@@ -349,11 +454,12 @@ const verificationController = {
 
   async logAudit(verificationRow, adminId, adminEmail, action, prevStatus, newStatus, reason) {
     try {
+      if (!verificationRow || !verificationRow.id) return;
       await supabase.from('verification_audit_logs').insert({
         verification_id: verificationRow.id,
         farmer_id: verificationRow.user_id,
-        admin_id: adminId,
-        admin_email: adminEmail || 'admin@agrein.me',
+        admin_id: adminId || verificationRow.user_id,
+        admin_email: adminEmail || 'admin@agrein.ng',
         action,
         previous_status: prevStatus,
         new_status: newStatus,
@@ -362,20 +468,51 @@ const verificationController = {
     } catch (err) { console.warn('[verification] audit log failed:', err.message); }
   },
 
+  // Helper to resolve verification row or create one for target ID/email
+  async resolveVerificationTarget(id) {
+    if (!id) return null;
+    // 1. Try finding by id
+    let { data: row } = await supabase.from('farmer_verifications').select('*').eq('id', id).maybeSingle();
+    if (row) return row;
+
+    // 2. Try finding by user_id
+    let { data: rowByUid } = await supabase.from('farmer_verifications').select('*').eq('user_id', id).maybeSingle();
+    if (rowByUid) return rowByUid;
+
+    // 3. Try finding profile by email or ID
+    let { data: profile } = await supabase.from('profiles').select('id, email, verification_status').or(`id.eq.${id},email.eq.${id}`).maybeSingle();
+    if (profile) {
+      // Upsert a verification row
+      const { data: newRow } = await supabase.from('farmer_verifications').upsert({
+        user_id: profile.id,
+        status: profile.verification_status || 'PENDING_REVIEW',
+        submitted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' }).select('*').single();
+      return newRow;
+    }
+
+    return null;
+  },
+
   async startReview(req, res) {
     try {
       const { id } = req.params;
+      const target = await verificationController.resolveVerificationTarget(id);
+      if (!target) return res.status(404).json({ success: false, message: 'Application not found.' });
+
       const { data: row, error } = await supabase
         .from('farmer_verifications')
         .update({ status: 'UNDER_REVIEW', reviewed_by: req.user && req.user.id, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .eq('status', 'PENDING_REVIEW')
+        .eq('id', target.id)
         .select('*')
         .maybeSingle();
       if (error) throw error;
-      if (!row) return res.status(400).json({ success: false, message: 'Cannot start review on this row.' });
-      await verificationController.logAudit(row, req.user && req.user.id, req.user && req.user.email, 'STARTED_REVIEW', 'PENDING_REVIEW', 'UNDER_REVIEW', null);
-      return res.json({ success: true, message: 'Review started.', application: row });
+
+      await supabase.from('profiles').update({ verification_status: 'UNDER_REVIEW' }).eq('id', target.user_id);
+      await verificationController.logAudit(row || target, req.user && req.user.id, req.user && req.user.email, 'STARTED_REVIEW', target.status, 'UNDER_REVIEW', null);
+      
+      return res.json({ success: true, message: 'Review started.', application: row || target });
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -385,25 +522,34 @@ const verificationController = {
     try {
       const { id } = req.params;
       const { adminNotes } = req.body || {};
-      const prevStatus = (await supabase.from('farmer_verifications').select('status,user_id').eq('id', id).maybeSingle()).data;
+      const target = await verificationController.resolveVerificationTarget(id);
+      if (!target) return res.status(404).json({ success: false, message: 'Application not found.' });
+
+      const prevStatus = target.status;
       const { data, error } = await supabase
         .from('farmer_verifications')
-        .update({ status: 'APPROVED', reviewed_at: new Date().toISOString(), reviewed_by: req.user && req.user.id, admin_notes: adminNotes || null })
-        .eq('id', id)
+        .update({
+          status: 'APPROVED',
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: req.user && req.user.id,
+          admin_notes: adminNotes || 'Approved by administrator',
+          rejection_reason: null,
+          changes_requested_notes: null
+        })
+        .eq('id', target.id)
         .select('*')
         .maybeSingle();
       if (error) throw error;
-      if (!data) return res.status(404).json({ success: false, message: 'Application not found.' });
+
       await supabase.from('profiles').update({
         verification_status: 'APPROVED',
         is_verified: true,
-        // Newly verified farmers start with a strong trust signal so buyer
-        // dashboards render a meaningful score on first load. This is the
-        // floor; subsequent orders/reviews recompute it elsewhere.
-        trust_score: 80
-      }).eq('id', data.user_id);
-      await verificationController.logAudit(data, req.user && req.user.id, req.user && req.user.email, 'APPROVED', prevStatus && prevStatus.status, 'APPROVED', adminNotes || null);
-      return res.json({ success: true, message: 'Farmer approved.', application: data });
+        trust_score: 85
+      }).eq('id', target.user_id);
+
+      await verificationController.logAudit(data || target, req.user && req.user.id, req.user && req.user.email, 'APPROVED', prevStatus, 'APPROVED', adminNotes || 'Approved by administrator');
+      
+      return res.json({ success: true, message: 'Farmer verified and approved successfully.', application: data || target });
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -413,19 +559,32 @@ const verificationController = {
     try {
       const { id } = req.params;
       const { reason } = req.body || {};
-      if (!reason) return res.status(400).json({ success: false, message: 'Reason required.' });
-      const prev = (await supabase.from('farmer_verifications').select('status,user_id').eq('id', id).maybeSingle()).data;
+      if (!reason || !reason.trim()) return res.status(400).json({ success: false, message: 'Correction note/reason is required.' });
+      
+      const target = await verificationController.resolveVerificationTarget(id);
+      if (!target) return res.status(404).json({ success: false, message: 'Application not found.' });
+
+      const prevStatus = target.status;
+      const cleanReason = reason.trim();
+
       const { data, error } = await supabase
         .from('farmer_verifications')
-        .update({ status: 'CHANGES_REQUIRED', changes_requested_notes: reason, admin_notes: reason, reviewed_at: new Date().toISOString(), reviewed_by: req.user && req.user.id })
-        .eq('id', id)
+        .update({
+          status: 'CHANGES_REQUIRED',
+          changes_requested_notes: cleanReason,
+          admin_notes: cleanReason,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: req.user && req.user.id
+        })
+        .eq('id', target.id)
         .select('*')
         .maybeSingle();
       if (error) throw error;
-      if (!data) return res.status(404).json({ success: false, message: 'Application not found.' });
-      await supabase.from('profiles').update({ verification_status: 'CHANGES_REQUIRED' }).eq('id', data.user_id);
-      await verificationController.logAudit(data, req.user && req.user.id, req.user && req.user.email, 'REQUESTED_CHANGES', prev && prev.status, 'CHANGES_REQUIRED', reason);
-      return res.json({ success: true, message: 'Changes requested.', application: data });
+
+      await supabase.from('profiles').update({ verification_status: 'CHANGES_REQUIRED' }).eq('id', target.user_id);
+      await verificationController.logAudit(data || target, req.user && req.user.id, req.user && req.user.email, 'REQUESTED_CHANGES', prevStatus, 'CHANGES_REQUIRED', cleanReason);
+      
+      return res.json({ success: true, message: 'Corrections requested from farmer.', application: data || target });
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -435,19 +594,32 @@ const verificationController = {
     try {
       const { id } = req.params;
       const { reason } = req.body || {};
-      if (!reason) return res.status(400).json({ success: false, message: 'Reason required.' });
-      const prev = (await supabase.from('farmer_verifications').select('status,user_id').eq('id', id).maybeSingle()).data;
+      if (!reason || !reason.trim()) return res.status(400).json({ success: false, message: 'Rejection reason is mandatory.' });
+
+      const target = await verificationController.resolveVerificationTarget(id);
+      if (!target) return res.status(404).json({ success: false, message: 'Application not found.' });
+
+      const prevStatus = target.status;
+      const cleanReason = reason.trim();
+
       const { data, error } = await supabase
         .from('farmer_verifications')
-        .update({ status: 'REJECTED', rejection_reason: reason, admin_notes: reason, reviewed_at: new Date().toISOString() })
-        .eq('id', id)
+        .update({
+          status: 'REJECTED',
+          rejection_reason: cleanReason,
+          admin_notes: cleanReason,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: req.user && req.user.id
+        })
+        .eq('id', target.id)
         .select('*')
         .maybeSingle();
       if (error) throw error;
-      if (!data) return res.status(404).json({ success: false, message: 'Application not found.' });
-      await supabase.from('profiles').update({ verification_status: 'REJECTED' }).eq('id', data.user_id);
-      await verificationController.logAudit(data, req.user && req.user.id, req.user && req.user.email, 'REJECTED', prev && prev.status, 'REJECTED', reason);
-      return res.json({ success: true, message: 'Application rejected.', application: data });
+
+      await supabase.from('profiles').update({ verification_status: 'REJECTED' }).eq('id', target.user_id);
+      await verificationController.logAudit(data || target, req.user && req.user.id, req.user && req.user.email, 'REJECTED', prevStatus, 'REJECTED', cleanReason);
+      
+      return res.json({ success: true, message: 'Application rejected with reason.', application: data || target });
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -457,19 +629,21 @@ const verificationController = {
     try {
       const { id } = req.params;
       const { reason } = req.body || {};
-      if (!reason) return res.status(400).json({ success: false, message: 'Reason required.' });
-      const prev = (await supabase.from('farmer_verifications').select('status,user_id').eq('id', id).maybeSingle()).data;
+      const target = await verificationController.resolveVerificationTarget(id);
+      if (!target) return res.status(404).json({ success: false, message: 'Farmer not found.' });
+
+      const cleanReason = (reason || 'Quality or compliance dispute under investigation').trim();
       const { data, error } = await supabase
         .from('farmer_verifications')
-        .update({ status: 'SUSPENDED', admin_notes: `SUSPENDED: ${reason}` })
-        .eq('id', id)
+        .update({ status: 'SUSPENDED', admin_notes: `SUSPENDED: ${cleanReason}` })
+        .eq('id', target.id)
         .select('*')
         .maybeSingle();
       if (error) throw error;
-      if (!data) return res.status(404).json({ success: false, message: 'Application not found.' });
-      await supabase.from('profiles').update({ verification_status: 'SUSPENDED', is_suspended: true, suspension_reason: reason }).eq('id', data.user_id);
-      await verificationController.logAudit(data, req.user && req.user.id, req.user && req.user.email, 'SUSPENDED', prev && prev.status, 'SUSPENDED', reason);
-      return res.json({ success: true, message: 'Farmer suspended.', application: data });
+
+      await supabase.from('profiles').update({ verification_status: 'SUSPENDED', is_suspended: true, suspension_reason: cleanReason }).eq('id', target.user_id);
+      await verificationController.logAudit(data || target, req.user && req.user.id, req.user && req.user.email, 'SUSPENDED', target.status, 'SUSPENDED', cleanReason);
+      return res.json({ success: true, message: 'Farmer suspended.', application: data || target });
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -478,18 +652,20 @@ const verificationController = {
   async reinstateFarmer(req, res) {
     try {
       const { id } = req.params;
-      const prev = (await supabase.from('farmer_verifications').select('status,user_id').eq('id', id).maybeSingle()).data;
+      const target = await verificationController.resolveVerificationTarget(id);
+      if (!target) return res.status(404).json({ success: false, message: 'Farmer not found.' });
+
       const { data, error } = await supabase
         .from('farmer_verifications')
-        .update({ status: 'APPROVED', admin_notes: 'Reinstated after audit review.' })
-        .eq('id', id)
+        .update({ status: 'APPROVED', admin_notes: 'Reinstated after audit review.', rejection_reason: null })
+        .eq('id', target.id)
         .select('*')
         .maybeSingle();
       if (error) throw error;
-      if (!data) return res.status(404).json({ success: false, message: 'Application not found.' });
-      await supabase.from('profiles').update({ verification_status: 'APPROVED', is_suspended: false, suspension_reason: null }).eq('id', data.user_id);
-      await verificationController.logAudit(data, req.user && req.user.id, req.user && req.user.email, 'REINSTATED', prev && prev.status, 'APPROVED', null);
-      return res.json({ success: true, message: 'Farmer reinstated.', application: data });
+
+      await supabase.from('profiles').update({ verification_status: 'APPROVED', is_suspended: false, suspension_reason: null }).eq('id', target.user_id);
+      await verificationController.logAudit(data || target, req.user && req.user.id, req.user && req.user.email, 'REINSTATED', target.status, 'APPROVED', null);
+      return res.json({ success: true, message: 'Farmer reinstated.', application: data || target });
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });
     }

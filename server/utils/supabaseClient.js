@@ -108,8 +108,11 @@ async function profilesHasPasswordColumns() {
   }
 }
 
-module.exports = supabase;
-module.exports.getSupabaseAdmin = getSupabaseAdmin;
-module.exports.findProfileByEmail = findProfileByEmail;
-module.exports.findProfileById = findProfileById;
-module.exports.profilesHasPasswordColumns = profilesHasPasswordColumns;
+const clientExport = supabase || {};
+clientExport.supabase = supabase;
+clientExport.getSupabaseAdmin = getSupabaseAdmin;
+clientExport.findProfileByEmail = findProfileByEmail;
+clientExport.findProfileById = findProfileById;
+clientExport.profilesHasPasswordColumns = profilesHasPasswordColumns;
+
+module.exports = clientExport;

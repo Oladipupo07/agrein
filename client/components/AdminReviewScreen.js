@@ -67,6 +67,25 @@ function renderAdminReviewScreen(state, actions) {
           </div>
         </div>
 
+        <!-- Status Notice Banner -->
+        ${dossier.status === 'REJECTED' ? `
+          <div class="mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 space-y-1">
+            <div class="flex items-center space-x-2 text-rose-700 dark:text-rose-300 font-bold text-xs">
+              <i class="fa-solid fa-circle-xmark text-sm"></i>
+              <span>Application Rejected</span>
+            </div>
+            <p class="text-xs text-rose-900 dark:text-rose-200 font-medium">Rejection Reason: "${dossier.rejection_reason || dossier.admin_notes || 'No specific reason provided'}"</p>
+          </div>
+        ` : dossier.status === 'CHANGES_REQUIRED' ? `
+          <div class="mb-6 p-4 rounded-2xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/40 space-y-1">
+            <div class="flex items-center space-x-2 text-orange-700 dark:text-orange-300 font-bold text-xs">
+              <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+              <span>Corrections Requested</span>
+            </div>
+            <p class="text-xs text-orange-900 dark:text-orange-200 font-medium">Instructions Sent: "${dossier.changes_requested_notes || dossier.admin_notes || 'Corrections requested'}"</p>
+          </div>
+        ` : ''}
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           <!-- Left 2 Cols: Data -->

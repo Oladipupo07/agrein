@@ -617,6 +617,30 @@ function renderAdminDashboard(state, actions) {
             </button>
           </div>
 
+          <!-- Status & Feedback Notice Banner -->
+          ${inspected.status === 'REJECTED' ? `
+            <div class="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 space-y-1">
+              <div class="flex items-center space-x-2 text-rose-700 dark:text-rose-300 font-bold text-xs">
+                <i class="fa-solid fa-circle-xmark text-sm"></i>
+                <span>Application Rejected</span>
+              </div>
+              <p class="text-xs text-rose-900 dark:text-rose-200 font-medium">Rejection Reason: "${inspected.rejection_reason || inspected.admin_notes || 'No specific reason provided'}"</p>
+            </div>
+          ` : inspected.status === 'CHANGES_REQUIRED' ? `
+            <div class="p-4 rounded-2xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/40 space-y-1">
+              <div class="flex items-center space-x-2 text-orange-700 dark:text-orange-300 font-bold text-xs">
+                <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+                <span>Corrections Requested</span>
+              </div>
+              <p class="text-xs text-orange-900 dark:text-orange-200 font-medium">Instructions Sent: "${inspected.changes_requested_notes || inspected.admin_notes || 'Corrections requested'}"</p>
+            </div>
+          ` : inspected.status === 'APPROVED' ? `
+            <div class="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 flex items-center space-x-2 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+              <i class="fa-solid fa-circle-check text-emerald-600"></i>
+              <span>Verified Farmer — Approved and authorized to list produce</span>
+            </div>
+          ` : ''}
+
           <!-- Section 1: Farmer Personal Details -->
           <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 space-y-3">
             <div class="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">

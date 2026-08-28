@@ -258,7 +258,34 @@ function renderFarmerVerificationView(state, actions) {
             <i class="fa-solid fa-triangle-exclamation"></i>
             <span>Admin Feedback — Action Required</span>
           </div>
-          <p class="text-xs text-orange-800 dark:text-orange-200 leading-relaxed mt-1">"${app.changes_requested_notes || 'Please upload a clearer image of your government ID.'}"</p>
+          <p class="text-xs text-orange-800 dark:text-orange-200 leading-relaxed mt-1">"${app.changes_requested_notes || 'Please upload a clearer image of your government ID or update farm details.'}"</p>
+        </div>
+      ` : status === 'REJECTED' ? `
+        <div class="mb-8 p-6 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 space-y-3">
+          <div class="flex items-center space-x-2 text-rose-700 dark:text-rose-300 font-bold text-sm">
+            <i class="fa-solid fa-circle-xmark text-lg text-rose-600"></i>
+            <span>Verification Application Rejected</span>
+          </div>
+          <div class="p-3.5 rounded-xl bg-white dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800/50">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-rose-500 mb-1">Reason for Rejection:</div>
+            <p class="text-xs text-rose-900 dark:text-rose-200 font-medium leading-relaxed">"${app.rejection_reason || app.admin_notes || 'The submitted documents or farm information could not be verified by the admin team.'}"</p>
+          </div>
+          <p class="text-xs text-rose-700 dark:text-rose-300">You can review your inputs, make necessary corrections, and re-apply for verification.</p>
+          <button onclick="actions.reapplyVerification()" class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/20 transition-all flex items-center space-x-1.5">
+            <i class="fa-solid fa-rotate mr-1"></i>
+            <span>Update & Re-apply for Verification</span>
+          </button>
+        </div>
+      ` : status === 'SUSPENDED' ? `
+        <div class="mb-8 p-6 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/40 space-y-3">
+          <div class="flex items-center space-x-2 text-red-700 dark:text-red-300 font-bold text-sm">
+            <i class="fa-solid fa-ban text-lg text-red-600"></i>
+            <span>Farmer Account Suspended</span>
+          </div>
+          <p class="text-xs text-red-800 dark:text-red-200 font-medium">"${app.admin_notes || 'Your verified status has been temporarily suspended by an administrator.'}"</p>
+          <button onclick="actions.reapplyVerification()" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow transition-all">
+            <span>Request Account Reinstatement</span>
+          </button>
         </div>
       ` : status === 'APPROVED' ? `
         <div class="mb-8 p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-center space-y-2">
