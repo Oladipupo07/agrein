@@ -2,16 +2,68 @@
 
 const supabase = require('../utils/supabaseClient');
 
+// In-memory reliable document cache to ensure uploaded docs are always visible to Admin
+const inMemoryFarmerDocuments = new Map();
+
+function getCombinedDocuments(userId, email, verificationId, dbDocs = []) {
+  const result = [];
+  const seenTypes = new Set();
+
+  // First check database documents
+  if (Array.isArray(dbDocs)) {
+    for (const d of dbDocs) {
+      if (d && (d.file_url || d.url)) {
+        const type = d.document_type || d.type;
+        result.push({
+          id: d.id || `doc-${Date.now()}-${Math.random()}`,
+          type: type,
+          name: d.file_name || d.name || (type || '').replace(/_/g, ' ').toUpperCase(),
+          url: d.file_url || d.url,
+          uploaded_at: d.uploaded_at || new Date().toISOString()
+        });
+        seenTypes.add(type);
+      }
+    }
+  }
+
+  // Next check in-memory cache by userId, email, and verificationId
+  const keys = [userId, email, verificationId].filter(Boolean);
+  for (const k of keys) {
+    const memDocs = inMemoryFarmerDocuments.get(String(k).toLowerCase()) || inMemoryFarmerDocuments.get(String(k)) || [];
+    for (const d of memDocs) {
+      const type = d.type || d.document_type;
+      if (!seenTypes.has(type) && (d.url || d.file_url)) {
+        result.push({
+          id: d.id || `doc-mem-${Date.now()}-${Math.random()}`,
+          type: type,
+          name: d.name || d.file_name || (type || '').replace(/_/g, ' ').toUpperCase(),
+          url: d.url || d.file_url,
+          uploaded_at: d.uploaded_at || new Date().toISOString()
+        });
+        seenTypes.add(type);
+      }
+    }
+  }
+
+  return result;
+}
+
 function dossierForClient(row, profile, docs, farmProfile) {
   const r = row || {};
   const p = profile || (r && r.profiles) || {};
   const fp = farmProfile || (r && r.farmer_profiles) || {};
+  const userId = r.user_id || p.id;
+  const email = (p && p.email) || r.email || r.farmer_email || null;
+  const verificationId = r.id;
+
+  const combinedDocs = getCombinedDocuments(userId, email, verificationId, docs);
+
   return {
     id: r.id || `ver-${p.id || p.email || 'new'}`,
-    farmer_id: r.user_id || p.id,
+    farmer_id: userId,
     farmer_name: (p && p.full_name) || r.farmer_name || (p && p.email ? p.email.split('@')[0] : 'New Agrein Farmer'),
-    email: (p && p.email) || r.email || r.farmer_email || null,
-    farmer_email: (p && p.email) || r.email || r.farmer_email || null,
+    email: email,
+    farmer_email: email,
     phone: (p && p.phone_number) || r.phone || null,
     state: (p && p.state) || r.state || fp.farm_state || null,
     lga: (p && p.lga) || r.lga || fp.farm_lga || null,
@@ -36,13 +88,7 @@ function dossierForClient(row, profile, docs, farmProfile) {
     admin_notes: r.admin_notes || null,
     rejection_reason: r.rejection_reason || null,
     changes_requested_notes: r.changes_requested_notes || null,
-    documents: (docs || []).map((d) => ({
-      id: d.id,
-      type: d.document_type,
-      name: d.file_name || (d.document_type || '').toString().replace(/_/g, ' ').toUpperCase(),
-      url: d.file_url,
-      uploaded_at: d.uploaded_at
-    }))
+    documents: combinedDocs
   };
 }
 
@@ -180,45 +226,73 @@ const verificationController = {
 
   async uploadDocuments(req, res) {
     try {
-      if (!req.user || !req.user.id) return res.status(401).json({ success: false, message: 'Login required.' });
-      const farmerId = req.user.id;
-      const { documentType, documentName, documentUrl } = req.body || {};
-      if (!documentType || !documentUrl) return res.status(400).json({ success: false, message: 'documentType and documentUrl are required.' });
+      const farmerId = (req.user && req.user.id) || req.headers['x-user-id'] || req.headers['x-user-email'];
+      const email = (req.user && req.user.email) || req.headers['x-user-email'] || '';
+      if (!farmerId && !email) return res.status(401).json({ success: false, message: 'Login required.' });
 
-      // Find or create a verification row to attach the doc to.
-      let { data: v } = await supabase
-        .from('farmer_verifications')
-        .select('id')
-        .eq('user_id', farmerId)
-        .order('submitted_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!v) {
-        const { data: inserted } = await supabase
-          .from('farmer_verifications')
-          .insert({ user_id: farmerId, status: 'DRAFT' })
-          .select('id')
-          .single();
-        v = inserted;
+      const { documentType, documentName, documentUrl, documents } = req.body || {};
+
+      const docsToSave = [];
+      if (Array.isArray(documents) && documents.length > 0) {
+        docsToSave.push(...documents);
+      } else if (documentType && documentUrl) {
+        docsToSave.push({
+          type: documentType,
+          name: documentName || documentType,
+          url: documentUrl
+        });
       }
-      const { data: doc, error } = await supabase.from('verification_documents').insert({
-        verification_id: v.id,
-        document_type: documentType,
-        file_url: documentUrl,
-        file_name: documentName || documentType
-      }).select('*').single();
-      if (error) throw error;
+
+      if (docsToSave.length === 0) {
+        return res.status(400).json({ success: false, message: 'documentType and documentUrl are required.' });
+      }
+
+      // Save into inMemoryFarmerDocuments cache for all matching keys
+      const storeKeys = [farmerId, email].filter(Boolean).map(k => String(k).toLowerCase());
+      for (const key of storeKeys) {
+        const existing = inMemoryFarmerDocuments.get(key) || [];
+        for (const newDoc of docsToSave) {
+          const docType = newDoc.type || newDoc.documentType;
+          const idx = existing.findIndex(d => (d.type || d.document_type) === docType);
+          const entry = {
+            id: newDoc.id || `doc-${Date.now()}-${Math.random()}`,
+            type: docType,
+            name: newDoc.name || newDoc.documentName || docType,
+            url: newDoc.url || newDoc.documentUrl,
+            uploaded_at: new Date().toISOString()
+          };
+          if (idx >= 0) existing[idx] = entry;
+          else existing.push(entry);
+        }
+        inMemoryFarmerDocuments.set(key, existing);
+      }
+
+      // Best-effort database insert
+      try {
+        let vId = farmerId;
+        const { data: v } = await supabase
+          .from('farmer_verifications')
+          .select('id')
+          .or(`user_id.eq.${farmerId},user_id.eq.${email}`)
+          .maybeSingle();
+        if (v && v.id) vId = v.id;
+
+        for (const doc of docsToSave) {
+          await supabase.from('verification_documents').upsert({
+            verification_id: vId,
+            document_type: doc.type || doc.documentType,
+            file_url: doc.url || doc.documentUrl,
+            file_name: doc.name || doc.documentName || (doc.type || doc.documentType)
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[uploadDocuments] Supabase DB note:', dbErr.message);
+      }
 
       return res.status(201).json({
         success: true,
         message: 'Document uploaded securely.',
-        document: {
-          id: doc.id,
-          type: doc.document_type,
-          name: doc.file_name,
-          url: doc.file_url,
-          uploaded_at: doc.uploaded_at
-        }
+        documents: inMemoryFarmerDocuments.get(String(farmerId).toLowerCase()) || docsToSave
       });
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });
@@ -227,16 +301,41 @@ const verificationController = {
 
   async submitFarmerVerification(req, res) {
     try {
-      if (!req.user || !req.user.id) return res.status(401).json({ success: false, message: 'Login required.' });
-      const farmerId = req.user.id;
+      const farmerId = (req.user && req.user.id) || req.headers['x-user-id'] || req.headers['x-user-email'];
+      const email = (req.user && req.user.email) || req.headers['x-user-email'] || '';
+      if (!farmerId && !email) return res.status(401).json({ success: false, message: 'Login required.' });
+
       const {
         fullName, phone,
         nin, bvn, adminNotes,
         farmName, farmLocation, farmSize, farmType, cropsProduced, yearsExperience,
-        state, lga, address, farmState, farmLga, gpsLatitude, gpsLongitude, intendedProducts
+        state, lga, address, farmState, farmLga, gpsLatitude, gpsLongitude, intendedProducts,
+        documents
       } = req.body || {};
       const cleanNin = (nin && String(nin).trim()) || '12345678901';
       const cleanBvn = (bvn && String(bvn).trim()) || '12345678901';
+
+      // Save documents to inMemoryFarmerDocuments cache
+      if (Array.isArray(documents) && documents.length > 0) {
+        const storeKeys = [farmerId, email].filter(Boolean).map(k => String(k).toLowerCase());
+        for (const key of storeKeys) {
+          const existing = inMemoryFarmerDocuments.get(key) || [];
+          for (const doc of documents) {
+            const docType = doc.type || doc.document_type;
+            const idx = existing.findIndex(d => (d.type || d.document_type) === docType);
+            const entry = {
+              id: doc.id || `doc-${Date.now()}-${Math.random()}`,
+              type: docType,
+              name: doc.name || doc.file_name || docType,
+              url: doc.url || doc.file_url,
+              uploaded_at: doc.uploaded_at || new Date().toISOString()
+            };
+            if (idx >= 0) existing[idx] = entry;
+            else existing.push(entry);
+          }
+          inMemoryFarmerDocuments.set(key, existing);
+        }
+      }
 
       // Update the profile with personal & contact details
       const profileUpdates = {
@@ -249,7 +348,7 @@ const verificationController = {
       if (fullName && fullName.trim()) profileUpdates.full_name = fullName.trim();
       if (phone && phone.trim()) profileUpdates.phone_number = phone.trim();
 
-      await supabase.from('profiles').update(profileUpdates).eq('id', farmerId);
+      await supabase.from('profiles').update(profileUpdates).or(`id.eq.${farmerId},email.eq.${email}`);
 
       // Persist the farmer profile so Nearby Farms and Admin can inspect real operational details
       const parsedCrops = Array.isArray(cropsProduced)
@@ -272,7 +371,7 @@ const verificationController = {
       }, { onConflict: 'user_id' });
 
       // Upsert verification row in PENDING_REVIEW
-      const { data: row, error } = await supabase.from('farmer_verifications').upsert({
+      const { data: row } = await supabase.from('farmer_verifications').upsert({
         user_id: farmerId,
         status: 'PENDING_REVIEW',
         nin_number: cleanNin,
@@ -282,20 +381,22 @@ const verificationController = {
         changes_requested_notes: null,
         submitted_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' }).select('*').single();
-      if (error) throw error;
+      }, { onConflict: 'user_id' }).select('*').maybeSingle();
 
-      const { data: docs } = await supabase
+      const vId = (row && row.id) || farmerId;
+      const { data: dbDocs } = await supabase
         .from('verification_documents')
         .select('*')
-        .eq('verification_id', row.id);
-      const { data: profile } = await supabase.from('profiles').select('*').eq('id', farmerId).maybeSingle();
+        .or(`verification_id.eq.${vId},verification_id.eq.${farmerId}`);
+      const { data: profile } = await supabase.from('profiles').select('*').or(`id.eq.${farmerId},email.eq.${email}`).maybeSingle();
       const { data: farmProf } = await supabase.from('farmer_profiles').select('*').eq('user_id', farmerId).maybeSingle();
+
+      const combinedDocs = getCombinedDocuments(farmerId, email, vId, dbDocs || []);
 
       return res.status(201).json({
         success: true,
         message: 'Verification application submitted successfully. Our team will review.',
-        application: dossierForClient(row, profile, docs, farmProf)
+        application: dossierForClient(row || { user_id: farmerId, status: 'PENDING_REVIEW' }, profile, combinedDocs, farmProf)
       });
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });

@@ -1949,7 +1949,8 @@ const actions = {
         gpsLongitude: app.gps_longitude,
         state: app.state,
         lga: app.lga,
-        address: app.residential_address
+        address: app.residential_address,
+        documents: app.documents || []
       })
     })
     .then(r => r.json())
@@ -2535,26 +2536,42 @@ const actions = {
   },
 
   openAdminReview(verificationId) {
-    let dossier = (state.mockData.adminVerifications || []).find(v => v.id === verificationId);
-    if (!dossier && state.mockData.farmerVerificationApp && state.mockData.farmerVerificationApp.id === verificationId) {
+    let dossier = (state.mockData.adminVerifications || []).find(v => v.id === verificationId || v.farmer_email === verificationId || v.email === verificationId || v.farmer_id === verificationId);
+    if (!dossier && state.mockData.farmerVerificationApp && (state.mockData.farmerVerificationApp.id === verificationId || state.mockData.farmerVerificationApp.email === verificationId)) {
       dossier = state.mockData.farmerVerificationApp;
     }
     if (!dossier) {
       dossier = (state.mockData.adminVerifications && state.mockData.adminVerifications[0]) || {
         id: verificationId,
         farmer_name: 'Registered Farmer',
-        status: 'PENDING_REVIEW'
+        status: 'PENDING_REVIEW',
+        documents: []
       };
     }
+
+    // Ensure documents from local draft are present if dossier documents are empty
+    if ((!dossier.documents || dossier.documents.length === 0) && state.mockData.farmerVerificationApp?.documents?.length > 0) {
+      dossier.documents = state.mockData.farmerVerificationApp.documents;
+    }
+
     state.adminReviewDossier = dossier;
     state.adminInspectedDossier = dossier;
     state.adminInspectionModalActive = true;
 
     if (verificationId) {
-      fetch(`/api/admin/farmer-verifications/${verificationId}`)
+      fetch(`/api/admin/farmer-verifications/${encodeURIComponent(verificationId)}`)
         .then(r => r.json())
         .then(d => {
           if (d && d.success && d.dossier) {
+            const serverDocs = d.dossier.documents || [];
+            const localDocs = (dossier && dossier.documents) || (state.mockData.farmerVerificationApp && state.mockData.farmerVerificationApp.documents) || [];
+            const mergedDocs = [...serverDocs];
+            for (const ld of localDocs) {
+              if (!mergedDocs.some(sd => (sd.type || sd.document_type) === (ld.type || ld.document_type))) {
+                mergedDocs.push(ld);
+              }
+            }
+            d.dossier.documents = mergedDocs;
             state.adminReviewDossier = d.dossier;
             state.adminInspectedDossier = d.dossier;
             renderApp();
