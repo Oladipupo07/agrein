@@ -512,16 +512,17 @@ function renderNavbar(state, actions) {
     </div>
     ` : ''}
 
-    <!-- ═══ FLOATING 24/7 AGRIBOT AI SUPPORT TRIGGER (Desktop/Tablet) ═══ -->
-    <div class="fixed bottom-6 right-6 z-40 hidden sm:flex animate-fade-in">
-      <button onclick="actions.openChatDrawer('AgriBot AI Support')"
-              title="Open 24/7 AI Agricultural Support"
-              class="px-4 py-3 rounded-full bg-gradient-to-r from-emerald-700 via-emerald-800 to-slate-900 text-white font-extrabold text-xs shadow-2xl shadow-emerald-950/60 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2.5 border border-emerald-400/40 group backdrop-blur-md">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <div class="w-6 h-6 rounded-lg bg-emerald-500/30 flex items-center justify-center text-amber-300 group-hover:rotate-12 transition-transform">
-          <i class="fa-solid fa-robot text-xs"></i>
+    <!-- ═══ FLOATING 24/7 AGREIN SUPPORT TRIGGER (Bottom Right) ═══ -->
+    <div class="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 flex items-center animate-fade-in">
+      <button onclick="actions.openChatDrawer('Agrein Support')"
+              title="Open 24/7 Agrein Agricultural AI Support & Customer Care"
+              class="relative p-3 sm:px-4 sm:py-3 rounded-full bg-gradient-to-r from-emerald-700 via-emerald-800 to-slate-900 text-white font-extrabold text-xs shadow-2xl shadow-emerald-950/70 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2 border border-emerald-400/50 group backdrop-blur-md">
+        <!-- Live status ping -->
+        <span class="absolute -top-1 -right-1 sm:static w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-sm"></span>
+        <div class="w-6 h-6 rounded-full bg-emerald-500/30 flex items-center justify-center text-amber-300 group-hover:rotate-12 transition-transform">
+          <i class="fa-solid fa-headset text-xs"></i>
         </div>
-        <span>AgriBot AI Support</span>
+        <span class="hidden sm:inline font-bold">Agrein Support</span>
       </button>
     </div>
   `;
