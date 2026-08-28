@@ -221,6 +221,10 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 }
 
 /* ═══ MOBILE RESPONSIVE TWEAKS FOR ALL PHONE SCREENS ═══ */
+.bottom-nav-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+}
+
 @media (max-width: 640px) {
   /* Prevent iOS automatic zoom on focus by ensuring font-size >= 16px */
   input[type="text"],
@@ -233,13 +237,14 @@ h1, h2, h3, h4, h5, h6, .font-heading {
     font-size: 16px !important;
   }
 
-  /* Modals adapt smoothly to viewport height */
+  /* Modals adapt smoothly to mobile viewport bottom sheets */
   .modal-fullscreen-mobile {
-    border-radius: 1.5rem 1.5rem 0 0 !important;
+    border-radius: 1.75rem 1.75rem 0 0 !important;
     max-width: 100vw !important;
-    max-height: 92dvh !important;
+    max-height: 90dvh !important;
     width: 100vw !important;
-    margin: 0 !important;
+    margin: auto 0 0 0 !important;
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px) !important;
   }
 
   /* Compact table font and spacing */
@@ -247,21 +252,26 @@ h1, h2, h3, h4, h5, h6, .font-heading {
     font-size: 0.75rem;
   }
 
-  /* Ensure touch targets are at least 44x44px for accessibility */
-  button, a {
-    min-height: 38px;
+  /* Ensure touch targets are comfortable and responsive */
+  button, a, input, select, textarea {
     touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Image banner heights */
   img.hero-banner {
-    height: 14rem !important;
+    height: 12rem !important;
+  }
+
+  /* Compact padding for cards on mobile */
+  .mobile-compact-p {
+    padding: 0.75rem !important;
   }
 }
 
 @media (min-width: 641px) and (max-width: 1023px) {
   img.hero-banner {
-    height: 20rem !important;
+    height: 18rem !important;
   }
 }
 

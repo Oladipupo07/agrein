@@ -511,8 +511,8 @@ function renderNavbar(state, actions) {
     </div>
     ` : ''}
 
-    <!-- ═══ FLOATING 24/7 AGRIBOT AI SUPPORT TRIGGER ═══ -->
-    <div class="fixed bottom-20 sm:bottom-6 right-5 z-40 animate-fade-in">
+    <!-- ═══ FLOATING 24/7 AGRIBOT AI SUPPORT TRIGGER (Desktop/Tablet) ═══ -->
+    <div class="fixed bottom-6 right-6 z-40 hidden sm:flex animate-fade-in">
       <button onclick="actions.openChatDrawer('AgriBot AI Support')"
               title="Open 24/7 AI Agricultural Support"
               class="px-4 py-3 rounded-full bg-gradient-to-r from-emerald-700 via-emerald-800 to-slate-900 text-white font-extrabold text-xs shadow-2xl shadow-emerald-950/60 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2.5 border border-emerald-400/40 group backdrop-blur-md">
@@ -520,7 +520,7 @@ function renderNavbar(state, actions) {
         <div class="w-6 h-6 rounded-lg bg-emerald-500/30 flex items-center justify-center text-amber-300 group-hover:rotate-12 transition-transform">
           <i class="fa-solid fa-robot text-xs"></i>
         </div>
-        <span class="hidden sm:inline">AgriBot AI Support</span>
+        <span>AgriBot AI Support</span>
       </button>
     </div>
   `;

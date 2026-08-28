@@ -104,17 +104,17 @@ function renderFarmerVerificationView(state, actions) {
   const currentStep = sc.step;
 
   return `
-    <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div class="text-center mb-8">
-        <div class="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 text-white items-center justify-center mb-4 shadow-xl shadow-emerald-700/20">
-          <i class="fa-solid fa-shield-halved text-2xl"></i>
+    <section class="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <div class="text-center mb-6 sm:mb-8">
+        <div class="inline-flex w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 text-white items-center justify-center mb-3 sm:mb-4 shadow-xl shadow-emerald-700/20">
+          <i class="fa-solid fa-shield-halved text-xl sm:text-2xl"></i>
         </div>
-        <h1 class="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">Farmer Verification</h1>
-        <p class="text-sm text-gray-500 mt-2">Complete all compulsory verification criteria to start selling on Agrein</p>
+        <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white">Farmer Verification</h1>
+        <p class="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">Complete all compulsory verification criteria to start selling on Agrein</p>
 
         <!-- Standalone lock indicator -->
         ${userStatus !== 'APPROVED' ? `
-          <div class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700/40 text-amber-800 dark:text-amber-300 text-xs font-bold">
+          <div class="mt-3 sm:mt-4 inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700/40 text-amber-800 dark:text-amber-300 text-[11px] sm:text-xs font-bold">
             <i class="fa-solid fa-lock text-[10px]"></i>
             <span>Platform selling access unlocks once an Agrein admin reviews and approves your farm.</span>
           </div>
@@ -123,8 +123,8 @@ function renderFarmerVerificationView(state, actions) {
 
       <!-- ═══ STATUS TIMELINE TRACKER ═══ -->
       ${status !== 'DRAFT' ? `
-        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 mb-8 shadow-sm">
-          <h3 class="text-xs font-heading font-extrabold text-slate-900 dark:text-white mb-5">Verification Progress</h3>
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-4 sm:p-6 mb-6 sm:mb-8 shadow-sm">
+          <h3 class="text-xs font-heading font-extrabold text-slate-900 dark:text-white mb-4 sm:mb-5">Verification Progress</h3>
           <div class="relative">
             <div class="absolute top-4 left-0 right-0 h-1 bg-gray-200 dark:bg-slate-700 rounded-full mx-8"></div>
             <div class="absolute top-4 left-0 h-1 rounded-full mx-8 transition-all duration-700 ${status === 'REJECTED' || status === 'SUSPENDED' ? 'bg-red-500' : 'bg-emerald-500'}"
@@ -148,10 +148,10 @@ function renderFarmerVerificationView(state, actions) {
 
                 return `
                   <div class="flex flex-col items-center" style="width: 25%;">
-                    <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs border-2 shadow-md ${styles[stepState]} transition-all duration-500">
+                    <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[11px] sm:text-xs border-2 shadow-md ${styles[stepState]} transition-all duration-500">
                       ${stepState === 'completed' ? '<i class="fa-solid fa-check"></i>' : `<i class="fa-solid ${step.icon}"></i>`}
                     </div>
-                    <span class="text-[10px] font-bold mt-2 ${stepState === 'upcoming' ? 'text-gray-400' : 'text-slate-700 dark:text-gray-200'}">${step.label}</span>
+                    <span class="text-[9px] sm:text-[10px] font-bold mt-1.5 sm:mt-2 text-center ${stepState === 'upcoming' ? 'text-gray-400' : 'text-slate-700 dark:text-gray-200'}">${step.label}</span>
                   </div>
                 `;
               }).join('')}
@@ -161,28 +161,28 @@ function renderFarmerVerificationView(state, actions) {
       ` : ''}
 
       <!-- ═══ LIVE COMPLETION RATE TRACKER & STATUS BANNER ═══ -->
-      <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 mb-8 border border-gray-200 dark:border-slate-800 shadow-sm space-y-5">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-6 sm:mb-8 border border-gray-200 dark:border-slate-800 shadow-sm space-y-4 sm:space-y-5">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div class="flex items-center space-x-3">
-            <div class="w-12 h-12 rounded-2xl ${sc.text} ${sc.bg} flex items-center justify-center text-xl shadow-sm">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl ${sc.text} ${sc.bg} flex items-center justify-center text-lg sm:text-xl shadow-sm">
               <i class="fa-solid ${sc.icon}"></i>
             </div>
             <div>
-              <div class="text-xs font-bold text-gray-500">Application Status</div>
-              <div class="text-base font-heading font-extrabold ${sc.text}">${sc.dot} ${sc.label}</div>
+              <div class="text-[10px] sm:text-xs font-bold text-gray-500">Application Status</div>
+              <div class="text-sm sm:text-base font-heading font-extrabold ${sc.text}">${sc.dot} ${sc.label}</div>
             </div>
           </div>
 
           <!-- Live Completion Rate Badge -->
-          <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/80 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-slate-700">
-            <div class="text-right">
-              <div class="text-[10px] uppercase tracking-wider font-extrabold text-gray-400">Completion Rate</div>
-              <div class="text-lg font-heading font-extrabold ${isFullyComplete ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}">
+          <div class="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-slate-700">
+            <div class="text-left sm:text-right">
+              <div class="text-[9px] sm:text-[10px] uppercase tracking-wider font-extrabold text-gray-400">Completion Rate</div>
+              <div class="text-base sm:text-lg font-heading font-extrabold ${isFullyComplete ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}">
                 ${completionPercent}%
               </div>
             </div>
-            <div class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-extrabold ${isFullyComplete ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'}">
-              ${isFullyComplete ? '<i class="fa-solid fa-check text-base"></i>' : `${completedCount}/${totalCount}`}
+            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs font-extrabold ${isFullyComplete ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'}">
+              ${isFullyComplete ? '<i class="fa-solid fa-check text-sm sm:text-base"></i>' : `${completedCount}/${totalCount}`}
             </div>
           </div>
         </div>
@@ -545,7 +545,7 @@ function renderFarmerVerificationView(state, actions) {
               <span class="text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">Max 3MB per file</span>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               ${[
                 { type: 'government_id', label: 'Government ID', desc: "NIN Slip, Voter's Card, Driver's License", icon: 'fa-id-card', compulsory: true },
                 { type: 'farm_photo', label: 'Farm Overview Photos', desc: 'Overview, crops, infrastructure', icon: 'fa-image', compulsory: true },

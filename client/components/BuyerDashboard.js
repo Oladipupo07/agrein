@@ -16,19 +16,19 @@ function renderBuyerDashboard(state, actions) {
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
         <!-- Header Banner -->
-        <div class="glass-card rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border-l-8 border-l-blue-600">
+        <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 border-l-8 border-l-blue-600">
           <div class="space-y-1">
             <div class="flex items-center space-x-2">
-              <span class="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-xs font-bold flex items-center space-x-1">
-                <i class="fa-solid fa-cart-shopping text-blue-500"></i>
+              <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-[10px] sm:text-xs font-bold flex items-center space-x-1">
+                <i class="fa-solid fa-cart-shopping text-blue-600"></i>
                 <span>Buyer Portal</span>
               </span>
-              <span class="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center space-x-1">
-                <i class="fa-solid fa-shield-halved text-emerald-500"></i>
-                <span>Interswitch Escrow Protected</span>
+              <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] sm:text-xs font-bold flex items-center space-x-1">
+                <i class="fa-solid fa-shield-check text-emerald-600"></i>
+                <span>Escrow Protected</span>
               </span>
             </div>
-            <h1 class="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
+            <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
               Welcome${user.full_name ? `, ${firstName}` : ''} 👋
             </h1>
             <p class="text-xs text-gray-600 dark:text-gray-400">
@@ -36,18 +36,14 @@ function renderBuyerDashboard(state, actions) {
             </p>
           </div>
 
-          <div class="flex flex-wrap items-center gap-3 flex-shrink-0">
-            <button onclick="actions.setView('marketplace')" class="px-5 py-3 rounded-2xl bg-blue-700 hover:bg-blue-800 text-white font-extrabold text-xs shadow-lg shadow-blue-700/20 transition-all flex items-center space-x-2">
+          <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <button onclick="actions.setView('marketplace')" class="px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-blue-700 hover:bg-blue-800 text-white font-extrabold text-xs shadow-lg shadow-blue-700/20 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2">
               <i class="fa-solid fa-store text-amber-300"></i>
-              <span>Browse Marketplace</span>
+              <span>Marketplace</span>
             </button>
-            <button onclick="actions.setView('rfq-board')" class="px-5 py-3 rounded-2xl glass-panel border border-blue-600/30 text-blue-900 dark:text-blue-300 font-extrabold text-xs hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all flex items-center space-x-2">
+            <button onclick="actions.setView('rfq-board')" class="px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl glass-panel border border-blue-600/30 text-blue-900 dark:text-blue-300 font-extrabold text-xs hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2">
               <i class="fa-solid fa-clipboard-list text-blue-500"></i>
-              <span>Post New RFQ</span>
-            </button>
-            <button onclick="actions.guardView('account-settings')" class="px-4 py-3 rounded-2xl glass-panel border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-gray-300 font-extrabold text-xs hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex items-center space-x-2" title="Account Settings">
-              <i class="fa-solid fa-gear text-blue-500"></i>
-              <span class="hidden sm:inline">Settings</span>
+              <span>Post RFQ</span>
             </button>
           </div>
         </div>
@@ -253,7 +249,7 @@ function renderBuyerDashboard(state, actions) {
               </button>
             </div>
           ` : `
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
               <table class="w-full text-left text-xs">
                 <thead class="bg-blue-50 dark:bg-slate-800 text-gray-600 dark:text-gray-300 font-bold border-b border-gray-200 dark:border-slate-700">
                   <tr>

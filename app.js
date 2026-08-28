@@ -3504,7 +3504,7 @@ function renderAppImmediate() {
       ${state.isFarmerLocked() ? '' : renderEcosystemNav(state, actions)}
 
       <!-- Main Body Content -->
-      <main class="flex-grow lg:pb-0 pb-20">
+      <main class="flex-grow pb-24 lg:pb-0">
         ${bodyContent}
       </main>
 

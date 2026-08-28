@@ -12,16 +12,16 @@ function renderProductModal(state, actions) {
   const grandTotal = subtotal + estimatedLogistics;
 
   return `
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div class="modal-fullscreen-mobile relative w-full max-w-4xl glass-panel bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/20 overflow-hidden my-8 animate-modal">
+    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div class="modal-fullscreen-mobile relative w-full max-w-4xl glass-panel bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-emerald-500/20 overflow-hidden my-0 sm:my-8 animate-modal max-h-[90vh] overflow-y-auto">
         
         <!-- Modal Header Action Buttons (Wishlist & Close) -->
-        <div class="absolute top-4 right-4 z-20 flex items-center space-x-2">
-          <button onclick="actions.toggleWishlist('${product.id}')" class="w-10 h-10 rounded-full bg-slate-900/60 backdrop-blur-md text-white flex items-center justify-center hover:bg-slate-900 transition-all shadow-md active:scale-95" title="Save to Wishlist">
-            <i class="fa-${state.wishlist && state.wishlist.includes(product.id) ? 'solid text-rose-500' : 'regular text-white'} fa-heart text-base"></i>
+        <div class="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center space-x-2">
+          <button onclick="actions.toggleWishlist('${product.id}')" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-900/60 backdrop-blur-md text-white flex items-center justify-center hover:bg-slate-900 transition-all shadow-md active:scale-95" title="Save to Wishlist">
+            <i class="fa-${state.wishlist && state.wishlist.includes(product.id) ? 'solid text-rose-500' : 'regular text-white'} fa-heart text-xs sm:text-base"></i>
           </button>
-          <button onclick="actions.closeProductModal()" class="w-10 h-10 rounded-full bg-slate-900/60 backdrop-blur-md text-white flex items-center justify-center hover:bg-slate-900 transition-all shadow-md active:scale-95" aria-label="Close Modal">
-            <i class="fa-solid fa-xmark text-lg"></i>
+          <button onclick="actions.closeProductModal()" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-900/60 backdrop-blur-md text-white flex items-center justify-center hover:bg-slate-900 transition-all shadow-md active:scale-95" aria-label="Close Modal">
+            <i class="fa-solid fa-xmark text-sm sm:text-lg"></i>
           </button>
         </div>
 

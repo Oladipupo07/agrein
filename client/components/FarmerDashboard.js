@@ -29,25 +29,25 @@ function renderFarmerDashboard(state, actions) {
     : farmerProducts.length;
 
   return `
-    <div class="py-8 bg-slate-50/50 dark:bg-slate-900/50 min-h-screen space-y-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+    <div class="py-4 sm:py-8 bg-slate-50/50 dark:bg-slate-900/50 min-h-screen space-y-6 sm:space-y-8">
+      <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
 
         <!-- Header Banner -->
-        <div class="glass-card rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border-l-8 ${isApproved ? 'border-l-emerald-600' : 'border-l-amber-500'}">
+        <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 border-l-8 ${isApproved ? 'border-l-emerald-600' : 'border-l-amber-500'}">
           <div class="space-y-1">
             <div class="flex items-center space-x-2">
-              <span class="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center space-x-1">
+              <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] sm:text-xs font-bold flex items-center space-x-1">
                 <i class="fa-solid fa-tractor text-emerald-600"></i>
                 <span>Farmer Portal</span>
               </span>
               ${isApproved ? renderVerifiedBadge(true) : `
-                <span class="px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center space-x-1">
+                <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[10px] sm:text-xs font-bold flex items-center space-x-1">
                   <i class="fa-solid fa-clock text-amber-500"></i>
                   <span>Verification: ${verificationStatus.replaceAll('_', ' ')}</span>
                 </span>
               `}
             </div>
-            <h1 class="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
+            <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
               Welcome${user.full_name ? `, ${firstName}` : ''} 👋
             </h1>
             <p class="text-xs text-gray-600 dark:text-gray-400">
@@ -55,18 +55,14 @@ function renderFarmerDashboard(state, actions) {
             </p>
           </div>
 
-          <div class="flex flex-wrap items-center gap-3 flex-shrink-0">
-            <button onclick="actions.openAddProductModal()" class="px-5 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-lg shadow-emerald-700/20 transition-all flex items-center space-x-2">
+          <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <button onclick="actions.openAddProductModal()" class="px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-lg shadow-emerald-700/20 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2">
               <i class="fa-solid fa-plus text-amber-300"></i>
               <span>List New Crop</span>
             </button>
-            <button onclick="actions.openWithdrawalModal()" class="px-5 py-3 rounded-2xl glass-panel border border-emerald-600/30 text-emerald-900 dark:text-emerald-300 font-extrabold text-xs hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all flex items-center space-x-2">
+            <button onclick="actions.openWithdrawalModal()" class="px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl glass-panel border border-emerald-600/30 text-emerald-900 dark:text-emerald-300 font-extrabold text-xs hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2">
               <i class="fa-solid fa-building-columns text-amber-500"></i>
               <span>Withdraw Funds</span>
-            </button>
-            <button onclick="actions.guardView('account-settings')" class="px-4 py-3 rounded-2xl glass-panel border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-gray-300 font-extrabold text-xs hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex items-center space-x-2" title="Account Settings">
-              <i class="fa-solid fa-gear text-emerald-500"></i>
-              <span class="hidden sm:inline">Settings</span>
             </button>
           </div>
         </div>
@@ -256,20 +252,20 @@ function renderFarmerDashboard(state, actions) {
         </div>
 
         <!-- ═══ ACTIVE CROP LISTINGS TABLE ═══ -->
-        <div class="glass-card rounded-3xl p-6 sm:p-8 space-y-6">
-          <div class="flex items-center justify-between">
+        <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4 sm:space-y-6">
+          <div class="flex items-center justify-between gap-2">
             <div>
-              <h3 class="font-heading font-extrabold text-xl text-slate-900 dark:text-white">My Active Crop Listings</h3>
-              <p class="text-xs text-gray-500">Live harvests published to the marketplace for buyers</p>
+              <h3 class="font-heading font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white">My Active Crop Listings</h3>
+              <p class="text-[11px] sm:text-xs text-gray-500">Live harvests published to the marketplace for buyers</p>
             </div>
-            <button onclick="actions.openAddProductModal()" class="px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800 transition-all flex items-center space-x-1.5">
+            <button onclick="actions.openAddProductModal()" class="px-3 sm:px-4 py-2 rounded-xl bg-emerald-700 text-white text-[11px] sm:text-xs font-bold hover:bg-emerald-800 transition-all flex items-center space-x-1.5 flex-shrink-0">
               <i class="fa-solid fa-plus text-[10px]"></i>
-              <span>List New Crop</span>
+              <span>List Crop</span>
             </button>
           </div>
 
           ${farmerProducts.length === 0 ? `
-            <div class="p-8 text-center space-y-3 border-2 border-dashed border-gray-200 dark:border-slate-800 rounded-2xl">
+            <div class="p-6 sm:p-8 text-center space-y-3 border-2 border-dashed border-gray-200 dark:border-slate-800 rounded-2xl">
               <div class="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center mx-auto text-xl">
                 <i class="fa-solid fa-wheat-awn"></i>
               </div>
@@ -279,7 +275,7 @@ function renderFarmerDashboard(state, actions) {
               </button>
             </div>
           ` : `
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
               <table class="w-full text-left text-xs">
                 <thead class="bg-emerald-50 dark:bg-slate-800 text-gray-600 dark:text-gray-300 font-bold border-b border-gray-200 dark:border-slate-700">
                   <tr>

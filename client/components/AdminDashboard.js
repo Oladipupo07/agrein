@@ -132,89 +132,89 @@ function renderAdminDashboard(state, actions) {
   const inspected = state.adminInspectedDossier;
 
   return `
-    <div class="py-8 bg-slate-50/70 dark:bg-slate-950 min-h-screen space-y-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+    <div class="py-4 sm:py-8 bg-slate-50/70 dark:bg-slate-950 min-h-screen space-y-6 sm:space-y-8">
+      <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
         
         <!-- ═══ EXECUTIVE ADMIN HEADER & SUMMARY ═══ -->
-        <div class="glass-card rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border-l-8 border-l-purple-600 shadow-xl bg-gradient-to-r from-white via-purple-50/30 to-white dark:from-slate-900 dark:via-purple-950/10 dark:to-slate-900">
+        <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 border-l-8 border-l-purple-600 shadow-xl bg-gradient-to-r from-white via-purple-50/30 to-white dark:from-slate-900 dark:via-purple-950/10 dark:to-slate-900">
           <div>
-            <div class="inline-flex items-center space-x-2 text-xs font-extrabold text-purple-700 dark:text-purple-400 uppercase tracking-wider bg-purple-100 dark:bg-purple-950/60 px-3 py-1 rounded-full mb-2">
+            <div class="inline-flex items-center space-x-2 text-[10px] sm:text-xs font-extrabold text-purple-700 dark:text-purple-400 uppercase tracking-wider bg-purple-100 dark:bg-purple-950/60 px-3 py-1 rounded-full mb-2">
               <i class="fa-solid fa-shield-halved"></i>
-              <span>Agrein SuperAdmin Command Center</span>
+              <span>SuperAdmin Command Center</span>
             </div>
-            <h1 class="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
+            <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
               Platform Governance & Verification
             </h1>
             <p class="text-xs text-gray-500 mt-1">Review farmer verification requests, inspect inputted land/crop details, and manage database records.</p>
           </div>
 
-          <div class="flex items-center space-x-3 flex-wrap gap-2">
-            <button onclick="actions.fetchAdminVerifications(); actions.fetchRegisteredUsers(); actions.triggerToast('🔄 Loaded latest applications!');" class="px-4 py-2.5 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-extrabold shadow-md transition-all flex items-center space-x-2">
+          <div class="flex items-center space-x-2 sm:space-x-3 flex-wrap gap-2 w-full sm:w-auto">
+            <button onclick="actions.fetchAdminVerifications(); actions.fetchRegisteredUsers(); actions.triggerToast('🔄 Loaded latest applications!');" class="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-purple-700 hover:bg-purple-800 text-white text-[11px] sm:text-xs font-extrabold shadow-md transition-all flex items-center justify-center space-x-2 flex-1 sm:flex-initial">
               <i class="fa-solid fa-rotate text-amber-300"></i>
-              <span>Refresh Applications</span>
+              <span>Refresh</span>
             </button>
-            <button onclick="actions.setView('farmer-verification')" class="px-4 py-2.5 rounded-2xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-gray-200 text-xs font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-all flex items-center space-x-2">
+            <button onclick="actions.setView('farmer-verification')" class="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-gray-200 text-[11px] sm:text-xs font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center space-x-2 flex-1 sm:flex-initial">
               <i class="fa-solid fa-tractor text-emerald-500"></i>
-              <span>Farmer Verification Form</span>
+              <span>Verification Form</span>
             </button>
           </div>
         </div>
 
         <!-- ═══ METRICS KPI BAR ═══ -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm text-center">
-            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Users</div>
-            <div class="text-xl font-heading font-extrabold text-slate-900 dark:text-white mt-1">${counts.total || userList.length}</div>
-            <div class="text-[10px] text-purple-600 font-bold mt-0.5">Platform Members</div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+          <div class="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm text-center">
+            <div class="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Users</div>
+            <div class="text-lg sm:text-xl font-heading font-extrabold text-slate-900 dark:text-white mt-0.5 sm:mt-1">${counts.total || userList.length}</div>
+            <div class="text-[9px] sm:text-[10px] text-purple-600 font-bold mt-0.5">Platform Members</div>
           </div>
 
-          <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 shadow-sm text-center cursor-pointer hover:border-amber-400 transition-all" onclick="actions.setAdminTab('verifications')">
-            <div class="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1">
+          <div class="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 shadow-sm text-center cursor-pointer hover:border-amber-400 transition-all" onclick="actions.setAdminTab('verifications')">
+            <div class="text-[9px] sm:text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1">
               <i class="fa-solid fa-clock"></i>
               <span>Pending Requests</span>
             </div>
-            <div class="text-xl font-heading font-extrabold text-amber-700 dark:text-amber-300 mt-1">${verificationCounts.pending}</div>
-            <div class="text-[10px] text-amber-600 font-bold mt-0.5">Awaiting Review</div>
+            <div class="text-lg sm:text-xl font-heading font-extrabold text-amber-700 dark:text-amber-300 mt-0.5 sm:mt-1">${verificationCounts.pending}</div>
+            <div class="text-[9px] sm:text-[10px] text-amber-600 font-bold mt-0.5">Awaiting Review</div>
           </div>
 
-          <div class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 shadow-sm text-center cursor-pointer hover:border-emerald-400 transition-all" onclick="actions.setAdminTab('verifications')">
-            <div class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center justify-center gap-1">
+          <div class="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 shadow-sm text-center cursor-pointer hover:border-emerald-400 transition-all" onclick="actions.setAdminTab('verifications')">
+            <div class="text-[9px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center justify-center gap-1">
               <i class="fa-solid fa-circle-check"></i>
               <span>Verified Farmers</span>
             </div>
-            <div class="text-xl font-heading font-extrabold text-emerald-700 dark:text-emerald-300 mt-1">${verificationCounts.approved}</div>
-            <div class="text-[10px] text-emerald-600 font-bold mt-0.5">Active Badges</div>
+            <div class="text-lg sm:text-xl font-heading font-extrabold text-emerald-700 dark:text-emerald-300 mt-0.5 sm:mt-1">${verificationCounts.approved}</div>
+            <div class="text-[9px] sm:text-[10px] text-emerald-600 font-bold mt-0.5">Active Badges</div>
           </div>
 
-          <div class="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 shadow-sm text-center">
-            <div class="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Registered Buyers</div>
-            <div class="text-xl font-heading font-extrabold text-blue-700 dark:text-blue-300 mt-1">${counts.buyers}</div>
-            <div class="text-[10px] text-blue-600 font-bold mt-0.5">Offtakers & Retail</div>
+          <div class="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 shadow-sm text-center">
+            <div class="text-[9px] sm:text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Registered Buyers</div>
+            <div class="text-lg sm:text-xl font-heading font-extrabold text-blue-700 dark:text-blue-300 mt-0.5 sm:mt-1">${counts.buyers}</div>
+            <div class="text-[9px] sm:text-[10px] text-blue-600 font-bold mt-0.5">Offtakers & Retail</div>
           </div>
 
-          <div class="p-4 rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/40 shadow-sm text-center">
-            <div class="text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">Changes Needed</div>
-            <div class="text-xl font-heading font-extrabold text-orange-700 dark:text-orange-300 mt-1">${verificationCounts.changesRequired}</div>
-            <div class="text-[10px] text-orange-600 font-bold mt-0.5">Action Sent</div>
+          <div class="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/40 shadow-sm text-center">
+            <div class="text-[9px] sm:text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">Changes Needed</div>
+            <div class="text-lg sm:text-xl font-heading font-extrabold text-orange-700 dark:text-orange-300 mt-0.5 sm:mt-1">${verificationCounts.changesRequired}</div>
+            <div class="text-[9px] sm:text-[10px] text-orange-600 font-bold mt-0.5">Action Sent</div>
           </div>
 
-          <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 shadow-sm text-center cursor-pointer hover:border-red-400 transition-all" onclick="actions.setAdminTab('deletions')">
-            <div class="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider flex items-center justify-center gap-1">
+          <div class="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 shadow-sm text-center cursor-pointer hover:border-red-400 transition-all" onclick="actions.setAdminTab('deletions')">
+            <div class="text-[9px] sm:text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider flex items-center justify-center gap-1">
               <i class="fa-solid fa-trash-can"></i>
               <span>Deletion Queue</span>
             </div>
-            <div class="text-xl font-heading font-extrabold text-red-700 dark:text-red-300 mt-1">${deletionRequests.length}</div>
-            <div class="text-[10px] text-red-600 font-bold mt-0.5">NDPR Requests</div>
+            <div class="text-lg sm:text-xl font-heading font-extrabold text-red-700 dark:text-red-300 mt-0.5 sm:mt-1">${deletionRequests.length}</div>
+            <div class="text-[9px] sm:text-[10px] text-red-600 font-bold mt-0.5">NDPR Requests</div>
           </div>
         </div>
 
         <!-- ═══ NAVIGATION TABS ═══ -->
-        <div class="flex items-center space-x-2 border-b border-gray-200 dark:border-slate-800 pb-2 overflow-x-auto">
+        <div class="flex items-center space-x-2 border-b border-gray-200 dark:border-slate-800 pb-2 overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
           <button onclick="actions.setAdminTab('verifications')"
-                  class="px-5 py-2.5 rounded-2xl text-xs font-extrabold transition-all flex items-center space-x-2 whitespace-nowrap ${activeTab === 'verifications' ? 'bg-emerald-700 text-white shadow-lg shadow-emerald-700/20' : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-400 hover:text-emerald-600'}">
+                  class="px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-extrabold transition-all flex items-center space-x-2 whitespace-nowrap flex-shrink-0 ${activeTab === 'verifications' ? 'bg-emerald-700 text-white shadow-lg shadow-emerald-700/20' : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-400 hover:text-emerald-600'}">
             <i class="fa-solid fa-id-card"></i>
-            <span>Farmer Verification Requests (${verifications.length})</span>
-            ${verificationCounts.pending > 0 ? `<span class="px-2 py-0.5 rounded-full bg-amber-400 text-slate-900 text-[10px] font-black animate-pulse">${verificationCounts.pending}</span>` : ''}
+            <span>Verification Requests (${verifications.length})</span>
+            ${verificationCounts.pending > 0 ? `<span class="px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-400 text-slate-900 text-[9px] sm:text-[10px] font-black animate-pulse">${verificationCounts.pending}</span>` : ''}
           </button>
 
           <button onclick="actions.setAdminTab('overview')"
@@ -594,8 +594,8 @@ function renderAdminDashboard(state, actions) {
 
     <!-- ═══ FULL DOSSIER INSPECTION MODAL / DRAWER ═══ -->
     ${state.adminInspectionModalActive && inspected ? `
-      <div class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
-        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-slate-800 shadow-2xl space-y-6 p-6 sm:p-8 relative">
+      <div class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-y-auto animate-fade-in">
+        <div class="modal-fullscreen-mobile bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-slate-800 shadow-2xl space-y-4 sm:space-y-6 p-4 sm:p-8 relative">
           
           <!-- Modal Header -->
           <div class="flex items-start justify-between border-b border-gray-100 dark:border-slate-800 pb-4">

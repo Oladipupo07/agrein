@@ -40,46 +40,46 @@ function renderHero(state, actions) {
               <span>Empowering 14,800+ Verified Smallholder Farmers</span>
             </div>
 
-            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-heading font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.15]">
+            <h1 class="text-3xl sm:text-5xl lg:text-6xl font-heading font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.15]">
               Connecting Farmers to Buyers, <span class="text-gradient-emerald">One Harvest at a Time.</span>
             </h1>
 
-            <p class="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl font-normal leading-relaxed">
+            <p class="text-base sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl font-normal leading-relaxed">
               Agrein is the modern agricultural marketplace bridging the gap between producers and buyers. Buy fresh, organic crops direct from certified farms at fair prices—zero middleman exploitation.
             </p>
 
             <!-- Dual Primary Call to Actions -->
-            <div class="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-              <button onclick="actions.openAuthModal('register'); actions.setAuthRegisterRole('FARMER');" class="px-8 py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-base shadow-xl shadow-emerald-700/30 transition-all transform hover:-translate-y-0.5 flex items-center justify-center space-x-3">
-                <i class="fa-solid fa-tractor text-amber-300 text-lg"></i>
+            <div class="pt-2 sm:pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+              <button onclick="actions.openAuthModal('register'); actions.setAuthRegisterRole('FARMER');" class="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-sm sm:text-base shadow-xl shadow-emerald-700/30 transition-all transform hover:-translate-y-0.5 flex items-center justify-center space-x-3">
+                <i class="fa-solid fa-tractor text-amber-300 text-base sm:text-lg"></i>
                 <span>Sign Up as Farmer</span>
               </button>
-              <button onclick="actions.openAuthModal('register'); actions.setAuthRegisterRole('BUYER');" class="px-8 py-4 rounded-2xl glass-panel border border-emerald-600/30 hover:border-emerald-600 text-emerald-900 dark:text-emerald-300 font-extrabold text-base transition-all hover:bg-emerald-50 dark:hover:bg-slate-800 flex items-center justify-center space-x-3">
+              <button onclick="actions.openAuthModal('register'); actions.setAuthRegisterRole('BUYER');" class="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl glass-panel border border-emerald-600/30 hover:border-emerald-600 text-emerald-900 dark:text-emerald-300 font-extrabold text-sm sm:text-base transition-all hover:bg-emerald-50 dark:hover:bg-slate-800 flex items-center justify-center space-x-3">
                 <i class="fa-solid fa-cart-shopping text-emerald-600"></i>
                 <span>Sign Up as Buyer</span>
               </button>
             </div>
 
             <!-- Trust Metrics -->
-            <div class="pt-6 grid grid-cols-3 gap-3 sm:gap-4 border-t border-gray-200/80 dark:border-gray-800">
+            <div class="pt-4 sm:pt-6 grid grid-cols-3 gap-2 sm:gap-4 border-t border-gray-200/80 dark:border-gray-800">
               <div>
-                <div class="text-lg sm:text-2xl md:text-3xl font-heading font-extrabold text-emerald-800 dark:text-emerald-400">14,800+</div>
-                <div class="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">Farmers Onboarded</div>
+                <div class="text-base sm:text-2xl md:text-3xl font-heading font-extrabold text-emerald-800 dark:text-emerald-400">14,800+</div>
+                <div class="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">Farmers</div>
               </div>
               <div>
-                <div class="text-lg sm:text-2xl md:text-3xl font-heading font-extrabold text-emerald-800 dark:text-emerald-400">350k+ Tons</div>
-                <div class="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">Produce Traded</div>
+                <div class="text-base sm:text-2xl md:text-3xl font-heading font-extrabold text-emerald-800 dark:text-emerald-400">350k+ Tons</div>
+                <div class="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">Traded</div>
               </div>
               <div>
-                <div class="text-lg sm:text-2xl md:text-3xl font-heading font-extrabold text-amber-600 dark:text-amber-400">36 States</div>
-                <div class="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">Direct Logistics</div>
+                <div class="text-base sm:text-2xl md:text-3xl font-heading font-extrabold text-amber-600 dark:text-amber-400">36 States</div>
+                <div class="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">Logistics</div>
               </div>
             </div>
 
           </div>
 
           <!-- Right Column: Interactive Visual Banner & Feature Glass Card -->
-          <div class="lg:col-span-5 relative">
+          <div class="lg:col-span-5 relative mt-4 lg:mt-0">
             <div class="relative rounded-3xl overflow-hidden shadow-2xl border border-emerald-500/20 group">
               <img
                 src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=800&q=70"
@@ -88,22 +88,22 @@ function renderHero(state, actions) {
                 loading="eager" fetchpriority="high"
                 decoding="async"
                 alt="Fresh Nigerian Agricultural Farm Harvest"
-                class="hero-banner w-full h-56 sm:h-80 md:h-[440px] object-cover group-hover:scale-105 transition-transform duration-700">
+                class="hero-banner w-full h-48 sm:h-80 md:h-[440px] object-cover group-hover:scale-105 transition-transform duration-700">
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"></div>
               
               <!-- Floating Glass Badge 1: Escrow Protection -->
-              <div class="hero-floating-badge absolute top-4 left-4 sm:top-6 sm:left-6 glass-card p-2.5 sm:p-3 rounded-2xl flex items-center space-x-3 text-slate-900 dark:text-white shadow-lg animate-bounce" style="animation-duration: 4s;">
-                <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg shadow-md">
+              <div class="hero-floating-badge absolute top-3 left-3 sm:top-6 sm:left-6 glass-card p-2 sm:p-3 rounded-xl sm:rounded-2xl flex items-center space-x-2.5 sm:space-x-3 text-slate-900 dark:text-white shadow-lg">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-600 text-white flex items-center justify-center text-sm sm:text-lg shadow-md flex-shrink-0">
                   <i class="fa-solid fa-shield-check"></i>
                 </div>
                 <div>
-                  <div class="text-xs font-bold">100% Escrow Protection</div>
-                  <div class="text-[10px] text-gray-600 dark:text-gray-300">Funds released after harvest delivery</div>
+                  <div class="text-[11px] sm:text-xs font-bold">100% Escrow Protection</div>
+                  <div class="text-[9px] sm:text-[10px] text-gray-600 dark:text-gray-300">Safe payments & delivery</div>
                 </div>
               </div>
 
-              <!-- Floating Glass Badge 2: AI Pricing -->
-              <div class="hero-floating-badge absolute bottom-4 right-4 sm:bottom-6 sm:right-6 glass-card p-3 sm:p-4 rounded-2xl max-w-[10rem] sm:max-w-xs text-slate-900 dark:text-white shadow-xl">
+              <!-- Floating Glass Badge 2: AI Pricing (Visible on sm+) -->
+              <div class="hero-floating-badge hidden sm:block absolute bottom-4 right-4 sm:bottom-6 sm:right-6 glass-card p-3 sm:p-4 rounded-2xl max-w-xs text-slate-900 dark:text-white shadow-xl">
                 <div class="flex items-center space-x-2 text-amber-600 dark:text-amber-400 text-xs font-extrabold uppercase mb-1">
                   <i class="fa-solid fa-wand-magic-sparkles"></i>
                   <span>Agrein AI Insights</span>

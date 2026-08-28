@@ -5,8 +5,8 @@ function renderCheckoutModal(state, actions) {
   if (!checkoutModalActive) return '';
 
   return `
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 xs:p-2 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-      <div class="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl xs:rounded-2xl shadow-2xl border border-emerald-500/30 overflow-hidden animate-modal max-h-[90vh] xs:max-h-[95vh] flex flex-col">
+    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+      <div class="modal-fullscreen-mobile w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-emerald-500/30 overflow-hidden animate-modal max-h-[90vh] flex flex-col">
         
         <!-- Header -->
         <div class="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-700 p-6 xs:p-5 text-white text-center relative flex-shrink-0">
