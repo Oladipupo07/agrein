@@ -2519,13 +2519,28 @@ const actions = {
       .then(data => {
         if (data && data.success && Array.isArray(data.applications)) {
           const serverApps = data.applications || [];
-          if (state.mockData.farmerVerificationApp && state.mockData.farmerVerificationApp.status && state.mockData.farmerVerificationApp.status !== 'DRAFT') {
+
+          // Sync farmerVerificationApp from server's authoritative status
+          if (state.mockData.farmerVerificationApp) {
             const localApp = state.mockData.farmerVerificationApp;
-            const exists = serverApps.some(a => a.id === localApp.id || (a.email && a.email === localApp.email));
-            if (!exists) {
+            const serverMatch = serverApps.find(a =>
+              a.id === localApp.id ||
+              (a.email && localApp.email && a.email.toLowerCase() === localApp.email.toLowerCase()) ||
+              (a.farmer_email && localApp.farmer_email && a.farmer_email.toLowerCase() === localApp.farmer_email.toLowerCase())
+            );
+            if (serverMatch) {
+              // Update local app status from server (so approval sticks across reloads)
+              state.mockData.farmerVerificationApp.status = serverMatch.status;
+              state.mockData.farmerVerificationApp.reviewed_at = serverMatch.reviewed_at || localApp.reviewed_at;
+              state.mockData.farmerVerificationApp.rejection_reason = serverMatch.rejection_reason;
+              state.mockData.farmerVerificationApp.changes_requested_notes = serverMatch.changes_requested_notes;
+              StorageManager.saveFarmerVerification(state.mockData.farmerVerificationApp);
+            } else if (localApp.status && localApp.status !== 'DRAFT') {
+              // Server doesn't know about this local app yet — inject it
               serverApps.unshift(localApp);
             }
           }
+
           state.mockData.adminVerifications = serverApps;
           renderApp();
         }
@@ -2666,7 +2681,17 @@ const actions = {
       body: JSON.stringify({ adminNotes: 'Verified by SuperAdmin', email: targetEmail })
     })
     .then(r => r.json())
-    .then(() => {
+    .then(resp => {
+      // If the server confirmed approval, update farmerVerificationApp immediately
+      if (resp && resp.success) {
+        if (state.mockData.farmerVerificationApp) {
+          state.mockData.farmerVerificationApp.status = 'APPROVED';
+          state.mockData.farmerVerificationApp.rejection_reason = null;
+          state.mockData.farmerVerificationApp.changes_requested_notes = null;
+          state.mockData.farmerVerificationApp.reviewed_at = new Date().toISOString();
+          StorageManager.saveFarmerVerification(state.mockData.farmerVerificationApp);
+        }
+      }
       actions.fetchAdminVerifications();
       actions.fetchRegisteredUsers();
     })
