@@ -37,13 +37,44 @@ function renderBuyerDashboard(state, actions) {
           </div>
 
           <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
-            <button onclick="actions.setView('marketplace')" class="px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-blue-700 hover:bg-blue-800 text-white font-extrabold text-xs shadow-lg shadow-blue-700/20 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2">
-              <i class="fa-solid fa-store text-amber-300"></i>
+            <button onclick="actions.setView('buyer-onboarding')" class="px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-extrabold text-xs shadow-lg shadow-blue-700/20 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2">
+              <i class="fa-solid fa-truck-ramp-box text-amber-300"></i>
+              <span>Delivery Profile</span>
+            </button>
+            <button onclick="actions.setView('marketplace')" class="px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl glass-panel border border-blue-600/30 text-blue-900 dark:text-blue-300 font-extrabold text-xs hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2">
+              <i class="fa-solid fa-store text-emerald-600"></i>
               <span>Marketplace</span>
             </button>
-            <button onclick="actions.setView('rfq-board')" class="px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl glass-panel border border-blue-600/30 text-blue-900 dark:text-blue-300 font-extrabold text-xs hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2">
-              <i class="fa-solid fa-clipboard-list text-blue-500"></i>
-              <span>Post RFQ</span>
+          </div>
+        </div>
+
+        <!-- ═══ BUYER VERIFIED PROFILE DOSSIER TILE ═══ -->
+        <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div class="flex items-start sm:items-center space-x-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xl flex-shrink-0">
+              <i class="fa-solid fa-address-card"></i>
+            </div>
+            <div class="space-y-0.5">
+              <div class="flex items-center space-x-2">
+                <span class="text-sm sm:text-base font-heading font-extrabold text-slate-900 dark:text-white">
+                  ${user.business_name || user.full_name || 'Verified Buyer'}
+                </span>
+                <span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                  <i class="fa-solid fa-check mr-1"></i>Active Profile
+                </span>
+              </div>
+              <p class="text-xs text-gray-500 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span><strong>Category:</strong> ${user.buyer_type || 'Household / Consumer'}</span>
+                <span>•</span>
+                <span><strong>Destination:</strong> ${user.address ? `${user.address}, ${user.lga || ''}, ${user.state || 'Nigeria'}` : 'Delivery address on file'}</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="actions.setView('buyer-onboarding')" class="px-4 py-2 rounded-xl border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-xs font-bold hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-all flex items-center space-x-1.5">
+              <i class="fa-solid fa-pen-to-square text-xs"></i>
+              <span>Update Destination</span>
             </button>
           </div>
         </div>

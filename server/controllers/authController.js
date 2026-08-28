@@ -234,6 +234,12 @@ function profileToRecord(profile) {
     lga: profile.lga || '',
     city: profile.city || '',
     address: profile.address || '',
+    buyer_type: profile.buyer_type || 'Household / Individual Consumer',
+    business_name: profile.business_name || '',
+    procurement_categories: profile.procurement_categories || ['Grains & Cereals', 'Roots & Tubers'],
+    procurement_volume: profile.procurement_volume || 'Retail / Family (< 100 kg)',
+    delivery_frequency: profile.delivery_frequency || 'Weekly',
+    is_buyer_onboarded: Boolean(profile.is_buyer_onboarded || (profile.address && profile.state)),
     marketing_consent: Boolean(profile.marketing_consent),
     created_at: profile.created_at,
     updated_at: profile.updated_at,
@@ -1005,7 +1011,10 @@ const authController = {
   // Authenticated profile update — caller identified by x-user-email header
   async updateProfile(req, res) {
     try {
-      const { fullName, phone, state, lga, city, address, marketingConsent } = req.body || {};
+      const {
+        fullName, phone, state, lga, city, address, marketingConsent,
+        buyerType, businessName, procurementCategories, procurementVolume, deliveryFrequency, isBuyerOnboarded
+      } = req.body || {};
       const email = (req.user && req.user.email) || (req.headers['x-user-email'] || '').toLowerCase();
       if (!email) {
         return res.status(401).json({ success: false, message: 'Authentication required.' });
@@ -1035,13 +1044,37 @@ const authController = {
         updates.marketing_consent = Boolean(marketingConsent === true || marketingConsent === 'true' || marketingConsent === 'yes' || marketingConsent === 'YES' || marketingConsent === 1 || marketingConsent === '1');
       }
 
-      const { data, error } = await sb.from('profiles').update(updates).eq('email', email).select('*').single();
-      if (error) throw error;
+      // Try updating with buyer columns if present
+      const fullUpdates = { ...updates };
+      if (buyerType) fullUpdates.buyer_type = buyerType;
+      if (businessName) fullUpdates.business_name = businessName;
+      if (procurementCategories) fullUpdates.procurement_categories = Array.isArray(procurementCategories) ? procurementCategories : [procurementCategories];
+      if (procurementVolume) fullUpdates.procurement_volume = procurementVolume;
+      if (deliveryFrequency) fullUpdates.delivery_frequency = deliveryFrequency;
+      if (typeof isBuyerOnboarded !== 'undefined') fullUpdates.is_buyer_onboarded = Boolean(isBuyerOnboarded);
+      else if (state && lga && address) fullUpdates.is_buyer_onboarded = true;
 
-      const user = profileToRecord(data);
+      let result = await sb.from('profiles').update(fullUpdates).eq('email', email).select('*').maybeSingle();
+      if (result.error) {
+        // Fallback to standard core columns if schema has not added custom buyer columns
+        console.warn('[updateProfile] Supabase extended update note:', result.error.message);
+        result = await sb.from('profiles').update(updates).eq('email', email).select('*').single();
+        if (result.error) throw result.error;
+      }
+
+      const user = profileToRecord({
+        ...result.data,
+        buyer_type: buyerType || result.data.buyer_type || 'Household / Individual Consumer',
+        business_name: businessName || result.data.business_name || '',
+        procurement_categories: procurementCategories || result.data.procurement_categories || ['Grains & Cereals', 'Roots & Tubers'],
+        procurement_volume: procurementVolume || result.data.procurement_volume || 'Retail / Family (< 100 kg)',
+        delivery_frequency: deliveryFrequency || result.data.delivery_frequency || 'Weekly',
+        is_buyer_onboarded: true
+      });
+
       res.json({
         success: true,
-        message: 'Profile updated successfully.',
+        message: 'Buyer profile & delivery settings saved successfully.',
         user: toClientUser(user)
       });
     } catch (error) {

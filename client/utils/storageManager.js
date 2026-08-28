@@ -16,6 +16,35 @@ const StorageManager = {
     CURRENT_VIEW: 'agrein_current_view',
     ALL_USERS: 'agrein_all_users', // Local user database backup
     FARMER_VERIFICATION: 'agrein_farmer_verification_app', // Local draft/submitted verification
+    BUYER_PROFILE: 'agrein_buyer_profile', // Compulsory buyer profile
+  },
+
+  /**
+   * Save buyer profile to localStorage
+   * @param {Object} profile - Buyer profile object
+   */
+  saveBuyerProfile(profile) {
+    if (!profile) return false;
+    try {
+      localStorage.setItem(this.KEYS.BUYER_PROFILE, JSON.stringify(profile));
+      return true;
+    } catch (e) {
+      console.warn('⚠️ Failed to save buyer profile to localStorage:', e.message);
+      return false;
+    }
+  },
+
+  /**
+   * Retrieve buyer profile from localStorage
+   * @returns {Object|null}
+   */
+  getBuyerProfile() {
+    try {
+      const p = localStorage.getItem(this.KEYS.BUYER_PROFILE);
+      return p ? JSON.parse(p) : null;
+    } catch (e) {
+      return null;
+    }
   },
 
   /**

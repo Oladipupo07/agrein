@@ -11,6 +11,7 @@ function renderNavbar(state, actions) {
     'farmer-dashboard': 'Farmer Dashboard',
     'farmer-verification': 'Farm Verification',
     'buyer-dashboard': 'Buyer Dashboard',
+    'buyer-onboarding': 'Buyer Setup',
     'admin-dashboard': 'Admin',
     'admin-verification': 'Verify Queue',
     'ai-insights': 'AI Forecast',

@@ -518,9 +518,14 @@ function renderAdminDashboard(state, actions) {
                         ${u.role === 'FARMER' ? `
                           <button onclick="actions.openAdminReview('${u.id || u.email}')" class="px-2.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-[10px] shadow-sm transition-all inline-flex items-center space-x-1">
                             <i class="fa-solid fa-magnifying-glass"></i>
-                            <span>Inspect Dossier</span>
+                            <span>Inspect Farm</span>
                           </button>
-                        ` : ''}
+                        ` : (u.role === 'BUYER' ? `
+                          <button onclick="actions.openAdminBuyerInspect('${u.id || u.email}')" class="px-2.5 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-extrabold text-[10px] shadow-sm transition-all inline-flex items-center space-x-1">
+                            <i class="fa-solid fa-address-card"></i>
+                            <span>Inspect Buyer</span>
+                          </button>
+                        ` : '')}
                       </td>
                     </tr>
                   `).join('')}
@@ -795,6 +800,71 @@ function renderAdminDashboard(state, actions) {
               </div>
             `}
           </div>
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- ═══ BUYER PROFILE DOSSIER INSPECTION MODAL ═══ -->
+    ${state.adminBuyerInspectionModalActive && state.adminInspectedBuyer ? `
+      <div class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-blue-500/30 shadow-2xl p-5 sm:p-8 space-y-6 animate-scale-up">
+          
+          <div class="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-address-card"></i>
+              </div>
+              <div>
+                <h3 class="text-lg font-heading font-extrabold text-slate-900 dark:text-white">
+                  ${state.adminInspectedBuyer.full_name || 'Buyer Dossier'}
+                </h3>
+                <div class="text-xs text-blue-600 font-bold uppercase tracking-wider">
+                  ${state.adminInspectedBuyer.buyer_type || 'Household / Consumer'}
+                </div>
+              </div>
+            </div>
+
+            <button onclick="actions.closeAdminBuyerInspect()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 hover:text-white flex items-center justify-center text-sm">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="space-y-4 text-xs">
+            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 space-y-2">
+              <div class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Contact & Registration</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-800 dark:text-gray-200">
+                <div><span class="text-gray-400 block text-[10px]">Email</span><span class="font-mono font-bold">${state.adminInspectedBuyer.email}</span></div>
+                <div><span class="text-gray-400 block text-[10px]">Phone</span><span class="font-mono font-bold">${state.adminInspectedBuyer.phone_number || 'N/A'}</span></div>
+                <div><span class="text-gray-400 block text-[10px]">Business Name</span><span class="font-bold">${state.adminInspectedBuyer.business_name || state.adminInspectedBuyer.full_name || 'N/A'}</span></div>
+                <div><span class="text-gray-400 block text-[10px]">Role</span><span class="font-bold uppercase text-blue-600">${state.adminInspectedBuyer.role}</span></div>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 space-y-2">
+              <div class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Primary Delivery Destination</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-800 dark:text-gray-200">
+                <div><span class="text-gray-400 block text-[10px]">State</span><span class="font-bold">${state.adminInspectedBuyer.state || 'N/A'}</span></div>
+                <div><span class="text-gray-400 block text-[10px]">LGA</span><span class="font-bold">${state.adminInspectedBuyer.lga || 'N/A'}</span></div>
+                <div class="sm:col-span-2"><span class="text-gray-400 block text-[10px]">Street Address & Landmark</span><span class="font-bold">${state.adminInspectedBuyer.address || 'N/A'}</span></div>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 space-y-2">
+              <div class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Procurement Profile</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-800 dark:text-gray-200">
+                <div><span class="text-gray-400 block text-[10px]">Order Volume</span><span class="font-bold">${state.adminInspectedBuyer.procurement_volume || 'Retail / Family (< 100 kg)'}</span></div>
+                <div><span class="text-gray-400 block text-[10px]">Frequency</span><span class="font-bold">${state.adminInspectedBuyer.delivery_frequency || 'Weekly'}</span></div>
+                <div class="sm:col-span-2"><span class="text-gray-400 block text-[10px]">Preferred Categories</span><span class="font-bold">${Array.isArray(state.adminInspectedBuyer.procurement_categories) ? state.adminInspectedBuyer.procurement_categories.join(', ') : (state.adminInspectedBuyer.procurement_categories || 'Grains & Cereals, Roots & Tubers')}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-gray-100 dark:border-slate-800 flex justify-end">
+            <button onclick="actions.closeAdminBuyerInspect()" class="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-gray-200 font-bold text-xs hover:bg-slate-200">
+              Close Dossier
+            </button>
+          </div>
+
         </div>
       </div>
     ` : ''}

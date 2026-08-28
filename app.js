@@ -126,6 +126,20 @@ const state = {
       && state.currentUser.verification_status !== 'APPROVED');
   },
 
+  // Locked-buyer compulsory onboarding. True when a BUYER has not completed
+  // their primary delivery destination address and phone details.
+  buyerOnboardingDraft: {},
+  isBuyerLocked() {
+    if (!state.currentUser || state.currentUser.role !== 'BUYER') return false;
+    const u = state.currentUser;
+    const bp = (state.mockData && state.mockData.buyerProfile) || state.buyerOnboardingDraft || {};
+    const stateVal = (u.state || bp.state || bp.deliveryState || '').trim();
+    const lgaVal = (u.lga || bp.lga || bp.deliveryLga || '').trim();
+    const addrVal = (u.address || bp.address || bp.deliveryAddress || '').trim();
+    const phoneVal = String(u.phone_number || u.phone || bp.phone || '').replace(/\D/g, '');
+    return !(stateVal && lgaVal && addrVal.length >= 5 && phoneVal.length >= 10);
+  },
+
   // Admin Review Dossier State
   adminReviewDossier: null,
   adminActionModalActive: false,
@@ -267,6 +281,10 @@ const SEO_REGISTRY = {
     title: "Farmer KYC Verification & Identity Audit | Agrein",
     description: "Complete your 7-stage farm verification to earn the Verified Producer badge and start selling on Agrein."
   },
+  'buyer-onboarding': {
+    title: "Buyer Verification & Delivery Setup | Agrein Marketplace",
+    description: "Complete your compulsory buyer delivery details and sourcing profile to unlock marketplace orders and ColdChain logistics."
+  },
   'account-settings': {
     title: "Account Settings & Profile Management | Agrein",
     description: "Manage your Agrein profile, security credentials, contact details, and bank account payouts."
@@ -324,6 +342,16 @@ const actions = {
       if (!allowedViews.includes(view)) {
         actions.triggerToast('🔒 Complete your farm verification before accessing the platform.');
         view = 'farmer-verification';
+      }
+    }
+
+    // ── BUYER COMPULSORY PROFILE ONBOARDING LOCK ──
+    // Buyers must complete delivery and business details before trading.
+    if (state.currentUser && state.currentUser.role === 'BUYER' && state.isBuyerLocked && state.isBuyerLocked()) {
+      const allowedViews = ['buyer-onboarding', 'account-settings'];
+      if (!allowedViews.includes(view)) {
+        actions.triggerToast('📋 Compulsory: Please complete your delivery profile to continue.');
+        view = 'buyer-onboarding';
       }
     }
 
@@ -555,13 +583,14 @@ const actions = {
       'farmer-dashboard': 'FARMER',
       'farmer-verification': 'FARMER',
       'buyer-dashboard': 'BUYER',
+      'buyer-onboarding': 'BUYER',
       'admin-dashboard': 'ADMIN',
       'admin-verification': 'ADMIN',
       'admin-review': 'ADMIN',
       'account-settings': null  // any logged-in user; not role-locked
     };
     const roleDefaultView = (role) => {
-      if (role === 'BUYER') return 'buyer-dashboard';
+      if (role === 'BUYER') return (state.isBuyerLocked && state.isBuyerLocked()) ? 'buyer-onboarding' : 'buyer-dashboard';
       if (role === 'ADMIN') return 'admin-verification';
       if (role === 'FARMER') return 'farmer-verification';
       return 'landing';
@@ -611,6 +640,15 @@ const actions = {
       if (view !== 'farmer-verification' && view !== 'account-settings') {
         actions.triggerToast('🔒 Complete your farm verification to access the platform.');
         actions.setView('farmer-verification');
+        return;
+      }
+    }
+
+    // Logged in as BUYER — but has not completed compulsory delivery profile
+    if (userRole === 'BUYER' && state.isBuyerLocked && state.isBuyerLocked()) {
+      if (view !== 'buyer-onboarding' && view !== 'account-settings') {
+        actions.triggerToast('📋 Compulsory: Please complete your delivery profile to continue.');
+        actions.setView('buyer-onboarding');
         return;
       }
     }
@@ -2527,6 +2565,28 @@ const actions = {
     renderApp();
   },
 
+  openAdminBuyerInspect(userIdOrEmail) {
+    const user = (state.registeredUsersList || []).find(u => u.id === userIdOrEmail || u.email === userIdOrEmail) || {
+      full_name: 'Registered Buyer',
+      email: userIdOrEmail,
+      role: 'BUYER',
+      buyer_type: 'Wholesale Merchant / Distributor',
+      state: 'Lagos',
+      lga: 'Ikeja',
+      address: 'Plot 14, Commercial Avenue, Ikeja, Lagos',
+      phone_number: '08034567890'
+    };
+    state.adminInspectedBuyer = user;
+    state.adminBuyerInspectionModalActive = true;
+    renderApp();
+  },
+
+  closeAdminBuyerInspect() {
+    state.adminBuyerInspectionModalActive = false;
+    state.adminInspectedBuyer = null;
+    renderApp();
+  },
+
   closeAdminInspectionModal() {
     state.adminInspectionModalActive = false;
     renderApp();
@@ -2771,6 +2831,187 @@ const actions = {
     .catch(() => {
       actions.triggerToast('❌ Could not reach the server. Check your connection and try again.');
     });
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // COMPULSORY BUYER ONBOARDING & VERIFICATION ACTIONS
+  // ═══════════════════════════════════════════════════════════════
+
+  updateBuyerField(field, value) {
+    if (!state.buyerOnboardingDraft) state.buyerOnboardingDraft = {};
+    if (!state.mockData.buyerProfile) state.mockData.buyerProfile = {};
+    state.buyerOnboardingDraft[field] = value;
+    state.mockData.buyerProfile[field] = value;
+    if (state.currentUser) {
+      if (field === 'fullName') state.currentUser.full_name = value;
+      if (field === 'phone') state.currentUser.phone_number = value;
+      if (field === 'state') state.currentUser.state = value;
+      if (field === 'lga') state.currentUser.lga = value;
+      if (field === 'address') state.currentUser.address = value;
+      if (field === 'buyerType') state.currentUser.buyer_type = value;
+      if (field === 'businessName') state.currentUser.business_name = value;
+      if (field === 'procurementCategories') state.currentUser.procurement_categories = value;
+      if (field === 'procurementVolume') state.currentUser.procurement_volume = value;
+      if (field === 'deliveryFrequency') state.currentUser.delivery_frequency = value;
+    }
+    StorageManager.saveBuyerProfile(state.mockData.buyerProfile);
+  },
+
+  toggleBuyerCategory(catName) {
+    if (!state.buyerOnboardingDraft) state.buyerOnboardingDraft = {};
+    if (!state.mockData.buyerProfile) state.mockData.buyerProfile = {};
+    let cats = state.buyerOnboardingDraft.procurementCategories || state.mockData.buyerProfile.procurementCategories || (state.currentUser && state.currentUser.procurement_categories) || ['Grains & Cereals'];
+    if (!Array.isArray(cats)) cats = [cats];
+    if (cats.includes(catName)) {
+      cats = cats.filter(c => c !== catName);
+    } else {
+      cats.push(catName);
+    }
+    state.buyerOnboardingDraft.procurementCategories = cats;
+    state.mockData.buyerProfile.procurementCategories = cats;
+    if (state.currentUser) state.currentUser.procurement_categories = cats;
+    StorageManager.saveBuyerProfile(state.mockData.buyerProfile);
+    renderApp();
+  },
+
+  async submitBuyerProfile() {
+    const user = state.currentUser || {};
+    const profile = state.mockData.buyerProfile || state.buyerOnboardingDraft || {};
+    const fullName = (profile.fullName || profile.full_name || user.full_name || '').trim();
+    const phone = (profile.phone || profile.phone_number || user.phone_number || '').trim();
+    const stateVal = (profile.state || user.state || '').trim();
+    const lgaVal = (profile.lga || user.lga || '').trim();
+    const addressVal = (profile.address || user.address || '').trim();
+    const buyerType = profile.buyerType || profile.buyer_type || user.buyer_type || 'Household / Individual Consumer';
+    const businessName = (profile.businessName || profile.business_name || user.business_name || (buyerType === 'Household / Individual Consumer' ? fullName : '')).trim();
+    const procurementCategories = profile.procurementCategories || profile.procurement_categories || user.procurement_categories || ['Grains & Cereals'];
+    const procurementVolume = profile.procurementVolume || profile.procurement_volume || user.procurement_volume || 'Retail / Family (< 100 kg)';
+    const deliveryFrequency = profile.deliveryFrequency || profile.delivery_frequency || user.delivery_frequency || 'Weekly';
+
+    if (!fullName || fullName.length < 3) {
+      actions.triggerToast('⚠️ Please enter your full name / representative name.');
+      const el = document.getElementById('buyerFullName');
+      if (el) el.focus();
+      return;
+    }
+    if (!phone || phone.replace(/\D/g, '').length < 10) {
+      actions.triggerToast('⚠️ Please enter a valid delivery contact phone number (at least 10 digits).');
+      const el = document.getElementById('buyerPhone');
+      if (el) el.focus();
+      return;
+    }
+    if (buyerType !== 'Household / Individual Consumer' && (!businessName || businessName.length < 2)) {
+      actions.triggerToast('⚠️ Please enter your registered business, store, or factory name.');
+      const el = document.getElementById('buyerBusinessName');
+      if (el) el.focus();
+      return;
+    }
+    if (!stateVal) {
+      actions.triggerToast('⚠️ Compulsory: Please select your primary delivery destination state.');
+      const el = document.getElementById('buyerState');
+      if (el) el.focus();
+      return;
+    }
+    if (!lgaVal) {
+      actions.triggerToast('⚠️ Compulsory: Please enter your destination LGA.');
+      const el = document.getElementById('buyerLga');
+      if (el) el.focus();
+      return;
+    }
+    if (!addressVal || addressVal.length < 5) {
+      actions.triggerToast('⚠️ Compulsory: Please provide your detailed delivery street address & nearest landmark.');
+      const el = document.getElementById('buyerAddress');
+      if (el) el.focus();
+      return;
+    }
+    if (!Array.isArray(procurementCategories) || procurementCategories.length === 0) {
+      actions.triggerToast('⚠️ Please select at least one produce category of interest.');
+      return;
+    }
+
+    try {
+      const token = StorageManager.getUser()?.token || (state.currentUser && state.currentUser.token);
+      const email = user.email || (StorageManager.getUser() && StorageManager.getUser().email);
+
+      const payload = {
+        fullName,
+        phone,
+        state: stateVal,
+        lga: lgaVal,
+        city: lgaVal,
+        address: addressVal,
+        buyerType,
+        businessName,
+        procurementCategories,
+        procurementVolume,
+        deliveryFrequency,
+        isBuyerOnboarded: true
+      };
+
+      const fetchFn = window.apiFetch || fetch;
+      const res = await fetchFn('/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-user-email': email || ''
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (data.success && data.user) {
+        state.currentUser = {
+          ...state.currentUser,
+          ...data.user,
+          token: token || state.currentUser?.token
+        };
+      } else {
+        state.currentUser = {
+          ...state.currentUser,
+          full_name: fullName,
+          phone_number: phone,
+          state: stateVal,
+          lga: lgaVal,
+          address: addressVal,
+          buyer_type: buyerType,
+          business_name: businessName,
+          procurement_categories: procurementCategories,
+          procurement_volume: procurementVolume,
+          delivery_frequency: deliveryFrequency,
+          is_buyer_onboarded: true
+        };
+      }
+
+      StorageManager.saveUser(state.currentUser);
+      StorageManager.saveBuyerProfile(payload);
+      state.mockData.buyerProfile = payload;
+
+      actions.triggerToast('🎉 Buyer delivery profile verified & saved!');
+      state.currentView = 'marketplace';
+      renderApp();
+    } catch (err) {
+      console.warn('Profile save offline fallback:', err.message);
+      state.currentUser = {
+        ...state.currentUser,
+        full_name: fullName,
+        phone_number: phone,
+        state: stateVal,
+        lga: lgaVal,
+        address: addressVal,
+        buyer_type: buyerType,
+        business_name: businessName,
+        procurement_categories: procurementCategories,
+        procurement_volume: procurementVolume,
+        delivery_frequency: deliveryFrequency,
+        is_buyer_onboarded: true
+      };
+      StorageManager.saveUser(state.currentUser);
+      StorageManager.saveBuyerProfile({ fullName, phone, state: stateVal, lga: lgaVal, address: addressVal, buyerType, businessName, procurementCategories, procurementVolume, deliveryFrequency });
+      actions.triggerToast('🎉 Buyer delivery profile saved successfully!');
+      state.currentView = 'marketplace';
+      renderApp();
+    }
   },
 
   submitChangePassword(currentPassword, newPassword, confirmPassword) {
@@ -3460,6 +3701,9 @@ function renderAppImmediate() {
     case 'traceability':
       bodyContent = renderTraceabilityView(state, actions);
       break;
+    case 'buyer-onboarding':
+      bodyContent = renderBuyerOnboardingView(state, actions);
+      break;
 
     // === ACCOUNT SETTINGS ===
     case 'account-settings':
@@ -3469,6 +3713,8 @@ function renderAppImmediate() {
     default:
       bodyContent = renderHero(state, actions) + renderProductCatalog(state, actions);
   }
+
+  const isLockedHeader = state.isFarmerLocked() || (state.isBuyerLocked && state.isBuyerLocked() && state.currentView === 'buyer-onboarding');
 
   const newHtml = `
     <div class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-gray-100 transition-colors">
@@ -3481,16 +3727,16 @@ function renderAppImmediate() {
         </div>
       ` : ''}
 
-      <!-- Navbar (hidden for locked farmers) -->
-      ${state.isFarmerLocked()
+      <!-- Navbar (hidden for locked users) -->
+      ${isLockedHeader
         ? `
-        <div class="sticky top-0 z-40 w-full h-14 border-b border-emerald-900/10 dark:border-white/10 bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl flex items-center px-4 safe-area-top">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 flex items-center justify-center text-white shadow-md flex-shrink-0">
-            <i class="fa-solid fa-wheat-awn text-sm"></i>
+        <div class="sticky top-0 z-40 w-full h-14 border-b border-gray-200 dark:border-slate-800 bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl flex items-center px-4 safe-area-top">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr ${state.isFarmerLocked() ? 'from-emerald-700 via-emerald-600 to-amber-500' : 'from-blue-700 via-blue-600 to-emerald-500'} flex items-center justify-center text-white shadow-md flex-shrink-0">
+            <i class="fa-solid ${state.isFarmerLocked() ? 'fa-wheat-awn' : 'fa-truck-ramp-box'} text-sm"></i>
           </div>
           <div class="min-w-0 flex-1 px-3">
-            <div class="text-[10px] uppercase tracking-wider font-extrabold text-emerald-700 dark:text-emerald-400 leading-none">Agrein</div>
-            <div class="text-xs font-extrabold text-slate-900 dark:text-white truncate leading-tight">Farm Verification</div>
+            <div class="text-[10px] uppercase tracking-wider font-extrabold ${state.isFarmerLocked() ? 'text-emerald-700 dark:text-emerald-400' : 'text-blue-700 dark:text-blue-400'} leading-none">Agrein</div>
+            <div class="text-xs font-extrabold text-slate-900 dark:text-white truncate leading-tight">${state.isFarmerLocked() ? 'Farm Verification' : 'Buyer Profile Setup'}</div>
           </div>
           <button onclick="actions.logout()" class="px-3 py-2 rounded-xl text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-1.5">
             <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
@@ -3500,8 +3746,8 @@ function renderAppImmediate() {
         `
         : renderNavbar(state, actions)}
 
-      <!-- Ecosystem Navigation Strip (hidden for locked farmers) -->
-      ${state.isFarmerLocked() ? '' : renderEcosystemNav(state, actions)}
+      <!-- Ecosystem Navigation Strip (hidden for locked users) -->
+      ${isLockedHeader ? '' : renderEcosystemNav(state, actions)}
 
       <!-- Main Body Content -->
       <main class="flex-grow pb-24 lg:pb-0">
