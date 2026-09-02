@@ -257,7 +257,7 @@ function renderNavbar(state, actions) {
       <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm animate-fade-in" onclick="actions.closeMobileMenu()"></div>
 
       <!-- Drawer Panel -->
-      <div class="relative w-full max-w-xs h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col overflow-y-auto animate-drawer safe-area-top">
+      <div class="absolute top-16 right-3 w-[calc(100vw-1.5rem)] max-w-sm max-h-[calc(100dvh-5rem)] bg-white dark:bg-slate-900 shadow-2xl rounded-2xl border border-gray-200 dark:border-slate-800 flex flex-col overflow-hidden animate-modal">
 
         <!-- Drawer Header -->
         <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-800">
@@ -312,6 +312,8 @@ function renderNavbar(state, actions) {
           ${sectionHeader('Browse')}
           ${navItem({ icon: 'fa-house',          iconColor: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300', label: 'Home',         desc: 'Agrein landing & live market feed',          onclick: "actions.setViewAndCloseMobile('landing')",      active: currentView === 'landing' })}
           ${navItem({ icon: 'fa-store',          iconColor: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300', label: 'Marketplace',  desc: 'Browse fresh harvests from verified farms',    onclick: "actions.setViewAndCloseMobile('marketplace')",  active: currentView === 'marketplace' })}
+          ${navItem({ icon: 'fa-user',           iconColor: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300',             label: 'Profile',      desc: 'Manage your Agrein account',                  onclick: "actions.guardViewAndCloseMobile('account-settings')", active: currentView === 'account-settings' })}
+          ${navItem({ icon: 'fa-plus',           iconColor: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',       label: 'Sell',         desc: 'List produce or get started as a seller',       onclick: "actions.closeMobileMenu(); setTimeout(() => actions.openSellSheet(), 100);", active: sellSheetOpen })}
           ${navItem({ icon: 'fa-location-dot',   iconColor: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300', label: 'Farm Finder',  desc: 'Geospatial map of nearby farms',               onclick: "actions.setViewAndCloseMobile('nearby-farms')",  active: currentView === 'nearby-farms' })}
 
           ${sectionHeader('Insights')}
@@ -390,45 +392,6 @@ function renderNavbar(state, actions) {
       </div>
     </div>
     ` : ''}
-
-    <!-- ============================================ -->
-    <!-- MOBILE BOTTOM TAB BAR (visible only < lg)     -->
-    <!-- 5 slots: Home, Market, raised Sell, Cart/Profile, More -->
-    <!-- ============================================ -->
-    <nav class="lg:hidden fixed bottom-0 inset-x-0 z-30 glass-panel border-t border-emerald-900/10 dark:border-white/10 transition-transform duration-300 ${bottomNavHidden ? 'translate-y-full' : 'translate-y-0'}" aria-label="Primary">
-      <div class="grid grid-cols-5 max-w-md mx-auto px-1.5 pt-1.5 pb-1 bottom-nav-safe">
-        <button onclick="actions.setView('landing')" class="flex flex-col items-center justify-center py-1 gap-0.5 rounded-xl ${currentView === 'landing' ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}" aria-label="Home">
-          <i class="fa-solid fa-house text-lg"></i>
-          <span class="text-[10px] font-bold">Home</span>
-        </button>
-        <button onclick="actions.setView('marketplace')" class="flex flex-col items-center justify-center py-1 gap-0.5 rounded-xl ${currentView === 'marketplace' ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}" aria-label="Marketplace">
-          <i class="fa-solid fa-store text-lg"></i>
-          <span class="text-[10px] font-bold">Market</span>
-        </button>
-        <div class="relative flex items-end justify-center">
-          <button onclick="actions.openSellSheet()" class="-mt-6 w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 text-white shadow-xl shadow-emerald-700/30 flex items-center justify-center active:scale-95 ring-4 ring-white dark:ring-slate-950" aria-label="Sell">
-            <i class="fa-solid fa-plus text-xl"></i>
-          </button>
-          <span class="absolute -bottom-0.5 text-[10px] font-extrabold text-slate-700 dark:text-slate-300">Sell</span>
-        </div>
-        ${cartCount > 0 ? `
-          <button onclick="actions.toggleCartDrawer()" class="relative flex flex-col items-center justify-center py-1 gap-0.5 rounded-xl ${state.cartOpen ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}" aria-label="Cart">
-            <i class="fa-solid fa-cart-shopping text-lg"></i>
-            <span class="absolute top-0 right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-amber-400 text-emerald-950 text-[9px] font-extrabold flex items-center justify-center">${cartCount > 99 ? '99+' : cartCount}</span>
-            <span class="text-[10px] font-bold">Cart</span>
-          </button>
-        ` : `
-          <button onclick="actions.guardView('account-settings')" class="flex flex-col items-center justify-center py-1 gap-0.5 rounded-xl ${currentView === 'account-settings' ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}" aria-label="Profile">
-            <i class="fa-solid fa-user text-lg"></i>
-            <span class="text-[10px] font-bold">Profile</span>
-          </button>
-        `}
-        <button onclick="actions.toggleMobileMenu()" class="flex flex-col items-center justify-center py-1 gap-0.5 rounded-xl ${mobileMenuOpen ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}" aria-label="More">
-          <i class="fa-solid fa-bars text-lg"></i>
-          <span class="text-[10px] font-bold">More</span>
-        </button>
-      </div>
-    </nav>
 
     <!-- ============================================ -->
     <!-- SELL SHEET (raised Sell button, < lg only)    -->
@@ -513,7 +476,7 @@ function renderNavbar(state, actions) {
     ` : ''}
 
     <!-- ═══ FLOATING AGREIN SUPPORT TRIGGER (Bottom Right — Logo Only) ═══ -->
-    <div class="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 flex items-center animate-fade-in">
+    <div class="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-40 flex items-center animate-fade-in">
       <button onclick="actions.openChatDrawer('Agrein Support')"
               title="Open 24/7 Agrein Agricultural AI Support & Customer Care"
               class="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 text-white shadow-2xl shadow-emerald-950/60 hover:scale-110 active:scale-95 transition-all flex items-center justify-center border border-emerald-400/40 group">
