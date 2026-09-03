@@ -105,12 +105,8 @@ function renderFarmerPendingApprovalView(state, actions) {
           </div>
 
           <!-- Action Buttons -->
-          <div class="flex flex-col sm:flex-row gap-3 pt-4">
-            <button onclick="actions.setView('landing')" class="flex-1 px-6 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-xs transition-all flex items-center justify-center space-x-2">
-              <i class="fa-solid fa-home"></i>
-              <span>Browse Marketplace</span>
-            </button>
-            <button onclick="actions.openChatDrawer('Agrein Support')" class="flex-1 px-6 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs transition-all shadow-lg flex items-center justify-center space-x-2">
+          <div class="flex justify-center pt-4">
+            <button onclick="actions.openChatDrawer('Agrein Support')" class="w-full sm:w-auto sm:min-w-64 px-6 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs transition-all shadow-lg flex items-center justify-center space-x-2">
               <i class="fa-solid fa-headset"></i>
               <span>Contact Support</span>
             </button>

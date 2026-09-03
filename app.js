@@ -345,10 +345,12 @@ const actions = {
     // ── FARMER VERIFICATION LOCK ──
     // Unverified farmers are locked on farmer-verification. They cannot navigate anywhere else.
     if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
-      const allowedViews = ['farmer-verification', 'account-settings'];
+      const verificationStatus = state.currentUser.verification_status;
+      const isSubmitted = verificationStatus === 'PENDING' || verificationStatus === 'PENDING_REVIEW' || verificationStatus === 'UNDER_REVIEW';
+      const allowedViews = isSubmitted ? ['farmer-pending-approval', 'account-settings'] : ['farmer-verification', 'account-settings'];
       if (!allowedViews.includes(view)) {
         actions.triggerToast('🔒 Complete your farm verification before accessing the platform.');
-        view = 'farmer-verification';
+        view = isSubmitted ? 'farmer-pending-approval' : 'farmer-verification';
       }
     }
 
