@@ -1,12 +1,16 @@
 # Agrein
 
-Agrein is a full-stack agricultural marketplace prototype for connecting farmers, buyers, and admins in a single platform. The app is designed around direct farm-to-market trade in Nigeria, with farmer verification, produce listing, order checkout, escrow-style payment flows, and AI-assisted market insights.
+> Connecting Farmers to Buyers, One Harvest at a Time.
+
+Agrein is a full-stack agricultural marketplace for connecting farmers, buyers, and administrators in one platform. It is designed around direct farm-to-market trade in Nigeria, with farmer verification, produce listings, order checkout, payment integrations, and AI-assisted market insights.
 
 This repo contains:
 - a static frontend SPA served from the project root
 - a Node.js + Express API in the `server/` folder
 - Supabase/PostgreSQL-ready database schema in `database/schema.sql`
-- PWA metadata, deployment config, and demo marketplace logic
+- PWA metadata, offline caching, deployment config, and demo marketplace logic
+
+The backend serves both the API and the frontend. In local development it listens on port `5000` by default; Render supplies port `10000` in production.
 
 ## Overview
 
@@ -104,16 +108,17 @@ Agrein includes:
 - npm
 - a Supabase project (optional for demo mode; some flows degrade gracefully without it)
 
-### 1. Install backend dependencies
+### 1. Install dependencies
 
 ```bash
-cd server
 npm install
 ```
 
+The root `postinstall` script installs the backend dependencies in `server/` automatically. To install them directly, run `npm --prefix server install`.
+
 ### 2. Create environment variables
 
-Create a `server/.env` file with the variables below:
+Create a `server/.env` file with the variables below when using database, authentication, email, or payment-backed flows:
 
 ```env
 PORT=5000
@@ -134,13 +139,19 @@ MAIL_FROM_ADDRESS=your@email.com
 MAIL_FROM_NAME=Agrein Market
 ```
 
-> The app reads these variables in the backend at runtime. If some keys are missing, the server still starts in a demo-friendly mode, but payment or database-backed flows may behave differently.
+> The app reads these variables in the backend at runtime. Demo-only flows can work with a reduced configuration, but production mode requires the configured Interswitch credentials and Supabase password columns. Never commit `.env` files or service-role keys.
 
 ### 3. Start the backend
 
 ```bash
 cd server
 npm run dev
+```
+
+For a production-style local start, use `npm start` from `server/`, or use the Windows PowerShell static server when you only need to preview frontend files:
+
+```powershell
+.\server.ps1
 ```
 
 The Express app will serve the frontend root and expose the API under `/api`.
@@ -157,15 +168,22 @@ The backend serves static assets from the project root, so the frontend is acces
 
 ## Available scripts
 
+From the repository root:
+
+```bash
+npm run build     # install/build backend CSS through the root script
+npm start         # start the production server
+```
+
 From `server/`:
 
 ```bash
-npm run dev
-npm run build
-npm start
+npm run dev       # restart the server when backend files change
+npm run build     # compile Tailwind CSS to ../public/styles.css
+npm test          # run the configured Interswitch redirect test
 ```
 
-`npm run build` compiles the Tailwind styles into `public/styles.css`.
+`npm run build` compiles the Tailwind styles into `public/styles.css`. The root `npm run build` delegates to this backend build command.
 
 ## API status
 
@@ -225,10 +243,12 @@ A Render deployment configuration is already provided in `render.yaml`.
 
 Key runtime settings include:
 - Node runtime
-- backend root at `server/`
+- repository root with backend dependencies installed from `server/`
 - `PORT=10000`
 - production environment variables for JWT, Supabase, Interswitch, and Brevo
 - health check at `/api/status`
+
+Before deploying, apply the schema in `database/schema.sql` and ensure `public.profiles` contains `password_hash` and `password_salt`. The production server checks these columns during startup to avoid silently losing account passwords.
 
 ## Notes
 
@@ -238,7 +258,7 @@ Key runtime settings include:
 
 ## License
 
-This project is distributed under the MIT license.
+This project is licensed under the MIT License. See the `license` field in `package.json` for the repository package metadata.
 
 ## Project intent
 

@@ -66,9 +66,11 @@
       bind('buyer_disputes', '*', `farmer_id=eq.${user.id}`, 'disputes', `disputes-${user.id}`);
       bind('notifications', 'INSERT', `user_id=eq.${user.id}`, 'notifications', `notif-${user.id}`);
       bind('farmer_verifications', '*', `user_id=eq.${user.id}`, 'verification', `ver-${user.id}`);
+      bind('profiles', 'UPDATE', `id=eq.${user.id}`, 'verification', `profile-ver-${user.id}`);
       bind('rfq_bids', '*', `farmer_id=eq.${user.id}`, 'rfqBids', `rfqbids-${user.id}`);
     } else if (user.role === 'ADMIN') {
       bind('farmer_verifications', '*', null, 'verificationQueue', 'admin-verifications');
+      bind('profiles', 'UPDATE', null, 'verificationQueue', 'admin-profile-verifications');
       bind('buyer_disputes', '*', null, 'disputes', 'admin-disputes');
       bind('orders', '*', null, 'orders', 'admin-orders');
       bind('profiles', '*', null, 'registeredUsers', 'admin-profiles');

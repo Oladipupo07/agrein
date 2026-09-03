@@ -4559,13 +4559,15 @@ window.__AGREIN_REALTIME_REFETCH__ = function (slice) {
             renderApp();
           }
         }).catch(() => {});
-      } else if (slice === 'verificationQueue' || slice === 'verification') {
-        apiFetch('/api/admin/farmer-verifications?status=PENDING_REVIEW').then(r => r.json()).then(j => {
-          if (j && j.success && state.adminDashboard) {
-            state.adminDashboard.pendingVerifications = (j.applications || []).length;
-            renderApp();
-          }
-        }).catch(() => {});
+      } else if (slice === 'verification') {
+        if (state.currentUser && state.currentUser.role === 'FARMER') {
+          actions.fetchFarmerVerification();
+        }
+      } else if (slice === 'verificationQueue') {
+        if (state.currentUser && state.currentUser.role === 'ADMIN') {
+          actions.fetchAdminVerifications();
+          actions.fetchRegisteredUsers();
+        }
       } else if (slice === 'registeredUsers') {
         apiFetch('/api/admin/users').then(r => r.json()).then(j => {
           if (j && j.success) {
