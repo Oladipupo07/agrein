@@ -54,6 +54,7 @@ const state = {
   authModalMode: 'login', // 'login', 'register', 'verify-otp'
   authTrigger: null, // 'add-to-cart' | 'dashboard' | 'session-expired' | null
   authRegisterRole: 'BUYER', // 'BUYER', 'FARMER'
+  authError: null,
   otpEmail: '',
   otpRole: 'BUYER',
   otpFlow: 'register', // 'register' | 'reset' — controls post-OTP routing
@@ -741,6 +742,7 @@ const actions = {
     state.authModalActive = true;
     state.authModalMode = mode;
     state.authTrigger = (opts && opts.trigger) || null;
+    state.authError = null;
     // Reset the OTP flow when opening any auth view — registration is the default.
     state.otpFlow = 'register';
     renderApp();
@@ -756,6 +758,7 @@ const actions = {
       state.otpCooldownInterval = null;
     }
     state.authModalActive = false;
+    state.authError = null;
     renderApp();
   },
 
@@ -766,7 +769,17 @@ const actions = {
 
   toggleAuthMode() {
     state.authModalMode = state.authModalMode === 'login' ? 'register' : 'login';
+    state.authError = null;
     renderApp();
+  },
+
+  setAuthError(message) {
+    state.authError = message || null;
+    const errorElement = document.getElementById('authInlineError');
+    if (errorElement) {
+      errorElement.textContent = state.authError || '';
+      errorElement.classList.toggle('hidden', !state.authError);
+    }
   },
 
   validateAndSubmitAuth(mode, role) {
@@ -779,39 +792,39 @@ const actions = {
       const confirmPassword = document.getElementById('regConfirmPassword')?.value || '';
 
       if (!firstName || !lastName) {
-        actions.triggerToast('❌ First Name and Last Name are required.');
+        actions.setAuthError('First Name and Last Name are required.');
         return;
       }
       if (!email) {
-        actions.triggerToast('❌ Please enter a valid Email Address.');
+        actions.setAuthError('Please enter a valid Email Address.');
         return;
       }
       if (!phone || !/^\d+$/.test(phone)) {
-        actions.triggerToast('❌ Phone Number must contain digits only.');
+        actions.setAuthError('Phone Number must contain digits only.');
         return;
       }
       if (password.length < 8) {
-        actions.triggerToast('❌ Password must be at least 8 characters long.');
+        actions.setAuthError('Password must be at least 8 characters long.');
         return;
       }
       if (!/[A-Z]/.test(password)) {
-        actions.triggerToast('❌ Password must contain at least 1 Uppercase letter (A-Z).');
+        actions.setAuthError('Password must contain at least 1 Uppercase letter (A-Z).');
         return;
       }
       if (!/[a-z]/.test(password)) {
-        actions.triggerToast('❌ Password must contain at least 1 Lowercase letter (a-z).');
+        actions.setAuthError('Password must contain at least 1 Lowercase letter (a-z).');
         return;
       }
       if (!/[0-9]/.test(password)) {
-        actions.triggerToast('❌ Password must contain at least 1 Number (0-9).');
+        actions.setAuthError('Password must contain at least 1 Number (0-9).');
         return;
       }
       if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-        actions.triggerToast('❌ Password must contain at least 1 Special character (!@#$%^&*).');
+        actions.setAuthError('Password must contain at least 1 Special character (!@#$%^&*).');
         return;
       }
       if (password !== confirmPassword) {
-        actions.triggerToast('❌ Passwords do not match.');
+        actions.setAuthError('Passwords do not match.');
         return;
       }
 
@@ -824,7 +837,7 @@ const actions = {
       .then(res => res.json())
       .then(data => {
         if (!data.success) {
-          actions.triggerToast(`❌ ${data.message || 'Registration failed.'}`);
+          actions.setAuthError(data.message || 'Registration failed.');
           return;
         }
 
@@ -835,6 +848,7 @@ const actions = {
         state.authModalMode = 'verify-otp';
         state.otpDigits = ['', '', '', '', '', ''];
         state.otpError = null;
+        state.authError = null;
         state.otpSuccess = false;
         state.otpTimerSeconds = 300;
         state.otpCooldownSeconds = 60;
@@ -844,13 +858,13 @@ const actions = {
       })
       .catch(err => {
         console.error('[register] failed:', err);
-        actions.triggerToast('❌ Could not reach the server. Please try again.');
+        actions.setAuthError('Could not reach the server. Please try again.');
       });
     } else {
       const email = document.getElementById('authEmail')?.value?.trim();
       const password = document.getElementById('authPassword')?.value;
       if (!email || !password) {
-        actions.triggerToast('❌ Please enter your email and password.');
+        actions.setAuthError('Please enter your email and password.');
         return;
       }
 
@@ -875,7 +889,7 @@ const actions = {
         }
 
         if (!data.success) {
-          actions.triggerToast(`❌ ${data.message || 'Login failed.'}`);
+          actions.setAuthError(data.message || 'Login failed.');
           return;
         }
 
@@ -888,6 +902,7 @@ const actions = {
           token: user.token,
           verification_status: user.verification_status || (user.role === 'FARMER' ? 'NOT_STARTED' : 'APPROVED')
         };
+        state.authError = null;
         state.activeRole = (state.currentUser.role || 'visitor').toLowerCase();
         state.authModalActive = false;
 
@@ -922,7 +937,7 @@ const actions = {
         }
       })
       .catch(() => {
-        actions.triggerToast('❌ Login failed. Check your connection and try again.');
+        actions.setAuthError('Login failed. Check your connection and try again.');
       });
     }
   },

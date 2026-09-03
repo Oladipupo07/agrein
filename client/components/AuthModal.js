@@ -50,6 +50,13 @@ function renderAuthModal(state, actions) {
         <!-- Body -->
         <div class="p-6 space-y-4">
 
+          ${!isOtpView && !isForgotEmail && !isForgotReset ? `
+            <div id="authInlineError" role="alert" aria-live="polite" class="${state.authError ? '' : 'hidden'} p-3 rounded-xl bg-red-100 dark:bg-red-950/50 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 text-xs font-bold flex items-start gap-2">
+              <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+              <span>${state.authError || ''}</span>
+            </div>
+          ` : ''}
+
           ${isForgotReset ? `
             <!-- ═══ FORGOT PASSWORD — NEW PASSWORD ENTRY ═══ -->
             <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 flex items-center space-x-2.5 text-xs text-emerald-700 dark:text-emerald-300">
