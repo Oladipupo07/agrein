@@ -1453,6 +1453,13 @@ const actions = {
       return;
     }
 
+    if (!state.mockData.farmerVerificationApp) {
+      state.mockData.farmerVerificationApp = StorageManager.getFarmerVerification() || {
+        status: 'DRAFT',
+        documents: []
+      };
+    }
+
     const btn = document.getElementById('detectLocationBtn');
     if (btn) {
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-300 mr-1.5"></i><span>Detecting Location...</span>';
@@ -1502,16 +1509,25 @@ const actions = {
           } catch (_) {}
         }
 
+        const matchStateOption = (select, detectedValue) => {
+          if (!select || !detectedValue) return '';
+          const normalizedDetected = detectedValue.toLowerCase().replace(/\s+state$/i, '').trim();
+          const option = Array.from(select.options).find(opt => {
+            const normalizedOption = opt.value.toLowerCase().replace(/\s+state$/i, '').trim();
+            return normalizedOption === normalizedDetected
+              || normalizedOption.includes(normalizedDetected)
+              || normalizedDetected.includes(normalizedOption);
+          });
+          if (option) {
+            select.value = option.value;
+            return option.value;
+          }
+          return '';
+        };
+
         // Auto-fill Farm State
         const farmStateEl = document.getElementById('farmState');
-        if (farmStateEl && detectedState) {
-          for (let opt of farmStateEl.options) {
-            if (opt.value.toLowerCase().includes(detectedState.toLowerCase()) || detectedState.toLowerCase().includes(opt.value.toLowerCase())) {
-              farmStateEl.value = opt.value;
-              break;
-            }
-          }
-        }
+        const farmStateValue = matchStateOption(farmStateEl, detectedState);
 
         // Auto-fill Farm LGA
         const farmLgaEl = document.getElementById('farmLga');
@@ -1529,29 +1545,24 @@ const actions = {
 
         // Auto-fill Personal State & LGA if empty
         const personalStateEl = document.getElementById('personalState');
-        if (personalStateEl && !personalStateEl.value && detectedState) {
-          for (let opt of personalStateEl.options) {
-            if (opt.value.toLowerCase().includes(detectedState.toLowerCase()) || detectedState.toLowerCase().includes(opt.value.toLowerCase())) {
-              personalStateEl.value = opt.value;
-              break;
-            }
-          }
-        }
+        const personalStateValue = matchStateOption(personalStateEl, detectedState);
         const personalLgaEl = document.getElementById('personalLga');
         if (personalLgaEl && !personalLgaEl.value && detectedLga) {
           personalLgaEl.value = detectedLga;
         }
 
         // Update state
-        if (state.mockData.farmerVerificationApp) {
-          state.mockData.farmerVerificationApp.gps_latitude = parseFloat(lat);
-          state.mockData.farmerVerificationApp.gps_longitude = parseFloat(lng);
-          if (farmStateEl?.value) state.mockData.farmerVerificationApp.farm_state = farmStateEl.value;
-          if (detectedLga) state.mockData.farmerVerificationApp.farm_lga = detectedLga;
-          if (farmAddrEl?.value) state.mockData.farmerVerificationApp.farm_location = farmAddrEl.value;
-          state.mockData.farmerVerificationApp.sectionCompletion = state.mockData.farmerVerificationApp.sectionCompletion || {};
-          state.mockData.farmerVerificationApp.sectionCompletion.location = true;
-        }
+        const verificationApp = state.mockData.farmerVerificationApp;
+        verificationApp.gps_latitude = parseFloat(lat);
+        verificationApp.gps_longitude = parseFloat(lng);
+        if (farmStateValue) verificationApp.farm_state = farmStateValue;
+        if (detectedLga) verificationApp.farm_lga = detectedLga;
+        if (farmAddrEl?.value) verificationApp.farm_location = farmAddrEl.value;
+        if (personalStateValue) verificationApp.state = personalStateValue;
+        if (personalLgaEl?.value) verificationApp.lga = personalLgaEl.value;
+        verificationApp.sectionCompletion = verificationApp.sectionCompletion || {};
+        verificationApp.sectionCompletion.location = true;
+        StorageManager.saveFarmerVerification(verificationApp);
 
         if (btn) {
           btn.innerHTML = '<i class="fa-solid fa-check text-amber-300 mr-1.5"></i><span>Location Detected!</span>';
