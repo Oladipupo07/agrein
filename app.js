@@ -1579,6 +1579,13 @@ const actions = {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
 
+    if (!state.mockData.farmerVerificationApp) {
+      state.mockData.farmerVerificationApp = StorageManager.getFarmerVerification() || {
+        status: 'DRAFT',
+        documents: []
+      };
+    }
+
     const docName = file.name;
     const docLabel = {
       'government_id': 'Government ID',
@@ -1634,30 +1641,32 @@ const actions = {
         body: JSON.stringify(payload)
       })
       .then(res => res.json())
-      .then(() => {
-        // Save document into state
-        if (state.mockData.farmerVerificationApp) {
-          state.mockData.farmerVerificationApp.documents = state.mockData.farmerVerificationApp.documents || [];
-          const idx = state.mockData.farmerVerificationApp.documents.findIndex(d => d.type === docType);
-          const docEntry = {
-            type: docType,
-            name: docName,
-            url: fileDataUrl,
-            uploaded_at: new Date().toISOString()
-          };
-          if (idx >= 0) {
-            state.mockData.farmerVerificationApp.documents[idx] = docEntry;
-          } else {
-            state.mockData.farmerVerificationApp.documents.push(docEntry);
-          }
-
-          state.mockData.farmerVerificationApp.sectionCompletion = state.mockData.farmerVerificationApp.sectionCompletion || {};
-          state.mockData.farmerVerificationApp.sectionCompletion.documents = true;
-          if (docType === 'farm_photo') state.mockData.farmerVerificationApp.sectionCompletion.photos = true;
-
-          // Auto-save to LocalStorage
-          StorageManager.saveFarmerVerification(state.mockData.farmerVerificationApp);
+      .then(response => {
+        if (!response || response.success !== true) {
+          throw new Error(response && response.message ? response.message : 'Document upload was not accepted.');
         }
+
+        // Save document into state
+        state.mockData.farmerVerificationApp.documents = state.mockData.farmerVerificationApp.documents || [];
+        const idx = state.mockData.farmerVerificationApp.documents.findIndex(d => d.type === docType);
+        const docEntry = {
+          type: docType,
+          name: docName,
+          url: fileDataUrl,
+          uploaded_at: new Date().toISOString()
+        };
+        if (idx >= 0) {
+          state.mockData.farmerVerificationApp.documents[idx] = docEntry;
+        } else {
+          state.mockData.farmerVerificationApp.documents.push(docEntry);
+        }
+
+        state.mockData.farmerVerificationApp.sectionCompletion = state.mockData.farmerVerificationApp.sectionCompletion || {};
+        state.mockData.farmerVerificationApp.sectionCompletion.documents = true;
+        if (docType === 'farm_photo') state.mockData.farmerVerificationApp.sectionCompletion.photos = true;
+
+        // Auto-save to LocalStorage
+        StorageManager.saveFarmerVerification(state.mockData.farmerVerificationApp);
 
         if (state.documentUploads[docType]) state.documentUploads[docType].progress = 100;
         actions.triggerToast(`✅ ${docLabel} (${docName}) uploaded successfully!`);
@@ -1750,6 +1759,18 @@ const actions = {
           const local = StorageManager.getFarmerVerification() || {};
           
           // Merge server application with local cache — preserve local in-progress edits
+          const serverDocuments = Array.isArray(app.documents) ? app.documents : [];
+          const localDocuments = Array.isArray(local.documents) ? local.documents : [];
+          const mergedDocuments = [...localDocuments];
+          serverDocuments.forEach(serverDoc => {
+            const existingIndex = mergedDocuments.findIndex(localDoc => localDoc.type === serverDoc.type);
+            if (existingIndex >= 0) {
+              mergedDocuments[existingIndex] = { ...serverDoc, ...mergedDocuments[existingIndex] };
+            } else {
+              mergedDocuments.push(serverDoc);
+            }
+          });
+
           const merged = {
             ...app,
             ...local,
@@ -1757,7 +1778,7 @@ const actions = {
             rejection_reason: app.rejection_reason !== undefined ? app.rejection_reason : local.rejection_reason,
             changes_requested_notes: app.changes_requested_notes !== undefined ? app.changes_requested_notes : local.changes_requested_notes,
             admin_notes: app.admin_notes !== undefined ? app.admin_notes : local.admin_notes,
-            documents: (app.documents && app.documents.length > 0) ? app.documents : (local.documents || [])
+            documents: mergedDocuments
           };
           state.mockData.farmerVerificationApp = merged;
           StorageManager.saveFarmerVerification(merged);

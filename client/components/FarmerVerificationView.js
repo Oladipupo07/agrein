@@ -332,7 +332,7 @@ function renderFarmerVerificationView(state, actions) {
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Full Name <span class="text-red-500">*</span></label>
                 <input type="text" id="personalFullName" placeholder="e.g. Ibrahim Bello"
-                       value="${farmerName}"
+                       value="${escapeHtml(farmerName)}"
                        oninput="actions.updateVerificationField('farmer_name', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmerName ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -340,7 +340,7 @@ function renderFarmerVerificationView(state, actions) {
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Email Address <span class="text-red-500">*</span></label>
                 <input type="email" id="personalEmail" placeholder="farmer@example.com"
-                       value="${emailVal}"
+                       value="${escapeHtml(emailVal)}"
                        oninput="actions.updateVerificationField('email', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${emailVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -348,7 +348,7 @@ function renderFarmerVerificationView(state, actions) {
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Phone Number <span class="text-red-500">*</span></label>
                 <input type="tel" id="personalPhone" placeholder="08034567890"
-                       value="${phoneVal}"
+                       value="${escapeHtml(phoneVal)}"
                        oninput="actions.updateVerificationField('phone', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${phoneVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -372,7 +372,7 @@ function renderFarmerVerificationView(state, actions) {
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Residential LGA <span class="text-red-500">*</span></label>
                 <input type="text" id="personalLga" placeholder="e.g. Zaria"
-                       value="${lgaVal}"
+                       value="${escapeHtml(lgaVal)}"
                        oninput="actions.updateVerificationField('lga', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${lgaVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -380,7 +380,7 @@ function renderFarmerVerificationView(state, actions) {
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Residential Street Address <span class="text-red-500">*</span></label>
                 <input type="text" id="personalAddress" placeholder="e.g. 14 Market Road"
-                       value="${addressVal}"
+                       value="${escapeHtml(addressVal)}"
                        oninput="actions.updateVerificationField('residential_address', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${addressVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -403,7 +403,7 @@ function renderFarmerVerificationView(state, actions) {
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Farm / Business Name <span class="text-red-500">*</span></label>
                 <input type="text" id="farmName" placeholder="e.g. Green Gold Agro Farms"
-                       value="${farmNameVal}"
+                       value="${escapeHtml(farmNameVal)}"
                        oninput="actions.updateVerificationField('farm_name', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmNameVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -425,7 +425,7 @@ function renderFarmerVerificationView(state, actions) {
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Farm Size in Acres <span class="text-red-500">*</span></label>
                 <input type="number" id="farmSizeAcres" placeholder="e.g. 50"
-                       value="${farmSizeVal}"
+                       value="${escapeHtml(farmSizeVal)}"
                        oninput="actions.updateVerificationField('farm_size_acres', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmSizeVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -433,7 +433,7 @@ function renderFarmerVerificationView(state, actions) {
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Years of Experience <span class="text-red-500">*</span></label>
                 <input type="number" id="yearsExperience" placeholder="e.g. 6"
-                       value="${yearsExpVal}"
+                       value="${escapeHtml(yearsExpVal)}"
                        oninput="actions.updateVerificationField('years_experience', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${yearsExpVal !== '' ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -441,7 +441,7 @@ function renderFarmerVerificationView(state, actions) {
               <div class="md:col-span-2">
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Crops / Livestock Produced <span class="text-red-500">*</span></label>
                 <input type="text" id="cropsProduced" placeholder="e.g. Yellow Maize, Soya Beans, Cassava, Cattle"
-                       value="${cropsVal}"
+                       value="${escapeHtml(cropsVal)}"
                        oninput="actions.updateVerificationField('crops_produced', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${cropsVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -449,7 +449,7 @@ function renderFarmerVerificationView(state, actions) {
               <div class="md:col-span-2">
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Products Intended for Sale on Agrein</label>
                 <input type="text" id="intendedProducts" placeholder="e.g. Bagged Maize (50kg), Fresh Soya Beans"
-                       value="${app.intended_products || ''}"
+                       value="${escapeHtml(app.intended_products || '')}"
                        oninput="actions.updateVerificationField('intended_products', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -488,7 +488,7 @@ function renderFarmerVerificationView(state, actions) {
               <div class="md:col-span-2">
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Farm Physical Address / Landmark <span class="text-red-500">*</span></label>
                 <input type="text" id="farmAddress" placeholder="e.g. Km 12 Zaria-Kano Expressway, Kaduna"
-                       value="${farmAddressVal}"
+                       value="${escapeHtml(farmAddressVal)}"
                        oninput="actions.updateVerificationField('farm_location', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmAddressVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -512,7 +512,7 @@ function renderFarmerVerificationView(state, actions) {
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Farm LGA <span class="text-red-500">*</span></label>
                 <input type="text" id="farmLga" placeholder="e.g. Zaria"
-                       value="${farmLgaVal}"
+                       value="${escapeHtml(farmLgaVal)}"
                        oninput="actions.updateVerificationField('farm_lga', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmLgaVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -520,7 +520,7 @@ function renderFarmerVerificationView(state, actions) {
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">GPS Latitude <span class="text-red-500">*</span></label>
                 <input type="text" id="farmLat" placeholder="e.g. 11.150000"
-                       value="${farmLatVal}"
+                       value="${escapeHtml(farmLatVal)}"
                        oninput="actions.updateVerificationField('gps_latitude', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmLatVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -528,7 +528,7 @@ function renderFarmerVerificationView(state, actions) {
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">GPS Longitude <span class="text-red-500">*</span></label>
                 <input type="text" id="farmLng" placeholder="e.g. 7.650000"
-                       value="${farmLngVal}"
+                       value="${escapeHtml(farmLngVal)}"
                        oninput="actions.updateVerificationField('gps_longitude', this.value)"
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmLngVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
