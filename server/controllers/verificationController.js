@@ -48,6 +48,47 @@ function getCombinedDocuments(userId, email, verificationId, dbDocs = []) {
   return result;
 }
 
+async function resolveFarmerProfileId(farmerId, email) {
+  const candidate = String(farmerId || '').trim();
+  if (candidate && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)) {
+    return candidate;
+  }
+  if (!email) return candidate || null;
+  const { data, error } = await supabase.from('profiles').select('id').eq('email', String(email).toLowerCase().trim()).maybeSingle();
+  if (error) throw error;
+  return data && data.id ? data.id : candidate || null;
+}
+
+async function saveVerificationDocuments(verificationId, documents) {
+  if (!verificationId || !Array.isArray(documents)) return;
+  for (const doc of documents) {
+    const documentType = doc.type || doc.documentType || doc.document_type;
+    const documentUrl = doc.url || doc.documentUrl || doc.file_url;
+    if (!documentType || !documentUrl) continue;
+
+    const documentData = {
+      verification_id: verificationId,
+      document_type: documentType,
+      file_url: documentUrl,
+      file_name: doc.name || doc.documentName || doc.file_name || documentType
+    };
+    const { data: existing, error: lookupError } = await supabase
+      .from('verification_documents')
+      .select('id')
+      .eq('verification_id', verificationId)
+      .eq('document_type', documentType)
+      .order('uploaded_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lookupError) throw lookupError;
+
+    const result = existing
+      ? await supabase.from('verification_documents').update(documentData).eq('id', existing.id)
+      : await supabase.from('verification_documents').insert(documentData);
+    if (result.error) throw result.error;
+  }
+}
+
 function dossierForClient(row, profile, docs, farmProfile) {
   const r = row || {};
   const p = profile || (r && r.profiles) || {};
@@ -267,27 +308,29 @@ const verificationController = {
         inMemoryFarmerDocuments.set(key, existing);
       }
 
-      // Best-effort database insert
-      try {
-        let vId = farmerId;
-        const { data: v } = await supabase
-          .from('farmer_verifications')
-          .select('id')
-          .or(`user_id.eq.${farmerId},user_id.eq.${email}`)
-          .maybeSingle();
-        if (v && v.id) vId = v.id;
+      const profileId = await resolveFarmerProfileId(farmerId, email);
+      if (!profileId) throw new Error('Farmer profile could not be resolved.');
 
-        for (const doc of docsToSave) {
-          await supabase.from('verification_documents').upsert({
-            verification_id: vId,
-            document_type: doc.type || doc.documentType,
-            file_url: doc.url || doc.documentUrl,
-            file_name: doc.name || doc.documentName || (doc.type || doc.documentType)
-          });
-        }
-      } catch (dbErr) {
-        console.warn('[uploadDocuments] Supabase DB note:', dbErr.message);
+      let { data: verification, error: verificationLookupError } = await supabase
+        .from('farmer_verifications')
+        .select('id')
+        .eq('user_id', profileId)
+        .order('submitted_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (verificationLookupError) throw verificationLookupError;
+
+      if (!verification) {
+        const draftResult = await supabase
+          .from('farmer_verifications')
+          .insert({ user_id: profileId, status: 'DRAFT' })
+          .select('id')
+          .single();
+        if (draftResult.error) throw draftResult.error;
+        verification = draftResult.data;
       }
+
+      await saveVerificationDocuments(verification.id, docsToSave);
 
       return res.status(201).json({
         success: true,
@@ -348,15 +391,18 @@ const verificationController = {
       if (fullName && fullName.trim()) profileUpdates.full_name = fullName.trim();
       if (phone && phone.trim()) profileUpdates.phone_number = phone.trim();
 
-      await supabase.from('profiles').update(profileUpdates).or(`id.eq.${farmerId},email.eq.${email}`);
+      const profileId = await resolveFarmerProfileId(farmerId, email);
+      if (!profileId) throw new Error('Farmer profile could not be resolved.');
+      const profileUpdateResult = await supabase.from('profiles').update(profileUpdates).eq('id', profileId);
+      if (profileUpdateResult.error) throw profileUpdateResult.error;
 
       // Persist the farmer profile so Nearby Farms and Admin can inspect real operational details
       const parsedCrops = Array.isArray(cropsProduced)
         ? cropsProduced
         : String(cropsProduced || '').split(',').map((x) => x.trim()).filter(Boolean);
 
-      await supabase.from('farmer_profiles').upsert({
-        user_id: farmerId,
+      const farmerProfileResult = await supabase.from('farmer_profiles').upsert({
+        user_id: profileId,
         farm_name: farmName || 'Agrein Verified Farm',
         farm_location: farmLocation || address || 'Nigeria',
         farm_state: farmState || state || 'Unknown',
@@ -369,10 +415,11 @@ const verificationController = {
         gps_longitude: gpsLongitude != null && gpsLongitude !== '' ? Number(gpsLongitude) : null,
         intended_products: intendedProducts || (Array.isArray(cropsProduced) ? cropsProduced.join(', ') : (cropsProduced || null))
       }, { onConflict: 'user_id' });
+      if (farmerProfileResult.error) throw farmerProfileResult.error;
 
       // Upsert verification row in PENDING_REVIEW
-      const { data: row } = await supabase.from('farmer_verifications').upsert({
-        user_id: farmerId,
+      const verificationResult = await supabase.from('farmer_verifications').upsert({
+        user_id: profileId,
         status: 'PENDING_REVIEW',
         nin_number: cleanNin,
         bvn_number: cleanBvn,
@@ -382,14 +429,18 @@ const verificationController = {
         submitted_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id' }).select('*').maybeSingle();
+      if (verificationResult.error) throw verificationResult.error;
+      const row = verificationResult.data;
 
-      const vId = (row && row.id) || farmerId;
+      const vId = row && row.id;
+      if (!vId) throw new Error('Verification application could not be saved.');
+      await saveVerificationDocuments(vId, documents || []);
       const { data: dbDocs } = await supabase
         .from('verification_documents')
         .select('*')
-        .or(`verification_id.eq.${vId},verification_id.eq.${farmerId}`);
-      const { data: profile } = await supabase.from('profiles').select('*').or(`id.eq.${farmerId},email.eq.${email}`).maybeSingle();
-      const { data: farmProf } = await supabase.from('farmer_profiles').select('*').eq('user_id', farmerId).maybeSingle();
+        .eq('verification_id', vId);
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', profileId).maybeSingle();
+      const { data: farmProf } = await supabase.from('farmer_profiles').select('*').eq('user_id', profileId).maybeSingle();
 
       const combinedDocs = getCombinedDocuments(farmerId, email, vId, dbDocs || []);
 

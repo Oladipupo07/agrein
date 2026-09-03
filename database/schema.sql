@@ -60,6 +60,9 @@ CREATE TABLE IF NOT EXISTS public.farmer_verifications (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+  CREATE UNIQUE INDEX IF NOT EXISTS farmer_verifications_user_id_uidx
+    ON public.farmer_verifications(user_id);
+
 -- 4. Verification Documents Table (Private Storage Metadata)
 CREATE TABLE IF NOT EXISTS public.verification_documents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
