@@ -4,7 +4,7 @@ const state = {
   currentView: 'landing', // 'landing', 'marketplace', 'ai-insights', 'nearby-farms', 'farmer-dashboard', 'buyer-dashboard', 'admin-dashboard',
   //                        'rfq-board', 'commodity-index', 'agro-doctor', 'weather', 'cooperatives', 'forum', 'learning-center',
   //                        'wallet', 'logistics', 'export-trade', 'bulk-b2b', 'subscriptions', 'traceability',
-  //                        'farmer-verification', 'admin-verification', 'admin-review', 'account-settings'
+  //                        'farmer-verification', 'admin-review', 'account-settings'
   activeRole: 'visitor', // 'visitor', 'farmer', 'buyer', 'admin'
   darkMode: false,
   // Cart & wishlist start empty — the user populates them by tapping "Add to
@@ -336,6 +336,12 @@ function escapeHtml(value) {
 
 const actions = {
   setView(view) {
+    // Keep old admin queue links working while the console owns verification.
+    if (view === 'admin-verification') {
+      view = 'admin-dashboard';
+      state.adminActiveTab = 'verifications';
+    }
+
     // ── FARMER VERIFICATION LOCK ──
     // Unverified farmers are locked on farmer-verification. They cannot navigate anywhere else.
     if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
@@ -586,13 +592,12 @@ const actions = {
       'buyer-dashboard': 'BUYER',
       'buyer-onboarding': 'BUYER',
       'admin-dashboard': 'ADMIN',
-      'admin-verification': 'ADMIN',
       'admin-review': 'ADMIN',
       'account-settings': null  // any logged-in user; not role-locked
     };
     const roleDefaultView = (role) => {
       if (role === 'BUYER') return (state.isBuyerLocked && state.isBuyerLocked()) ? 'buyer-onboarding' : 'buyer-dashboard';
-      if (role === 'ADMIN') return 'admin-verification';
+      if (role === 'ADMIN') return 'admin-dashboard';
       if (role === 'FARMER') return 'farmer-verification';
       return 'landing';
     };
@@ -927,7 +932,7 @@ const actions = {
         if (resumeView) {
           actions.guardView(resumeView);
         } else if (state.currentUser.role === 'ADMIN') {
-          actions.guardView('admin-verification');
+          actions.guardView('admin-dashboard');
         } else if (state.currentUser.role === 'FARMER') {
           actions.guardView(state.currentUser.verification_status === 'APPROVED' ? 'farmer-dashboard' : 'farmer-verification');
         } else if (state.currentUser.role === 'BUYER') {
@@ -1130,7 +1135,7 @@ const actions = {
         } else if (userRole === 'BUYER') {
           actions.guardView('buyer-dashboard');
         } else if (userRole === 'ADMIN') {
-          actions.guardView('admin-verification');
+          actions.guardView('admin-dashboard');
         } else {
           actions.setView('landing');
         }
@@ -3713,9 +3718,6 @@ function renderAppImmediate() {
     case 'farmer-pending-approval':
       bodyContent = renderFarmerPendingApprovalView(state, actions);
       break;
-    case 'admin-verification':
-      bodyContent = renderAdminVerificationDashboard(state, actions);
-      break;
     case 'admin-review':
       bodyContent = renderAdminReviewScreen(state, actions);
       break;
@@ -3958,7 +3960,6 @@ function renderEcosystemNav(state, actions) {
   } else if (role === 'ADMIN') {
     ecosystemItems = [
       { view: 'admin-dashboard', label: 'Admin Console', icon: 'fa-shield-halved', color: 'violet' },
-      { view: 'admin-verification', label: 'Farmer KYC Queue', icon: 'fa-user-check', color: 'purple' },
       { view: 'marketplace', label: 'Marketplace Audit', icon: 'fa-store', color: 'emerald' },
       { view: 'commodity-index', label: 'Price Index', icon: 'fa-chart-line', color: 'amber' },
       { view: 'rfq-board', label: 'RFQ Moderation', icon: 'fa-clipboard-list', color: 'blue' }
@@ -4796,7 +4797,8 @@ function _initPwaAndMobileExperience() {
       }
     } else if (state.currentUser && state.currentUser.role === 'ADMIN') {
       const hash = window.location.hash.replace('#', '').trim();
-      state.currentView = hash || 'admin-dashboard';
+      state.currentView = hash === 'admin-verification' ? 'admin-dashboard' : (hash || 'admin-dashboard');
+      if (hash === 'admin-verification') state.adminActiveTab = 'verifications';
       if (typeof actions.fetchAdminVerifications === 'function') {
         actions.fetchAdminVerifications();
         actions.fetchRegisteredUsers();
@@ -4806,7 +4808,7 @@ function _initPwaAndMobileExperience() {
       state.currentView = hash || 'buyer-dashboard';
     } else {
       const hash = window.location.hash.replace('#', '').trim();
-      if (hash) state.currentView = hash;
+      if (hash) state.currentView = hash === 'admin-verification' ? 'admin-dashboard' : hash;
     }
   } catch (e) {}
 

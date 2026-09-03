@@ -13,7 +13,6 @@ function renderNavbar(state, actions) {
     'buyer-dashboard': 'Buyer Dashboard',
     'buyer-onboarding': 'Buyer Setup',
     'admin-dashboard': 'Admin',
-    'admin-verification': 'Verify Queue',
     'ai-insights': 'AI Forecast',
     'nearby-farms': 'Farm Finder',
     'rfq-board': 'RFQ Board',
@@ -66,7 +65,7 @@ function renderNavbar(state, actions) {
   const roleDefaultView = (role) => {
     if (!role) return 'landing';
     if (role === 'BUYER') return 'buyer-dashboard';
-    if (role === 'ADMIN') return 'admin-verification';
+    if (role === 'ADMIN') return 'admin-dashboard';
     if (role === 'FARMER') return currentUser && currentUser.verification_status === 'APPROVED' ? 'farmer-dashboard' : 'farmer-verification';
     return 'landing';
   };
@@ -154,9 +153,6 @@ function renderNavbar(state, actions) {
           ${activeRole === 'admin' ? `
             <button onclick="actions.guardView('admin-dashboard')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'admin-dashboard' ? 'bg-purple-700 text-white shadow-md font-extrabold' : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30'}">
               <i class="fa-solid fa-shield-halved mr-1"></i> Admin Console
-            </button>
-            <button onclick="actions.guardView('admin-verification')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'admin-verification' ? 'bg-purple-700 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-purple-700'}">
-              <i class="fa-solid fa-user-check text-purple-400 mr-1"></i> Verify Queue
             </button>
           ` : ''}
 
@@ -350,7 +346,6 @@ function renderNavbar(state, actions) {
           ${activeRole === 'admin' ? `
             ${sectionHeader('Admin Portal')}
             ${navItem({ icon: 'fa-shield-halved', iconColor: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300', label: 'Admin Dashboard', desc: 'Platform metrics & moderation', onclick: "actions.guardViewAndCloseMobile('admin-dashboard')", active: currentView === 'admin-dashboard' })}
-            ${navItem({ icon: 'fa-user-check', iconColor: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300', label: 'Verify Queue', desc: 'Audit pending farmer verifications', onclick: "actions.guardViewAndCloseMobile('admin-verification')", active: currentView === 'admin-verification' })}
           ` : ''}
 
           ${sectionHeader('Mobile App')}
@@ -443,11 +438,6 @@ function renderNavbar(state, actions) {
               <i class="fa-solid fa-chevron-right text-slate-400"></i>
             </button>
           ` : activeRole === 'admin' ? `
-            <button onclick="actions.closeSellSheet(); actions.guardView('admin-verification');" class="w-full p-3 rounded-2xl flex items-center gap-3 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-950/50 transition-all text-left">
-              <span class="w-11 h-11 rounded-xl bg-purple-700 text-white flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-user-check text-base"></i></span>
-              <div class="min-w-0 flex-1"><div class="text-sm font-extrabold text-purple-900 dark:text-purple-300">Verify Queue</div><div class="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">Audit pending farmer verifications</div></div>
-              <i class="fa-solid fa-chevron-right text-slate-400"></i>
-            </button>
             <button onclick="actions.closeSellSheet(); actions.guardView('admin-dashboard');" class="w-full p-3 rounded-2xl flex items-center gap-3 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition-all text-left">
               <span class="w-11 h-11 rounded-xl bg-emerald-700 text-white flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-shield-halved text-base"></i></span>
               <div class="min-w-0 flex-1"><div class="text-sm font-extrabold text-emerald-900 dark:text-emerald-300">Admin Dashboard</div><div class="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">Platform metrics & moderation</div></div>
