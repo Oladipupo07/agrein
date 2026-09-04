@@ -41,8 +41,6 @@ function renderFarmerVerificationView(state, actions) {
   const farmAddressVal = app.farm_location || '';
   const farmStateVal = app.farm_state || app.state || '';
   const farmLgaVal = app.farm_lga || app.lga || '';
-  const farmLatVal = app.gps_latitude || '';
-  const farmLngVal = app.gps_longitude || '';
 
   const personalItems = [
     { key: 'name', label: 'Full Name', done: Boolean(farmerName.trim()) },
@@ -64,8 +62,7 @@ function renderFarmerVerificationView(state, actions) {
   const locationItems = [
     { key: 'farm_address', label: 'Farm Physical Address', done: Boolean(farmAddressVal.trim()) },
     { key: 'farm_state', label: 'Farm State', done: Boolean(farmStateVal) },
-    { key: 'farm_lga', label: 'Farm LGA', done: Boolean(farmLgaVal.trim()) },
-    { key: 'farm_coords', label: 'GPS Coordinates (Lat & Lng)', done: Boolean(farmLatVal && farmLngVal) }
+    { key: 'farm_lga', label: 'Farm LGA', done: Boolean(farmLgaVal.trim()) }
   ];
 
   const docItems = [
@@ -89,7 +86,7 @@ function renderFarmerVerificationView(state, actions) {
   const sections = [
     { key: 'personal', label: 'Personal Information', icon: 'fa-user', total: personalItems.length, done: personalItems.filter(i => i.done).length },
     { key: 'farm', label: 'Farm Information', icon: 'fa-tractor', total: farmItems.length, done: farmItems.filter(i => i.done).length },
-    { key: 'location', label: 'Farm Location & GPS', icon: 'fa-map-location-dot', total: locationItems.length, done: locationItems.filter(i => i.done).length },
+    { key: 'location', label: 'Farm Location', icon: 'fa-map-location-dot', total: locationItems.length, done: locationItems.filter(i => i.done).length },
     { key: 'documents', label: 'Compulsory Documents & Photos', icon: 'fa-file-shield', total: docItems.length, done: docItems.filter(i => i.done).length }
   ];
 
@@ -412,7 +409,7 @@ function renderFarmerVerificationView(state, actions) {
             <div class="flex items-center justify-between">
               <div class="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 flex items-center space-x-2">
                 <span class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-[10px]">3</span>
-                <span>Farm Location & GPS Coordinates (Compulsory)</span>
+                <span>Farm Location (Compulsory)</span>
               </div>
               <span class="text-[10px] font-bold ${locationItems.every(i => i.done) ? 'text-emerald-600' : 'text-gray-400'}">
                 ${locationItems.filter(i => i.done).length}/${locationItems.length} Filled
@@ -468,21 +465,6 @@ function renderFarmerVerificationView(state, actions) {
                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmLgaVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
               </div>
 
-              <div>
-                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">GPS Latitude <span class="text-red-500">*</span></label>
-                <input type="text" id="farmLat" placeholder="e.g. 11.150000"
-                       value="${escapeHtml(farmLatVal)}"
-                       oninput="actions.updateVerificationField('gps_latitude', this.value)"
-                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmLatVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              </div>
-
-              <div>
-                <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">GPS Longitude <span class="text-red-500">*</span></label>
-                <input type="text" id="farmLng" placeholder="e.g. 7.650000"
-                       value="${escapeHtml(farmLngVal)}"
-                       oninput="actions.updateVerificationField('gps_longitude', this.value)"
-                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmLngVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
-              </div>
             </div>
           </div>
 

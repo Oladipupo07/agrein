@@ -1486,11 +1486,6 @@ const actions = {
         const lat = position.coords.latitude.toFixed(6);
         const lng = position.coords.longitude.toFixed(6);
 
-        const latEl = document.getElementById('farmLat');
-        const lngEl = document.getElementById('farmLng');
-        if (latEl) latEl.value = lat;
-        if (lngEl) lngEl.value = lng;
-
         let detectedState = '';
         let detectedLga = '';
         let detectedAddress = '';
@@ -1524,7 +1519,10 @@ const actions = {
 
         const matchStateOption = (select, detectedValue) => {
           if (!select || !detectedValue) return '';
-          const normalizedDetected = detectedValue.toLowerCase().replace(/\s+state$/i, '').trim();
+          const normalizedDetected = detectedValue.toLowerCase()
+            .replace(/\s+state$/i, '')
+            .replace('federal capital territory', 'fct - abuja')
+            .trim();
           const option = Array.from(select.options).find(opt => {
             const normalizedOption = opt.value.toLowerCase().replace(/\s+state$/i, '').trim();
             return normalizedOption === normalizedDetected
@@ -1914,13 +1912,11 @@ const actions = {
     if (!farmAddress) missingRequirements.push({ label: 'Farm Physical Address', elId: 'farmAddress' });
     if (!farmState) missingRequirements.push({ label: 'Farm State', elId: 'farmState' });
     if (!farmLga) missingRequirements.push({ label: 'Farm LGA', elId: 'farmLga' });
-    if (!app.gps_latitude || !app.gps_longitude) missingRequirements.push({ label: 'Farm GPS Coordinates', elId: 'detectLocationBtn' });
-
     if (!hasGovId) missingRequirements.push({ label: 'Government ID Document', elId: null });
     if (!hasFarmPhoto) missingRequirements.push({ label: 'Farm Overview Photo', elId: null });
     if (!hasProfilePhoto) missingRequirements.push({ label: 'Farmer Profile Photo', elId: null });
 
-    const totalCompulsory = 18;
+    const totalCompulsory = 17;
     const completedCompulsory = totalCompulsory - missingRequirements.length;
     const completionPercent = Math.round((completedCompulsory / totalCompulsory) * 100);
 
