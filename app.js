@@ -1158,6 +1158,11 @@ const actions = {
       }
 
       const user = data.user || {};
+      if (!user.id || !user.email || !user.token) {
+        state.otpError = 'Email verified, but the login session could not be created. Please log in again.';
+        renderApp();
+        return;
+      }
       const role = (user.role || state.otpRole || 'BUYER').toUpperCase();
       const verificationStatus = user.verification_status || (role === 'FARMER' ? 'NOT_STARTED' : 'APPROVED');
       state.currentUser = {
@@ -1180,27 +1185,8 @@ const actions = {
       finishOtpSuccess();
     })
     .catch(() => {
-      // Fallback verification for demo — synthesize a session using the local role hint
-      const role = (state.otpRole || 'BUYER').toUpperCase();
-      state.currentUser = {
-        id: `usr-${Date.now()}`,
-        full_name: state.otpEmail.split('@')[0],
-        email: state.otpEmail,
-        role,
-        token: `AGREIN_JWT_TOKEN_${Date.now()}`,
-        verification_status: role === 'FARMER' ? 'NOT_STARTED' : 'APPROVED'
-      };
-      state.activeRole = (state.currentUser.role || 'visitor').toLowerCase();
-
-      // ✅ Save user to localStorage using StorageManager
-      StorageManager.saveUser(state.currentUser);
-      try {
-      } catch (e) {}
-
-      actions.triggerToast(role === 'FARMER'
-        ? '🎉 Email Verified! Complete your farm verification to start selling.'
-        : '🎉 Email Verified! Welcome to your dashboard.');
-      finishOtpSuccess();
+      state.otpError = 'Could not verify your email right now. Please check your connection and try again.';
+      renderApp();
     });
   },
 

@@ -537,11 +537,9 @@ const authController = {
         if (error) throw error;
         profile = data;
       } else {
-        // Flip email_verified and (for new farmers) push into the KYC queue.
+        // OTP confirms the email only. KYC status changes when the farmer
+        // submits the completed verification application.
         const updates = { email_verified: true, updated_at: new Date().toISOString() };
-        if (profile.role === 'FARMER' && profile.verification_status === 'NOT_STARTED') {
-          updates.verification_status = 'PENDING';
-        }
         const { data, error } = await sb.from('profiles').update(updates).eq('email', normalizedEmail).select('*').single();
         if (error) throw error;
         profile = data;
