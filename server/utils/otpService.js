@@ -17,7 +17,7 @@ const otpService = {
     const hashed = hashOtp(rawOtp);
     const now = Date.now();
     const expiresAt = now + 5 * 60 * 1000; // 5 minutes expiration
-    const cooldownUntil = now + 60 * 1000; // 60 seconds resend cooldown
+    const cooldownUntil = now + 30 * 1000; // 30 seconds resend cooldown
 
     const record = {
       hashedOtp: hashed,
@@ -113,7 +113,7 @@ const otpService = {
     };
   },
 
-  // Resend OTP with rate limiting & 60s cooldown
+  // Resend OTP with rate limiting & 30s cooldown
   resendOtp(email) {
     const normalizedEmail = email.toLowerCase();
     const existing = otpStore.get(normalizedEmail);

@@ -858,8 +858,9 @@ const actions = {
         state.authError = null;
         state.otpSuccess = false;
         state.otpTimerSeconds = 300;
-        state.otpCooldownSeconds = 60;
+        state.otpCooldownSeconds = 30;
         actions.startOtpCountdown();
+        actions.startOtpCooldown();
         actions.triggerToast(`📧 A 6-digit verification code has been sent to ${email}.`);
         renderApp();
       })
@@ -969,6 +970,23 @@ const actions = {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
+  },
+
+  startOtpCooldown() {
+    if (state.otpCooldownInterval) clearInterval(state.otpCooldownInterval);
+    const tick = () => {
+      if (state.otpCooldownSeconds > 0) {
+        state.otpCooldownSeconds -= 1;
+        const cooldownEl = document.querySelector('.otp-cooldown-display');
+        if (cooldownEl) cooldownEl.textContent = `Resend in ${state.otpCooldownSeconds}s`;
+        return;
+      }
+
+      clearInterval(state.otpCooldownInterval);
+      state.otpCooldownInterval = null;
+      renderApp();
+    };
+    state.otpCooldownInterval = setInterval(tick, 1000);
   },
 
   handleOtpDigitInput(event, index) {
@@ -1206,23 +1224,11 @@ const actions = {
       state.demoOtp = data.demoOtp || state.demoOtp;
       state.otpError = null;
       state.otpTimerSeconds = 300;
-      state.otpCooldownSeconds = 60;
+      state.otpCooldownSeconds = 30;
       state.otpDigits = ['', '', '', '', '', ''];
 
       actions.startOtpCountdown();
-
-      if (state.otpCooldownInterval) clearInterval(state.otpCooldownInterval);
-      state.otpCooldownInterval = setInterval(() => {
-        if (state.otpCooldownSeconds > 0) {
-          state.otpCooldownSeconds -= 1;
-          const cooldownEl = document.querySelector('.otp-cooldown-display');
-          if (cooldownEl) cooldownEl.textContent = `Resend in ${state.otpCooldownSeconds}s`;
-        } else {
-          clearInterval(state.otpCooldownInterval);
-          state.otpCooldownInterval = null;
-          renderApp();
-        }
-      }, 1000);
+      actions.startOtpCooldown();
 
       actions.triggerToast(`📧 New 6-digit verification code sent to ${state.otpEmail}`);
       renderApp();
@@ -1230,9 +1236,10 @@ const actions = {
     .catch(() => {
       state.otpError = null;
       state.otpTimerSeconds = 300;
-      state.otpCooldownSeconds = 60;
+      state.otpCooldownSeconds = 30;
       state.otpDigits = ['', '', '', '', '', ''];
       actions.startOtpCountdown();
+      actions.startOtpCooldown();
       actions.triggerToast(`📧 New verification code sent to ${state.otpEmail}`);
       renderApp();
     });
