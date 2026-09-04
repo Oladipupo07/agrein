@@ -647,9 +647,12 @@ const actions = {
     // Logged in with the right role — but a farmer who hasn't been verified
     // yet is LOCKED on farmer-verification. They cannot go anywhere else.
     if (userRole === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
-      if (view !== 'farmer-verification' && view !== 'account-settings') {
+      const verificationStatus = state.currentUser.verification_status;
+      const isSubmitted = verificationStatus === 'PENDING' || verificationStatus === 'PENDING_REVIEW' || verificationStatus === 'UNDER_REVIEW';
+      const allowedView = isSubmitted ? 'farmer-pending-approval' : 'farmer-verification';
+      if (view !== allowedView && view !== 'account-settings') {
         actions.triggerToast('🔒 Complete your farm verification to access the platform.');
-        actions.setView('farmer-verification');
+        actions.setView(allowedView);
         return;
       }
     }
@@ -2578,7 +2581,10 @@ const actions = {
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (state.currentUser && state.currentUser.email) headers['x-user-email'] = state.currentUser.email;
 
-    fetch('/api/admin/farmer-verifications', { headers })
+    const request = window.apiFetch
+      ? window.apiFetch('/api/admin/farmer-verifications', { headers })
+      : fetch('/api/admin/farmer-verifications', { headers });
+    request
       .then(res => res.json())
       .then(data => {
         if (data && data.success && Array.isArray(data.applications)) {
@@ -2638,7 +2644,10 @@ const actions = {
     state.adminInspectionModalActive = true;
 
     if (verificationId) {
-      fetch(`/api/admin/farmer-verifications/${encodeURIComponent(verificationId)}`)
+      const request = window.apiFetch
+        ? window.apiFetch(`/api/admin/farmer-verifications/${encodeURIComponent(verificationId)}`)
+        : fetch(`/api/admin/farmer-verifications/${encodeURIComponent(verificationId)}`);
+      request
         .then(r => r.json())
         .then(d => {
           if (d && d.success && d.dossier) {
