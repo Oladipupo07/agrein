@@ -440,7 +440,7 @@ const authController = {
 
       // Check for an existing account with this email.
       const existing = await findProfileByEmail(normalizedEmail);
-      if (existing) {
+      if (existing && existing.email_verified) {
         return res.status(400).json({ success: false, message: 'An account with this email address already exists. Please log in.' });
       }
 
@@ -459,11 +459,22 @@ const authController = {
         verification_status: normalizedRole === 'FARMER' ? 'NOT_STARTED' : 'APPROVED'
       };
 
-      // local_id is optional (depends on the schema migration). Try it first;
-      // if the column doesn't exist yet, retry without.
-      let upsertRes = await sb.from('profiles').upsert({ ...profilePayload, local_id: localId }, { onConflict: 'email' }).select('*').single();
-      if (upsertRes.error && /local_id/i.test(upsertRes.error.message)) {
-        upsertRes = await sb.from('profiles').upsert(profilePayload, { onConflict: 'email' }).select('*').single();
+      // Unverified accounts may restart signup. Keep the same profile row so
+      // related records remain attached, but reset the signup details and OTP state.
+      let upsertRes;
+      if (existing) {
+        upsertRes = await sb.from('profiles')
+          .update({ ...profilePayload, updated_at: new Date().toISOString() })
+          .eq('email', normalizedEmail)
+          .select('*')
+          .single();
+      } else {
+        // local_id is optional (depends on the schema migration). Try it first;
+        // if the column doesn't exist yet, retry without.
+        upsertRes = await sb.from('profiles').upsert({ ...profilePayload, local_id: localId }, { onConflict: 'email' }).select('*').single();
+        if (upsertRes.error && /local_id/i.test(upsertRes.error.message)) {
+          upsertRes = await sb.from('profiles').upsert(profilePayload, { onConflict: 'email' }).select('*').single();
+        }
       }
       const { data: persisted, error } = upsertRes;
       if (error) {
