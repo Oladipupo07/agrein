@@ -93,16 +93,6 @@ function renderFarmerVerificationView(state, actions) {
     { key: 'documents', label: 'Compulsory Documents & Photos', icon: 'fa-file-shield', total: docItems.length, done: docItems.filter(i => i.done).length }
   ];
 
-  // Status timeline steps
-  const timelineSteps = [
-    { label: 'Application',  icon: 'fa-file-pen',         key: 'DRAFT' },
-    { label: 'Submitted',    icon: 'fa-paper-plane',       key: 'PENDING_REVIEW' },
-    { label: 'Under Review', icon: 'fa-magnifying-glass',  key: 'UNDER_REVIEW' },
-    { label: 'Decision',     icon: 'fa-gavel',             key: 'APPROVED' }
-  ];
-
-  const currentStep = sc.step;
-
   return `
     <section class="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
       <div class="text-center mb-6 sm:mb-8">
@@ -120,45 +110,6 @@ function renderFarmerVerificationView(state, actions) {
           </div>
         ` : ''}
       </div>
-
-      <!-- ═══ STATUS TIMELINE TRACKER ═══ -->
-      ${status !== 'DRAFT' ? `
-        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-4 sm:p-6 mb-6 sm:mb-8 shadow-sm">
-          <h3 class="text-xs font-heading font-extrabold text-slate-900 dark:text-white mb-4 sm:mb-5">Verification Progress</h3>
-          <div class="relative">
-            <div class="absolute top-4 left-0 right-0 h-1 bg-gray-200 dark:bg-slate-700 rounded-full mx-8"></div>
-            <div class="absolute top-4 left-0 h-1 rounded-full mx-8 transition-all duration-700 ${status === 'REJECTED' || status === 'SUSPENDED' ? 'bg-red-500' : 'bg-emerald-500'}"
-                 style="width: ${status === 'REJECTED' || status === 'SUSPENDED' ? '100' : Math.max(0, Math.min(100, (currentStep / 3) * 100))}%"></div>
-
-            <div class="relative flex justify-between">
-              ${timelineSteps.map((step, idx) => {
-                let stepState = 'upcoming';
-                if (status === 'REJECTED' || status === 'SUSPENDED') stepState = 'error';
-                else if (idx < currentStep) stepState = 'completed';
-                else if (idx === currentStep) stepState = 'active';
-                else if (status === 'CHANGES_REQUIRED' && idx === 2) stepState = 'warning';
-
-                const styles = {
-                  completed: 'bg-emerald-500 text-white border-emerald-500 shadow-emerald-500/30',
-                  active: 'bg-blue-500 text-white border-blue-500 shadow-blue-500/30 animate-pulse',
-                  warning: 'bg-orange-500 text-white border-orange-500 shadow-orange-500/30',
-                  error: 'bg-red-500 text-white border-red-500 shadow-red-500/30',
-                  upcoming: 'bg-gray-200 dark:bg-slate-700 text-gray-400 dark:text-slate-500 border-gray-300 dark:border-slate-600'
-                };
-
-                return `
-                  <div class="flex flex-col items-center" style="width: 25%;">
-                    <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[11px] sm:text-xs border-2 shadow-md ${styles[stepState]} transition-all duration-500">
-                      ${stepState === 'completed' ? '<i class="fa-solid fa-check"></i>' : `<i class="fa-solid ${step.icon}"></i>`}
-                    </div>
-                    <span class="text-[9px] sm:text-[10px] font-bold mt-1.5 sm:mt-2 text-center ${stepState === 'upcoming' ? 'text-gray-400' : 'text-slate-700 dark:text-gray-200'}">${step.label}</span>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          </div>
-        </div>
-      ` : ''}
 
       <!-- ═══ LIVE COMPLETION RATE TRACKER & STATUS BANNER ═══ -->
       <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-6 sm:mb-8 border border-gray-200 dark:border-slate-800 shadow-sm space-y-4 sm:space-y-5">
