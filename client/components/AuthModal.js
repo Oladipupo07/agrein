@@ -178,9 +178,9 @@ function renderAuthModal(state, actions) {
                 ${state.otpCooldownSeconds > 0 ? `
                   <span class="otp-cooldown-display text-[11px] text-gray-400 font-semibold">Resend in ${state.otpCooldownSeconds}s</span>
                 ` : `
-                  <button onclick="actions.resendEmailOtp()" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center space-x-1">
+                  <button onclick="actions.resendEmailOtp()" ${state.otpResendInFlight ? 'disabled' : ''} class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center space-x-1 disabled:opacity-50 disabled:cursor-wait">
                     <i class="fa-solid fa-rotate-right text-[10px]"></i>
-                    <span>Resend Code</span>
+                    <span>${state.otpResendInFlight ? 'Sending...' : 'Resend Code'}</span>
                   </button>
                 `}
               </div>

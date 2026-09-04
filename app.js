@@ -59,7 +59,9 @@ const state = {
   otpRole: 'BUYER',
   otpFlow: 'register', // 'register' | 'reset' — controls post-OTP routing
   otpTimerSeconds: 300, // 5 minutes expiration countdown
-  otpCooldownSeconds: 0, // 60s resend cooldown
+  otpCooldownSeconds: 0, // 30s resend cooldown
+  otpCooldownEndsAt: 0,
+  otpResendInFlight: false,
   otpDigits: ['', '', '', '', '', ''],
   otpError: null,
   otpSuccess: false,
@@ -858,7 +860,8 @@ const actions = {
         state.authError = null;
         state.otpSuccess = false;
         state.otpTimerSeconds = 300;
-        state.otpCooldownSeconds = 30;
+        state.otpCooldownSeconds = Number(data.resendCooldownSeconds || 30);
+        state.otpCooldownEndsAt = Date.now() + state.otpCooldownSeconds * 1000;
         actions.startOtpCountdown();
         actions.startOtpCooldown();
         actions.triggerToast(`📧 A 6-digit verification code has been sent to ${email}.`);
@@ -975,8 +978,8 @@ const actions = {
   startOtpCooldown() {
     if (state.otpCooldownInterval) clearInterval(state.otpCooldownInterval);
     const tick = () => {
+      state.otpCooldownSeconds = Math.max(0, Math.ceil((state.otpCooldownEndsAt - Date.now()) / 1000));
       if (state.otpCooldownSeconds > 0) {
-        state.otpCooldownSeconds -= 1;
         const cooldownEl = document.querySelector('.otp-cooldown-display');
         if (cooldownEl) cooldownEl.textContent = `Resend in ${state.otpCooldownSeconds}s`;
         return;
@@ -1122,9 +1125,10 @@ const actions = {
       return;
     }
 
-    const finishOtpSuccess = () => {
+    const finishOtpSuccess = (redirectView) => {
       if (state.otpTimerInterval) { clearInterval(state.otpTimerInterval); state.otpTimerInterval = null; }
       if (state.otpCooldownInterval) { clearInterval(state.otpCooldownInterval); state.otpCooldownInterval = null; }
+      state.otpResendInFlight = false;
       state.otpSuccess = true;
       state.otpError = null;
       renderApp();
@@ -1150,6 +1154,8 @@ const actions = {
 
         if (resumeView) {
           actions.guardView(resumeView);
+        } else if (redirectView) {
+          actions.guardView(redirectView);
         } else if (userRole === 'FARMER') {
           actions.guardView('farmer-verification');
         } else if (userRole === 'BUYER') {
@@ -1200,7 +1206,7 @@ const actions = {
       actions.triggerToast(role === 'FARMER'
         ? '🎉 Email Verified! Complete your farm verification to start selling.'
         : '🎉 Email Verified! Welcome to your dashboard.');
-      finishOtpSuccess();
+      finishOtpSuccess(data.redirectView);
     })
     .catch(() => {
       state.otpError = 'Could not verify your email right now. Please check your connection and try again.';
@@ -1209,23 +1215,40 @@ const actions = {
   },
 
   resendEmailOtp() {
+    if (state.otpResendInFlight || !state.otpEmail) return;
+    state.otpResendInFlight = true;
+    renderApp();
+
     fetch('/api/auth/resend-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: state.otpEmail })
     })
-    .then(res => res.json())
-    .then(data => {
+    .then(async res => ({ status: res.status, data: await res.json() }))
+    .then(({ status, data }) => {
       if (!data.success && data.inCooldown) {
+        state.otpResendInFlight = false;
+        state.otpCooldownSeconds = Number(data.secondsLeft || 30);
+        state.otpCooldownEndsAt = Date.now() + state.otpCooldownSeconds * 1000;
+        actions.startOtpCooldown();
+        renderApp();
         actions.triggerToast(`⚠️ You can request another code in ${data.secondsLeft} seconds.`);
+        return;
+      }
+      if (status < 200 || status >= 300 || !data.success) {
+        state.otpResendInFlight = false;
+        state.otpError = data.message || 'Could not resend the verification code.';
+        renderApp();
         return;
       }
 
       state.demoOtp = data.demoOtp || state.demoOtp;
       state.otpError = null;
       state.otpTimerSeconds = 300;
-      state.otpCooldownSeconds = 30;
+      state.otpCooldownSeconds = Number(data.resendCooldownSeconds || 30);
+      state.otpCooldownEndsAt = Date.now() + state.otpCooldownSeconds * 1000;
       state.otpDigits = ['', '', '', '', '', ''];
+      state.otpResendInFlight = false;
 
       actions.startOtpCountdown();
       actions.startOtpCooldown();
@@ -1234,13 +1257,8 @@ const actions = {
       renderApp();
     })
     .catch(() => {
-      state.otpError = null;
-      state.otpTimerSeconds = 300;
-      state.otpCooldownSeconds = 30;
-      state.otpDigits = ['', '', '', '', '', ''];
-      actions.startOtpCountdown();
-      actions.startOtpCooldown();
-      actions.triggerToast(`📧 New verification code sent to ${state.otpEmail}`);
+      state.otpResendInFlight = false;
+      state.otpError = 'Could not resend the verification code. Please try again.';
       renderApp();
     });
   },

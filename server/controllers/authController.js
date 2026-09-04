@@ -503,6 +503,7 @@ const authController = {
         message: `Account created for ${target.email}. A 6-digit verification code has been sent to your email.`,
         email: target.email,
         role: target.role,
+        resendCooldownSeconds: 30,
         passwordPersisted
       });
     } catch (error) {
@@ -596,7 +597,8 @@ const authController = {
         success: true,
         message: result.message,
         email,
-        expiresInSeconds: 300
+        expiresInSeconds: 300,
+        resendCooldownSeconds: 30
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
