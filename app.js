@@ -1814,6 +1814,9 @@ const actions = {
                 actions.triggerToast('🎉 Congratulations! Your farm has been verified and approved.');
                 state.currentView = 'farmer-dashboard';
                 renderApp();
+              } else if ((app.status === 'PENDING' || app.status === 'PENDING_REVIEW' || app.status === 'UNDER_REVIEW') && state.currentView !== 'farmer-pending-approval') {
+                state.currentView = 'farmer-pending-approval';
+                renderApp();
               } else if (app.status === 'CHANGES_REQUIRED') {
                 actions.triggerToast('⚠️ Admin requested corrections on your verification application.');
                 renderApp();
@@ -4823,10 +4826,12 @@ function _initPwaAndMobileExperience() {
   // View routing & role synchronization on boot
   try {
     if (state.currentUser && state.currentUser.role === 'FARMER') {
-      const isApproved = state.currentUser.verification_status === 'APPROVED';
+      const verificationStatus = state.currentUser.verification_status || 'NOT_STARTED';
+      const isApproved = verificationStatus === 'APPROVED';
+      const isSubmitted = verificationStatus === 'PENDING' || verificationStatus === 'PENDING_REVIEW' || verificationStatus === 'UNDER_REVIEW';
       const hash = window.location.hash.replace('#', '').trim();
       if (!isApproved) {
-        state.currentView = 'farmer-verification';
+        state.currentView = isSubmitted ? 'farmer-pending-approval' : 'farmer-verification';
       } else {
         state.currentView = hash || 'farmer-dashboard';
       }
