@@ -151,12 +151,29 @@ async function authenticateFromHeader(req, res, next) {
  * @param {Array<string>} roles Allowed roles (e.g. ['ADMIN'], ['FARMER', 'BUYER'])
  */
 function requireRole(roles = []) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized access. Please log in.' });
     }
 
     const normalizedRoles = roles.map(r => r.toUpperCase());
+    if (normalizedRoles.includes('ADMIN') && req.user.role === 'ADMIN') {
+      const supabase = getSupabaseAdmin();
+      if (supabase && req.user.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', req.user.id)
+          .maybeSingle();
+        if (profile && String(profile.role || '').toUpperCase() !== 'ADMIN') {
+          return res.status(403).json({
+            success: false,
+            message: 'Forbidden: This account no longer has administrator access.'
+          });
+        }
+      }
+    }
+
     if (!normalizedRoles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,

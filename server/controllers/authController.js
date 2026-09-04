@@ -106,75 +106,68 @@ function setCachedPassword(email, id, salt, hash) {
 // in Supabase or it doesn't.
 
 async function ensureAdminSeeded() {
-  const adminEmail = 'akobeoladipupo@gmail.com';
-
-  let supabaseAdmin = null;
-  try {
-    supabaseAdmin = await findProfileByEmail(adminEmail);
-  } catch (_) { /* swallow */ }
-
-  if (supabaseAdmin) {
-    console.log('✅ Admin user present in Supabase');
-
-    // If the row exists but has no password columns populated (legacy data
-    // from before the schema migration), the admin will need a password reset.
-    const hasPasswordOnProfile = supabaseAdmin.password_hash && supabaseAdmin.password_salt;
-    if (!hasPasswordOnProfile) {
-      console.warn('⚠️ Admin row has no password_hash / password_salt — login will fail until a password reset is performed.');
-    }
+  const adminSeedPassword = process.env.ADMIN_SEED_PASSWORD;
+  if (!adminSeedPassword) {
+    console.warn('[ensureAdminSeeded] ADMIN_SEED_PASSWORD is not configured; skipping additional admin seeds.');
     return;
   }
 
-  // Supabase has no admin row — seed it.
-  const adminSeed = passwordService.hashPassword('password123');
+  const adminSeeds = [
+    { email: 'admin@agrein.com', fullName: 'Agrein Administrator', localId: 'usr-admin-agrein' },
+    { email: 'reapgrime374@gmail.com', fullName: 'Agrein Administrator', localId: 'usr-admin-reapgrime' }
+  ];
   const sb = getSupabaseAdmin();
   if (!sb) {
     console.error('[ensureAdminSeeded] Supabase admin client unavailable — cannot seed admin.');
     return;
   }
 
-  const profilePayload = {
-    email: adminEmail,
-    full_name: 'Akobe Oladipupo',
-    phone_number: '08000000001',
-    role: 'ADMIN',
-    email_verified: true,
-    is_verified: true,
-    verification_status: 'APPROVED'
-  };
+  for (const seed of adminSeeds) {
+    let existing = null;
+    try {
+      existing = await findProfileByEmail(seed.email);
+    } catch (_) { /* swallow */ }
 
-  // Upsert the profile row first (with local_id fallback for the legacy column).
-  let profileRes = await sb.from('profiles')
-    .upsert({ ...profilePayload, local_id: 'usr-admin-01' }, { onConflict: 'email' })
-    .select('*')
-    .single();
-  if (profileRes.error && /local_id/i.test(profileRes.error.message)) {
-    profileRes = await sb.from('profiles')
-      .upsert(profilePayload, { onConflict: 'email' })
+    if (existing) {
+      console.log(`✅ Admin user present in Supabase: ${seed.email}`);
+      if (existing.password_hash && existing.password_salt) continue;
+      const generated = passwordService.hashPassword(adminSeedPassword);
+      const { error } = await sb.from('profiles').update({
+        password_hash: generated.hash,
+        password_salt: generated.salt,
+        updated_at: new Date().toISOString()
+      }).eq('email', seed.email);
+      if (error) console.error(`[ensureAdminSeeded] ❌ password setup failed for ${seed.email}:`, error.message);
+      continue;
+    }
+
+    const generated = passwordService.hashPassword(adminSeedPassword);
+    const profilePayload = {
+      email: seed.email,
+      full_name: seed.fullName,
+      phone_number: seed.phone || null,
+      role: 'ADMIN',
+      email_verified: true,
+      is_verified: true,
+      verification_status: 'APPROVED',
+      password_hash: generated.hash,
+      password_salt: generated.salt
+    };
+
+    let profileRes = await sb.from('profiles')
+      .upsert({ ...profilePayload, local_id: seed.localId }, { onConflict: 'email' })
       .select('*')
       .single();
+    if (profileRes.error && /local_id/i.test(profileRes.error.message)) {
+      profileRes = await sb.from('profiles').upsert(profilePayload, { onConflict: 'email' }).select('*').single();
+    }
+    if (profileRes.error) {
+      console.error(`[ensureAdminSeeded] ❌ Supabase seed failed for ${seed.email}:`, profileRes.error.message);
+      continue;
+    }
+    console.log(`✅ Admin profile seeded into Supabase: ${seed.email}`);
+    setCachedPassword(seed.email, profileRes.data.id, generated.salt, generated.hash);
   }
-  if (profileRes.error) {
-    console.error('[ensureAdminSeeded] ❌ Supabase seed failed:', profileRes.error.message);
-    return;
-  }
-  console.log('✅ Admin profile seeded into Supabase');
-
-  // Then write the password columns.
-  const { error: pwErr } = await sb.from('profiles').update({
-    password_hash: adminSeed.hash,
-    password_salt: adminSeed.salt,
-    updated_at: new Date().toISOString()
-  }).eq('email', adminEmail);
-  if (pwErr) {
-    console.error('[ensureAdminSeeded] ❌ admin password write failed:', pwErr.message);
-    return;
-  }
-  console.log('✅ Admin password seeded into Supabase (default password: password123)');
-
-  // Populate the in-memory cache so a subsequent login in this process
-  // doesn't have to round-trip Supabase just for password material.
-  setCachedPassword(adminEmail, profileRes.data.id, adminSeed.salt, adminSeed.hash);
 }
 
 // Fire-and-forget so module load doesn't block. Errors are logged inside.
