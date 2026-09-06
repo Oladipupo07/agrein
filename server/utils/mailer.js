@@ -125,6 +125,53 @@ function sendViaBrevoApi(email, code) {
   });
 }
 
+function sendViaBrevoNotification(email, subject, textContent, htmlContent) {
+  return new Promise((resolve, reject) => {
+    const apiKey = process.env.BREVO_API_KEY;
+    if (!apiKey) return reject(new Error('BREVO_API_KEY is not configured'));
+
+    const payload = JSON.stringify({
+      sender: {
+        name: process.env.MAIL_FROM_NAME || 'Agrein Market',
+        email: process.env.MAIL_FROM_ADDRESS || 'akobeoladipupo@gmail.com'
+      },
+      to: [{ email }],
+      subject,
+      textContent,
+      htmlContent
+    });
+
+    const req = https.request('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': apiKey,
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'content-length': Buffer.byteLength(payload)
+      },
+      timeout: 10000
+    }, (res) => {
+      let responseBody = '';
+      res.on('data', chunk => { responseBody += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve({ delivered: true, provider: 'brevo-api' });
+        } else {
+          resolve({ delivered: false, provider: 'brevo-api', error: responseBody, statusCode: res.statusCode });
+        }
+      });
+    });
+
+    req.on('error', error => resolve({ delivered: false, provider: 'brevo-api', error: error.message }));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve({ delivered: false, provider: 'brevo-api', error: 'TIMEOUT' });
+    });
+    req.write(payload);
+    req.end();
+  });
+}
+
 // Fallback SMTP Transporter (if Brevo API key is not present)
 let smtpTransporter = null;
 function getSmtpTransporter() {
@@ -214,6 +261,37 @@ const mailer = {
     }
 
     return { delivered: false, reason: 'ALL_PROVIDERS_FAILED' };
+  },
+
+  async sendWelcomeEmail(email, name, role) {
+    if (!this.isConfigured()) return { delivered: false, reason: 'NOT_CONFIGURED' };
+    const safeName = name || 'Agrein member';
+    const roleLabel = role === 'FARMER' ? 'farmer verification' : 'buyer dashboard';
+    const subject = 'Welcome to Agrein Market';
+    const text = `Welcome to Agrein, ${safeName}. Your email has been verified. You can now continue to your ${roleLabel}.`;
+    const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px;color:#0f172a"><h2 style="color:#047857">Welcome to Agrein, ${safeName}</h2><p>Your email has been verified successfully.</p><p>You can now continue to your ${roleLabel}.</p><p style="color:#64748b;font-size:13px">Thank you for joining Agrein Market.</p></div>`;
+    if (process.env.BREVO_API_KEY) return sendViaBrevoNotification(email, subject, text, html);
+    return { delivered: false, reason: 'SMTP_WELCOME_NOT_IMPLEMENTED' };
+  },
+
+  async sendLoginNotification(email, name) {
+    if (!this.isConfigured()) return { delivered: false, reason: 'NOT_CONFIGURED' };
+    const safeName = name || 'Agrein member';
+    const subject = 'New sign-in to your Agrein account';
+    const text = `Hello ${safeName}, your Agrein account was just signed in to. If this was not you, please change your password.`;
+    const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px;color:#0f172a"><h2 style="color:#047857">New sign-in detected</h2><p>Hello ${safeName}, your Agrein account was just signed in to.</p><p>If this was not you, please change your password and contact support.</p></div>`;
+    if (process.env.BREVO_API_KEY) return sendViaBrevoNotification(email, subject, text, html);
+    return { delivered: false, reason: 'SMTP_LOGIN_NOT_IMPLEMENTED' };
+  },
+
+  async sendFarmerApprovalEmail(email, name) {
+    if (!this.isConfigured()) return { delivered: false, reason: 'NOT_CONFIGURED' };
+    const safeName = name || 'Verified farmer';
+    const subject = 'Your Agrein farmer verification was approved';
+    const text = `Congratulations ${safeName}. Your farm verification has been approved. You can now sign in and list your produce on Agrein.`;
+    const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px;color:#0f172a"><h2 style="color:#047857">Farmer verification approved</h2><p>Congratulations ${safeName}.</p><p>Your farm verification has been approved by the Agrein admin team. You can now sign in, access your farmer dashboard, and list your produce.</p><p style="color:#64748b;font-size:13px">Welcome to the verified Agrein farmer community.</p></div>`;
+    if (process.env.BREVO_API_KEY) return sendViaBrevoNotification(email, subject, text, html);
+    return { delivered: false, reason: 'SMTP_APPROVAL_NOT_IMPLEMENTED' };
   },
 
 };

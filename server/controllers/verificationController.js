@@ -1,6 +1,7 @@
 // Comprehensive 7-Stage Farmer Verification & Admin Audit Controller — Phase C: Supabase-backed.
 
 const supabase = require('../utils/supabaseClient');
+const mailer = require('../utils/mailer');
 
 // In-memory reliable document cache to ensure uploaded docs are always visible to Admin
 const inMemoryFarmerDocuments = new Map();
@@ -744,6 +745,17 @@ const verificationController = {
       }).eq('id', target.user_id);
 
       await verificationController.logAudit(data || target, req.user && req.user.id, req.user && req.user.email, 'APPROVED', prevStatus, 'APPROVED', adminNotes || 'Approved by administrator');
+
+      const { data: farmerProfile } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', target.user_id)
+        .maybeSingle();
+      if (farmerProfile && farmerProfile.email) {
+        mailer.sendFarmerApprovalEmail(farmerProfile.email, farmerProfile.full_name).catch(err => {
+          console.warn('[verification] approval email failed:', err.message);
+        });
+      }
       
       return res.json({ success: true, message: 'Farmer verified and approved successfully.', application: data || target });
     } catch (err) {

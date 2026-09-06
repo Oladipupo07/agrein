@@ -11,6 +11,7 @@
 //     builds but no code reads or writes it.
 const otpService = require('../utils/otpService');
 const passwordService = require('../utils/passwordService');
+const mailer = require('../utils/mailer');
 const supabaseClient = require('../utils/supabaseClient');
 const { getSupabaseAdmin, findProfileByEmail, findProfileById } = supabaseClient;
 const jwt = require('jsonwebtoken');
@@ -416,6 +417,12 @@ const authController = {
 
       await sb.from('farmer_verifications').upsert(vUpdates, { onConflict: 'user_id' });
 
+      if (newStatus === 'APPROVED') {
+        mailer.sendFarmerApprovalEmail(data.email, data.full_name).catch(err => {
+          console.warn('[auth] farmer approval email failed:', err.message);
+        });
+      }
+
       const updated = profileToRecord(data);
       res.json({
         success: true,
@@ -577,6 +584,9 @@ const authController = {
 
       const user = await applyFarmerVerificationStatus(profileToRecord(profile));
       const redirectView = user.role === 'FARMER' ? 'farmer-verification' : 'buyer-dashboard';
+      mailer.sendWelcomeEmail(user.email, user.full_name, user.role).catch(err => {
+        console.warn('[auth] welcome email failed:', err.message);
+      });
 
       res.json({
         success: true,
@@ -654,17 +664,9 @@ const authController = {
         return res.status(401).json({ success: false, message: 'Invalid email or password.' });
       }
 
-      // Check if email has been verified via 6-digit OTP
-      if (!user.email_verified) {
-        otpService.generateOtp(normalizedEmail);
-        return res.status(403).json({
-          success: false,
-          emailVerificationRequired: true,
-          email: user.email,
-          role: user.role,
-          message: 'Please verify your email address. A 6-digit verification code has been sent to your email.'
-        });
-      }
+      mailer.sendLoginNotification(user.email, user.full_name).catch(err => {
+        console.warn('[auth] sign-in notification failed:', err.message);
+      });
 
       res.json({
         success: true,
