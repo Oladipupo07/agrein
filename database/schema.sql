@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS public.farmer_verifications (
     rejection_reason TEXT,
     changes_requested_notes TEXT,
     submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    reviewed_by UUID REFERENCES public.profiles(id),
+    reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     reviewed_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -78,8 +78,8 @@ CREATE TABLE IF NOT EXISTS public.verification_documents (
 CREATE TABLE IF NOT EXISTS public.verification_audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     verification_id UUID NOT NULL REFERENCES public.farmer_verifications(id) ON DELETE CASCADE,
-    farmer_id UUID NOT NULL REFERENCES public.profiles(id),
-    admin_id UUID NOT NULL REFERENCES public.profiles(id),
+    farmer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    admin_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     admin_email VARCHAR(255) NOT NULL,
     action VARCHAR(50) NOT NULL, -- 'APPROVED', 'REQUESTED_CHANGES', 'REJECTED', 'SUSPENDED', 'REINSTATED'
     previous_status VARCHAR(30),
@@ -123,8 +123,8 @@ CREATE TABLE IF NOT EXISTS public.buyer_disputes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     dispute_code VARCHAR(100) UNIQUE NOT NULL,
     order_id VARCHAR(100) NOT NULL,
-    buyer_id UUID NOT NULL REFERENCES public.profiles(id),
-    farmer_id UUID NOT NULL REFERENCES public.profiles(id),
+    buyer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    farmer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     reason VARCHAR(50) NOT NULL CHECK (reason IN (
         'NOT_DELIVERED', 'WRONG_PRODUCT', 'DAMAGED', 'POOR_QUALITY', 'QUANTITY_MISMATCH', 'SIGNIFICANTLY_DIFFERENT'
     )),
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS public.buyer_disputes (
     evidence_urls TEXT[],
     status VARCHAR(30) DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'UNDER_INVESTIGATION', 'REFUNDED', 'RELEASED', 'REJECTED')),
     admin_decision_notes TEXT,
-    resolved_by UUID REFERENCES public.profiles(id),
+    resolved_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     resolved_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -227,9 +227,9 @@ END$$;
 CREATE TABLE IF NOT EXISTS public.orders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_code VARCHAR(60) UNIQUE NOT NULL,
-    buyer_id UUID NOT NULL REFERENCES public.profiles(id),
-    farmer_id UUID NOT NULL REFERENCES public.profiles(id),
-    product_id UUID REFERENCES public.products(id),
+    buyer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    farmer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES public.products(id) ON DELETE CASCADE,
     quantity NUMERIC(12, 2) NOT NULL,
     total_amount NUMERIC(12, 2) NOT NULL,
     escrow_status VARCHAR(30) DEFAULT 'PENDING' CHECK (escrow_status IN
@@ -245,7 +245,7 @@ CREATE INDEX IF NOT EXISTS orders_escrow_status_idx ON public.orders(escrow_stat
 
 CREATE TABLE IF NOT EXISTS public.rfqs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    buyer_id UUID NOT NULL REFERENCES public.profiles(id),
+    buyer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     crop_name VARCHAR(120) NOT NULL,
     quantity NUMERIC(12, 2) NOT NULL,
     target_price NUMERIC(12, 2),
@@ -262,7 +262,7 @@ CREATE INDEX IF NOT EXISTS rfqs_status_idx ON public.rfqs(status);
 CREATE TABLE IF NOT EXISTS public.rfq_bids (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     rfq_id UUID NOT NULL REFERENCES public.rfqs(id) ON DELETE CASCADE,
-    farmer_id UUID NOT NULL REFERENCES public.profiles(id),
+    farmer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     bid_price NUMERIC(12, 2) NOT NULL,
     message TEXT,
     status VARCHAR(30) DEFAULT 'SUBMITTED' CHECK (status IN
@@ -275,7 +275,7 @@ CREATE INDEX IF NOT EXISTS rfq_bids_farmer_id_idx ON public.rfq_bids(farmer_id);
 CREATE TABLE IF NOT EXISTS public.chat_messages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
-    sender_id UUID NOT NULL REFERENCES public.profiles(id),
+    sender_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     body TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -455,4 +455,105 @@ ALTER TABLE public.profiles
 
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS password_salt TEXT;
+
+-- ============================================================================
+-- Foreign Key Cascade & User Deletion Compatibility
+-- ============================================================================
+-- Fixes foreign key constraints so deleting a row in public.profiles cascades
+-- or sets null cleanly without foreign key reference errors.
+
+DO $$
+BEGIN
+  -- verification_audit_logs (farmer_id & admin_id)
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'verification_audit_logs_farmer_id_fkey') THEN
+    ALTER TABLE public.verification_audit_logs DROP CONSTRAINT verification_audit_logs_farmer_id_fkey;
+  END IF;
+  ALTER TABLE public.verification_audit_logs
+    ADD CONSTRAINT verification_audit_logs_farmer_id_fkey
+    FOREIGN KEY (farmer_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'verification_audit_logs_admin_id_fkey') THEN
+    ALTER TABLE public.verification_audit_logs DROP CONSTRAINT verification_audit_logs_admin_id_fkey;
+  END IF;
+  ALTER TABLE public.verification_audit_logs
+    ADD CONSTRAINT verification_audit_logs_admin_id_fkey
+    FOREIGN KEY (admin_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+  -- farmer_verifications (reviewed_by)
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'farmer_verifications_reviewed_by_fkey') THEN
+    ALTER TABLE public.farmer_verifications DROP CONSTRAINT farmer_verifications_reviewed_by_fkey;
+  END IF;
+  ALTER TABLE public.farmer_verifications
+    ADD CONSTRAINT farmer_verifications_reviewed_by_fkey
+    FOREIGN KEY (reviewed_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+  -- buyer_disputes (buyer_id, farmer_id, resolved_by)
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'buyer_disputes_buyer_id_fkey') THEN
+    ALTER TABLE public.buyer_disputes DROP CONSTRAINT buyer_disputes_buyer_id_fkey;
+  END IF;
+  ALTER TABLE public.buyer_disputes
+    ADD CONSTRAINT buyer_disputes_buyer_id_fkey
+    FOREIGN KEY (buyer_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'buyer_disputes_farmer_id_fkey') THEN
+    ALTER TABLE public.buyer_disputes DROP CONSTRAINT buyer_disputes_farmer_id_fkey;
+  END IF;
+  ALTER TABLE public.buyer_disputes
+    ADD CONSTRAINT buyer_disputes_farmer_id_fkey
+    FOREIGN KEY (farmer_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'buyer_disputes_resolved_by_fkey') THEN
+    ALTER TABLE public.buyer_disputes DROP CONSTRAINT buyer_disputes_resolved_by_fkey;
+  END IF;
+  ALTER TABLE public.buyer_disputes
+    ADD CONSTRAINT buyer_disputes_resolved_by_fkey
+    FOREIGN KEY (resolved_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+  -- orders (buyer_id, farmer_id, product_id)
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_buyer_id_fkey') THEN
+    ALTER TABLE public.orders DROP CONSTRAINT orders_buyer_id_fkey;
+  END IF;
+  ALTER TABLE public.orders
+    ADD CONSTRAINT orders_buyer_id_fkey
+    FOREIGN KEY (buyer_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_farmer_id_fkey') THEN
+    ALTER TABLE public.orders DROP CONSTRAINT orders_farmer_id_fkey;
+  END IF;
+  ALTER TABLE public.orders
+    ADD CONSTRAINT orders_farmer_id_fkey
+    FOREIGN KEY (farmer_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_product_id_fkey') THEN
+    ALTER TABLE public.orders DROP CONSTRAINT orders_product_id_fkey;
+  END IF;
+  ALTER TABLE public.orders
+    ADD CONSTRAINT orders_product_id_fkey
+    FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE;
+
+  -- rfqs (buyer_id)
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rfqs_buyer_id_fkey') THEN
+    ALTER TABLE public.rfqs DROP CONSTRAINT rfqs_buyer_id_fkey;
+  END IF;
+  ALTER TABLE public.rfqs
+    ADD CONSTRAINT rfqs_buyer_id_fkey
+    FOREIGN KEY (buyer_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+  -- rfq_bids (farmer_id)
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rfq_bids_farmer_id_fkey') THEN
+    ALTER TABLE public.rfq_bids DROP CONSTRAINT rfq_bids_farmer_id_fkey;
+  END IF;
+  ALTER TABLE public.rfq_bids
+    ADD CONSTRAINT rfq_bids_farmer_id_fkey
+    FOREIGN KEY (farmer_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+  -- chat_messages (sender_id)
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chat_messages_sender_id_fkey') THEN
+    ALTER TABLE public.chat_messages DROP CONSTRAINT chat_messages_sender_id_fkey;
+  END IF;
+  ALTER TABLE public.chat_messages
+    ADD CONSTRAINT chat_messages_sender_id_fkey
+    FOREIGN KEY (sender_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+END$$;
+
 
