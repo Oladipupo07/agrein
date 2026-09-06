@@ -336,6 +336,19 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function getFarmerVerificationStatus() {
+  const profileStatus = state.currentUser && state.currentUser.verification_status;
+  const applicationStatus = state.mockData && state.mockData.farmerVerificationApp && state.mockData.farmerVerificationApp.status;
+  const decisionStatuses = ['APPROVED', 'CHANGES_REQUIRED', 'REJECTED', 'SUSPENDED'];
+  const submittedStatuses = ['PENDING', 'PENDING_REVIEW', 'UNDER_REVIEW'];
+
+  if (decisionStatuses.includes(applicationStatus)) return applicationStatus;
+  if (decisionStatuses.includes(profileStatus)) return profileStatus;
+  if (submittedStatuses.includes(applicationStatus)) return applicationStatus;
+  if (submittedStatuses.includes(profileStatus)) return profileStatus;
+  return applicationStatus || profileStatus || 'NOT_STARTED';
+}
+
 const actions = {
   setView(view) {
     // Keep old admin queue links working while the console owns verification.
@@ -347,7 +360,7 @@ const actions = {
     // ── FARMER VERIFICATION LOCK ──
     // Unverified farmers are locked on farmer-verification. They cannot navigate anywhere else.
     if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
-      const verificationStatus = state.currentUser.verification_status;
+      const verificationStatus = getFarmerVerificationStatus();
       const isSubmitted = verificationStatus === 'PENDING' || verificationStatus === 'PENDING_REVIEW' || verificationStatus === 'UNDER_REVIEW';
       const allowedViews = isSubmitted ? ['farmer-pending-approval', 'account-settings'] : ['farmer-verification', 'account-settings'];
       if (!allowedViews.includes(view)) {
@@ -647,7 +660,7 @@ const actions = {
     // Logged in with the right role — but a farmer who hasn't been verified
     // yet is LOCKED on farmer-verification. They cannot go anywhere else.
     if (userRole === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
-      const verificationStatus = state.currentUser.verification_status;
+      const verificationStatus = getFarmerVerificationStatus();
       const isSubmitted = verificationStatus === 'PENDING' || verificationStatus === 'PENDING_REVIEW' || verificationStatus === 'UNDER_REVIEW';
       const allowedView = isSubmitted ? 'farmer-pending-approval' : 'farmer-verification';
       if (view !== allowedView && view !== 'account-settings') {
@@ -4835,7 +4848,7 @@ function _initPwaAndMobileExperience() {
   // View routing & role synchronization on boot
   try {
     if (state.currentUser && state.currentUser.role === 'FARMER') {
-      const verificationStatus = state.currentUser.verification_status || 'NOT_STARTED';
+      const verificationStatus = getFarmerVerificationStatus();
       const isApproved = verificationStatus === 'APPROVED';
       const isSubmitted = verificationStatus === 'PENDING' || verificationStatus === 'PENDING_REVIEW' || verificationStatus === 'UNDER_REVIEW';
       const hash = window.location.hash.replace('#', '').trim();
