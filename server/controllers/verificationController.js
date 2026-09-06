@@ -418,7 +418,7 @@ const verificationController = {
       if (farmerProfileResult.error) throw farmerProfileResult.error;
 
       // Upsert verification row in PENDING_REVIEW
-      const verificationResult = await supabase.from('farmer_verifications').upsert({
+      const verificationData = {
         user_id: profileId,
         status: 'PENDING_REVIEW',
         nin_number: cleanNin,
@@ -428,7 +428,23 @@ const verificationController = {
         changes_requested_notes: null,
         submitted_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' }).select('*').maybeSingle();
+      };
+      let verificationResult = await supabase.from('farmer_verifications')
+        .upsert(verificationData, { onConflict: 'user_id' })
+        .select('*')
+        .maybeSingle();
+      if (verificationResult.error && /conflict|unique|constraint/i.test(verificationResult.error.message)) {
+        const existingResult = await supabase.from('farmer_verifications')
+          .select('id')
+          .eq('user_id', profileId)
+          .order('submitted_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (existingResult.error) throw existingResult.error;
+        verificationResult = existingResult.data
+          ? await supabase.from('farmer_verifications').update(verificationData).eq('id', existingResult.data.id).select('*').single()
+          : await supabase.from('farmer_verifications').insert(verificationData).select('*').single();
+      }
       if (verificationResult.error) throw verificationResult.error;
       const row = verificationResult.data;
 

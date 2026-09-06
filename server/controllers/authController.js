@@ -245,6 +245,24 @@ function profileToRecord(profile) {
   };
 }
 
+async function applyFarmerVerificationStatus(user) {
+  if (!user || user.role !== 'FARMER') return user;
+  const sb = getSupabaseAdmin();
+  if (!sb || !user.id) return user;
+
+  const { data: verification } = await sb
+    .from('farmer_verifications')
+    .select('status')
+    .eq('user_id', user.id)
+    .order('submitted_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (verification && verification.status) {
+    user.verification_status = verification.status;
+  }
+  return user;
+}
+
 // No more local-file fallback — `localToRecord` removed. All records come from
 // Supabase via `profileToRecord` above.
 
@@ -557,7 +575,7 @@ const authController = {
         profile = data;
       }
 
-      const user = profileToRecord(profile);
+      const user = await applyFarmerVerificationStatus(profileToRecord(profile));
       const redirectView = user.role === 'FARMER' ? 'farmer-verification' : 'buyer-dashboard';
 
       res.json({
@@ -628,6 +646,8 @@ const authController = {
       if (!user) {
         return res.status(401).json({ success: false, message: 'Invalid email or password.' });
       }
+
+      await applyFarmerVerificationStatus(user);
 
       // Password verification — from the local cache.
       if (!user.passwordHash || !passwordService.verifyPassword(password, user.passwordSalt, user.passwordHash)) {
