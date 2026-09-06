@@ -96,7 +96,8 @@ const StorageManager = {
       localStorage.removeItem(this.KEYS.CURRENT_USER_ALT);
       localStorage.removeItem(this.KEYS.USER_TOKEN);
       localStorage.removeItem(this.KEYS.USER_ROLE);
-      localStorage.removeItem(this.KEYS.FARMER_VERIFICATION);
+      // Keep the verification application across logout so a submitted farmer
+      // can return to the Application Submitted page after signing in again.
       return true;
     } catch (e) {
       console.warn('❌ Failed to clear user from localStorage:', e.message);
