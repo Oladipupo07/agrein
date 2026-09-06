@@ -4,6 +4,12 @@ function renderFarmerVerificationView(state, actions) {
   const app = state.mockData.farmerVerificationApp || {};
   const userStatus = (state.currentUser && state.currentUser.verification_status) || 'NOT_STARTED';
   const status = app.status || 'DRAFT';
+  const submittedStatuses = ['PENDING', 'PENDING_REVIEW', 'UNDER_REVIEW'];
+  const isApplicationSubmitted = submittedStatuses.includes(status) || submittedStatuses.includes(userStatus);
+
+  if (isApplicationSubmitted) {
+    return renderFarmerPendingApprovalView(state, actions);
+  }
 
   const statusConfig = {
     'DRAFT':             { color: 'gray',    icon: 'fa-file-pen',              label: 'Draft',              bg: 'bg-gray-100 dark:bg-gray-800',            text: 'text-gray-600 dark:text-gray-300',       dot: '⚪', step: 0 },

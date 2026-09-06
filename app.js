@@ -1809,10 +1809,20 @@ const actions = {
             }
           });
 
+          const decisionStatuses = ['APPROVED', 'CHANGES_REQUIRED', 'REJECTED', 'SUSPENDED'];
+          const submittedStatuses = ['PENDING', 'PENDING_REVIEW', 'UNDER_REVIEW'];
+          const mergedStatus = decisionStatuses.includes(app.status)
+            ? app.status
+            : decisionStatuses.includes(local.status)
+              ? local.status
+              : submittedStatuses.includes(app.status) || submittedStatuses.includes(local.status)
+                ? (submittedStatuses.includes(app.status) ? app.status : local.status)
+                : app.status || local.status || 'DRAFT';
+
           const merged = {
             ...app,
             ...local,
-            status: app.status || local.status || 'DRAFT',
+            status: mergedStatus,
             rejection_reason: app.rejection_reason !== undefined ? app.rejection_reason : local.rejection_reason,
             changes_requested_notes: app.changes_requested_notes !== undefined ? app.changes_requested_notes : local.changes_requested_notes,
             admin_notes: app.admin_notes !== undefined ? app.admin_notes : local.admin_notes,
