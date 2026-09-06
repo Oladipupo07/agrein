@@ -357,6 +357,25 @@ const actions = {
       state.adminActiveTab = 'verifications';
     }
 
+    // ── ROLE-BASED HOMEPAGE REDIRECTION ──
+    // Homepage for farmers is farmer-dashboard; for buyers is buyer-dashboard; for admins is admin-dashboard.
+    if (view === 'landing' && state.currentUser) {
+      const userRole = (state.currentUser.role || '').toUpperCase();
+      if (userRole === 'FARMER') {
+        if (state.currentUser.verification_status === 'APPROVED') {
+          view = 'farmer-dashboard';
+        } else {
+          const verificationStatus = typeof getFarmerVerificationStatus === 'function' ? getFarmerVerificationStatus() : state.currentUser.verification_status;
+          const isSubmitted = verificationStatus === 'PENDING' || verificationStatus === 'PENDING_REVIEW' || verificationStatus === 'UNDER_REVIEW';
+          view = isSubmitted ? 'farmer-pending-approval' : 'farmer-verification';
+        }
+      } else if (userRole === 'BUYER') {
+        view = (state.isBuyerLocked && state.isBuyerLocked()) ? 'buyer-onboarding' : 'buyer-dashboard';
+      } else if (userRole === 'ADMIN') {
+        view = 'admin-dashboard';
+      }
+    }
+
     // ── FARMER VERIFICATION LOCK ──
     // Unverified farmers are locked on farmer-verification. They cannot navigate anywhere else.
     if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
@@ -416,6 +435,37 @@ const actions = {
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
     renderApp();
+  },
+
+  getHomeView() {
+    if (state.currentUser) {
+      const userRole = (state.currentUser.role || '').toUpperCase();
+      if (userRole === 'FARMER') {
+        if (state.currentUser.verification_status === 'APPROVED') {
+          return 'farmer-dashboard';
+        }
+        const verificationStatus = typeof getFarmerVerificationStatus === 'function' ? getFarmerVerificationStatus() : state.currentUser.verification_status;
+        const isSubmitted = verificationStatus === 'PENDING' || verificationStatus === 'PENDING_REVIEW' || verificationStatus === 'UNDER_REVIEW';
+        return isSubmitted ? 'farmer-pending-approval' : 'farmer-verification';
+      }
+      if (userRole === 'BUYER') {
+        return (state.isBuyerLocked && state.isBuyerLocked()) ? 'buyer-onboarding' : 'buyer-dashboard';
+      }
+      if (userRole === 'ADMIN') {
+        return 'admin-dashboard';
+      }
+    }
+    return 'landing';
+  },
+
+  goHome() {
+    const homeView = actions.getHomeView();
+    actions.guardView(homeView);
+  },
+
+  goHomeAndCloseMobile() {
+    state.mobileMenuOpen = false;
+    actions.goHome();
   },
 
   refreshNearbyFarms() {
@@ -615,7 +665,12 @@ const actions = {
     const roleDefaultView = (role) => {
       if (role === 'BUYER') return (state.isBuyerLocked && state.isBuyerLocked()) ? 'buyer-onboarding' : 'buyer-dashboard';
       if (role === 'ADMIN') return 'admin-dashboard';
-      if (role === 'FARMER') return 'farmer-verification';
+      if (role === 'FARMER') {
+        if (state.currentUser && state.currentUser.verification_status === 'APPROVED') return 'farmer-dashboard';
+        const verificationStatus = typeof getFarmerVerificationStatus === 'function' ? getFarmerVerificationStatus() : (state.currentUser && state.currentUser.verification_status);
+        const isSubmitted = verificationStatus === 'PENDING' || verificationStatus === 'PENDING_REVIEW' || verificationStatus === 'UNDER_REVIEW';
+        return isSubmitted ? 'farmer-pending-approval' : 'farmer-verification';
+      }
       return 'landing';
     };
 
@@ -4143,13 +4198,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 5. Restore Current View from URL Hash or LocalStorage
   try {
-    // FARMER VERIFICATION LOCK ON BOOT: unverified farmers always go to farmer-verification
+    // FARMER VERIFICATION LOCK ON BOOT: unverified farmers always go to farmer-verification/pending
     if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
-      state.currentView = 'farmer-verification';
+      const verificationStatus = typeof getFarmerVerificationStatus === 'function' ? getFarmerVerificationStatus() : state.currentUser.verification_status;
+      const isSubmitted = verificationStatus === 'PENDING' || verificationStatus === 'PENDING_REVIEW' || verificationStatus === 'UNDER_REVIEW';
+      state.currentView = isSubmitted ? 'farmer-pending-approval' : 'farmer-verification';
     } else {
       const hash = window.location.hash.replace('#', '').trim();
       const savedView = hash || localStorage.getItem('agrein_current_view');
-      if (savedView) {
+      if (savedView && savedView !== 'landing') {
         if (state.currentUser) {
           // If user is logged in, route safely to their view or dashboard
           actions.guardView(savedView);
@@ -4160,10 +4217,11 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       } else if (state.currentUser) {
-        const role = state.currentUser.role;
+        const role = (state.currentUser.role || '').toUpperCase();
         if (role === 'FARMER') state.currentView = 'farmer-dashboard';
-        else if (role === 'BUYER') state.currentView = 'buyer-dashboard';
+        else if (role === 'BUYER') state.currentView = (state.isBuyerLocked && state.isBuyerLocked()) ? 'buyer-onboarding' : 'buyer-dashboard';
         else if (role === 'ADMIN') state.currentView = 'admin-dashboard';
+        else state.currentView = 'landing';
       }
     }
   } catch (e) {}

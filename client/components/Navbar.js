@@ -64,11 +64,19 @@ function renderNavbar(state, actions) {
   };
   const roleDefaultView = (role) => {
     if (!role) return 'landing';
-    if (role === 'BUYER') return 'buyer-dashboard';
+    if (role === 'BUYER') return (state.isBuyerLocked && state.isBuyerLocked()) ? 'buyer-onboarding' : 'buyer-dashboard';
     if (role === 'ADMIN') return 'admin-dashboard';
-    if (role === 'FARMER') return currentUser && currentUser.verification_status === 'APPROVED' ? 'farmer-dashboard' : 'farmer-verification';
+    if (role === 'FARMER') {
+      if (currentUser && currentUser.verification_status === 'APPROVED') return 'farmer-dashboard';
+      const status = typeof getFarmerVerificationStatus === 'function' ? getFarmerVerificationStatus() : (currentUser && currentUser.verification_status);
+      const isSubmitted = status === 'PENDING' || status === 'PENDING_REVIEW' || status === 'UNDER_REVIEW';
+      return isSubmitted ? 'farmer-pending-approval' : 'farmer-verification';
+    }
     return 'landing';
   };
+  const homeView = currentUser ? roleDefaultView(currentUser.role) : 'landing';
+  const isHomeActive = currentView === homeView || (currentView === 'landing' && !currentUser);
+
   const roleAccent = (role) => {
     if (role === 'BUYER') return { pill: 'bg-blue-600', avatar: 'bg-blue-600' };
     if (role === 'FARMER') return { pill: 'bg-amber-600', avatar: 'bg-amber-600' };
@@ -84,7 +92,7 @@ function renderNavbar(state, actions) {
       <!-- brand mark + dynamic page title + cart + menu -->
       <!-- ============================================ -->
       <div class="lg:hidden topbar h-14 glass-panel flex items-center gap-2 px-3 safe-area-top">
-        <button onclick="actions.setView('landing')" class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 flex items-center justify-center text-white shadow-md flex-shrink-0" aria-label="Home">
+        <button onclick="actions.goHome()" class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 flex items-center justify-center text-white shadow-md flex-shrink-0" aria-label="Home">
           <i class="fa-solid fa-wheat-awn text-sm"></i>
         </button>
         <div class="min-w-0 flex-1">
@@ -113,7 +121,7 @@ function renderNavbar(state, actions) {
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
 
         <!-- 1. Brand Logo -->
-        <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer flex-shrink-0 min-w-0" onclick="actions.setView('landing')">
+        <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer flex-shrink-0 min-w-0" onclick="actions.goHome()">
           <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-emerald-700/30 transform hover:scale-105 transition-transform flex-shrink-0">
             <i class="fa-solid fa-wheat-awn text-base sm:text-xl"></i>
           </div>
@@ -128,7 +136,7 @@ function renderNavbar(state, actions) {
 
         <!-- 2. Centered Navigation Links -->
         <nav class="hidden lg:flex items-center space-x-1 bg-slate-100/80 dark:bg-slate-900/60 p-1.5 rounded-2xl border border-gray-200/60 dark:border-slate-800">
-          <button onclick="actions.setView('landing')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'landing' ? 'bg-white dark:bg-emerald-700 text-emerald-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-white'}">
+          <button onclick="actions.goHome()" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${isHomeActive ? 'bg-white dark:bg-emerald-700 text-emerald-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-white'}">
             Home
           </button>
           <button onclick="actions.setView('marketplace')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentView === 'marketplace' ? 'bg-white dark:bg-emerald-700 text-emerald-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-white'}">
@@ -257,7 +265,7 @@ function renderNavbar(state, actions) {
 
         <!-- Drawer Header -->
         <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-800">
-          <div class="flex items-center space-x-2.5 min-w-0" onclick="actions.setViewAndCloseMobile('landing')">
+          <div class="flex items-center space-x-2.5 min-w-0 cursor-pointer" onclick="actions.goHomeAndCloseMobile()">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-amber-500 flex items-center justify-center text-white shadow-md flex-shrink-0">
               <i class="fa-solid fa-wheat-awn text-base"></i>
             </div>
@@ -306,7 +314,7 @@ function renderNavbar(state, actions) {
         <!-- Navigation Links — sectioned drawer -->
         <nav class="flex-1 overflow-y-auto p-2 space-y-0.5">
           ${sectionHeader('Browse')}
-          ${navItem({ icon: 'fa-house',          iconColor: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300', label: 'Home',         desc: 'Agrein landing & live market feed',          onclick: "actions.setViewAndCloseMobile('landing')",      active: currentView === 'landing' })}
+          ${navItem({ icon: 'fa-house',          iconColor: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300', label: 'Home',         desc: activeRole === 'farmer' ? 'Your farmer dashboard & listings' : activeRole === 'buyer' ? 'Your buyer dashboard & orders' : 'Agrein landing & live market feed',          onclick: "actions.goHomeAndCloseMobile()",      active: isHomeActive })}
           ${navItem({ icon: 'fa-store',          iconColor: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300', label: 'Marketplace',  desc: 'Browse fresh harvests from verified farms',    onclick: "actions.setViewAndCloseMobile('marketplace')",  active: currentView === 'marketplace' })}
           ${navItem({ icon: 'fa-user',           iconColor: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300',             label: 'Profile',      desc: 'Manage your Agrein account',                  onclick: "actions.guardViewAndCloseMobile('account-settings')", active: currentView === 'account-settings' })}
           ${navItem({ icon: 'fa-plus',           iconColor: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',       label: 'Sell',         desc: 'List produce or get started as a seller',       onclick: "actions.closeMobileMenu(); setTimeout(() => actions.openSellSheet(), 100);", active: sellSheetOpen })}
