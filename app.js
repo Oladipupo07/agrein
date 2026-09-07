@@ -117,8 +117,19 @@ const state = {
   adminVerificationSearch: '',
   adminInspectionModalActive: false,
   adminInspectedDossier: null,
+  // Admin Review Dossier State
   adminReviewDossier: null,
   adminDocumentPreviewModal: { active: false, url: '', name: '', type: '' },
+
+  // Suspended / Blocked user helper. True when the current logged in user has been blocked by an Admin.
+  isUserSuspended() {
+    return Boolean(state.currentUser && (state.currentUser.is_suspended || state.currentUser.is_blocked));
+  },
+
+  // Admin Block User Action Modal State
+  adminBlockModalActive: false,
+  adminBlockTargetUser: null,
+  adminBlockReason: '',
 
   // Locked-farmer chrome suppression. True when a FARMER is signed in but
   // hasn't been admin-verified yet. The farmer-verification page hides the
@@ -407,6 +418,10 @@ const actions = {
       }
     } catch (e) {}
 
+    if (view === 'account-settings') {
+      if (typeof actions.fetchUserProfile === 'function') actions.fetchUserProfile();
+    }
+
     if (view === 'farmer-dashboard') {
       if (typeof loadFarmerDashboard === 'function') loadFarmerDashboard(state, actions);
     } else if (view === 'buyer-dashboard') {
@@ -650,6 +665,152 @@ const actions = {
     renderApp();
   },
 
+  openBlockUserModal(userOrId) {
+    if (typeof userOrId === 'string') {
+      const found = (state.registeredUsersList || []).find(u => u.id === userOrId || u.email === userOrId);
+      state.adminBlockTargetUser = found || { id: userOrId, email: userOrId, full_name: 'User', role: 'USER' };
+    } else {
+      state.adminBlockTargetUser = userOrId;
+    }
+    state.adminBlockReason = '';
+    state.adminBlockModalActive = true;
+    renderApp();
+  },
+
+  closeBlockUserModal() {
+    state.adminBlockModalActive = false;
+    state.adminBlockTargetUser = null;
+    state.adminBlockReason = '';
+    renderApp();
+  },
+
+  submitBlockUser() {
+    if (!state.adminBlockTargetUser) return;
+    const target = state.adminBlockTargetUser;
+    const idOrEmail = target.id || target.email;
+    const reasonInput = document.getElementById('adminBlockReasonInput');
+    const reason = (reasonInput ? reasonInput.value : state.adminBlockReason || '').trim() || 'Account suspended pending administrative compliance review.';
+
+    const token = (state.currentUser && state.currentUser.token) || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (state.currentUser && state.currentUser.email) headers['x-user-email'] = state.currentUser.email;
+
+    fetch(`/api/admin/users/${encodeURIComponent(idOrEmail)}/toggle-block`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        suspended: true,
+        reason: reason
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data && data.success) {
+        actions.triggerToast(`🚫 User account for ${target.full_name || target.email} has been blocked.`);
+        actions.closeBlockUserModal();
+        actions.fetchRegisteredUsers();
+        if (typeof actions.fetchAdminVerifications === 'function') {
+          actions.fetchAdminVerifications();
+        }
+      } else {
+        actions.triggerToast(`❌ Failed to block user: ${(data && data.message) || 'Unknown error'}`);
+      }
+    })
+    .catch(err => {
+      actions.triggerToast(`❌ Server error: ${err.message}`);
+    });
+  },
+
+  unblockUser(idOrEmail, userName) {
+    if (!confirm(`Are you sure you want to unblock and reinstate account access for ${userName || idOrEmail}?`)) return;
+
+    const token = (state.currentUser && state.currentUser.token) || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (state.currentUser && state.currentUser.email) headers['x-user-email'] = state.currentUser.email;
+
+    fetch(`/api/admin/users/${encodeURIComponent(idOrEmail)}/toggle-block`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        suspended: false,
+        reason: ''
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data && data.success) {
+        actions.triggerToast(`✅ User account for ${userName || idOrEmail} has been reinstated.`);
+        actions.fetchRegisteredUsers();
+        if (typeof actions.fetchAdminVerifications === 'function') {
+          actions.fetchAdminVerifications();
+        }
+      } else {
+        actions.triggerToast(`❌ Failed to unblock user: ${(data && data.message) || 'Unknown error'}`);
+      }
+    })
+    .catch(err => {
+      actions.triggerToast(`❌ Server error: ${err.message}`);
+    });
+  },
+
+  checkSuspensionStatus() {
+    if (!state.currentUser || !state.currentUser.email) return;
+    actions.triggerToast('🔄 Checking account status with server...');
+    fetch(`/api/farmers/verification-status-public?email=${encodeURIComponent(state.currentUser.email)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.success && data.found) {
+          const isSuspended = Boolean(data.is_suspended);
+          const reason = data.suspension_reason || '';
+          state.currentUser.is_suspended = isSuspended;
+          state.currentUser.suspension_reason = reason;
+          StorageManager.saveUser(state.currentUser);
+
+          if (!isSuspended) {
+            actions.triggerToast('🎉 Your account has been reinstated! Redirecting...');
+            setTimeout(() => {
+              actions.setView(actions.getHomeView());
+            }, 800);
+          } else {
+            actions.triggerToast('ℹ️ Account is currently blocked pending administrative review.');
+            renderApp();
+          }
+        } else {
+          actions.triggerToast('ℹ️ Status updated.');
+          renderApp();
+        }
+      })
+      .catch(() => {
+        actions.triggerToast('❌ Network error checking status.');
+      });
+  },
+
+  fetchUserProfile() {
+    if (!state.currentUser) return;
+    const token = (state.currentUser && state.currentUser.token) || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (state.currentUser && state.currentUser.email) headers['x-user-email'] = state.currentUser.email;
+
+    fetch('/api/auth/me', { headers })
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.success && data.user) {
+          const u = data.user;
+          state.currentUser = {
+            ...state.currentUser,
+            ...u,
+            token: state.currentUser.token || u.token
+          };
+          StorageManager.saveUser(state.currentUser);
+          renderApp();
+        }
+      })
+      .catch(() => {});
+  },
+
   // Gated routing — visitors must log in to reach portals; logged-in users must
   // own the right role. Falls back to the visitor landing page on any failure.
   guardView(view) {
@@ -675,6 +836,14 @@ const actions = {
     };
 
     const requiredRole = GATED_VIEWS[view];
+
+    // If user is suspended / blocked, restrict navigation
+    if (state.isUserSuspended && state.isUserSuspended()) {
+      if (view !== 'account-settings') {
+        actions.setView(view);
+        return;
+      }
+    }
 
     // 'account-settings' is the only view that requires a login but no role check.
     if (view === 'account-settings') {
@@ -977,11 +1146,21 @@ const actions = {
 
         const user = data.user || {};
         state.currentUser = {
+          ...user,
           id: user.id,
           full_name: user.full_name,
           email: user.email,
+          phone_number: user.phone_number || user.phone || '',
           role: (user.role || '').toUpperCase(),
           token: user.token,
+          state: user.state || '',
+          lga: user.lga || '',
+          city: user.city || '',
+          address: user.address || '',
+          created_at: user.created_at || null,
+          marketing_consent: Boolean(user.marketing_consent),
+          is_suspended: Boolean(user.is_suspended || user.is_blocked),
+          suspension_reason: user.suspension_reason || '',
           verification_status: user.verification_status || (user.role === 'FARMER' ? 'NOT_STARTED' : 'APPROVED')
         };
         state.authError = null;
@@ -1261,11 +1440,21 @@ const actions = {
       const role = (user.role || state.otpRole || 'BUYER').toUpperCase();
       const verificationStatus = user.verification_status || (role === 'FARMER' ? 'NOT_STARTED' : 'APPROVED');
       state.currentUser = {
+        ...user,
         id: user.id,
         full_name: user.full_name,
         email: user.email,
+        phone_number: user.phone_number || user.phone || '',
         role,
         token: user.token,
+        state: user.state || '',
+        lga: user.lga || '',
+        city: user.city || '',
+        address: user.address || '',
+        created_at: user.created_at || null,
+        marketing_consent: Boolean(user.marketing_consent),
+        is_suspended: Boolean(user.is_suspended || user.is_blocked),
+        suspension_reason: user.suspension_reason || '',
         verification_status: verificationStatus
       };
       state.activeRole = (state.currentUser.role || 'visitor').toLowerCase();
@@ -3818,93 +4007,101 @@ function renderAppImmediate() {
   const appContainer = document.getElementById('app');
   if (!appContainer) return;
 
+  const isSuspended = state.isUserSuspended && state.isUserSuspended();
   let bodyContent = '';
-  switch (state.currentView) {
-    case 'landing':
-      bodyContent = renderHero(state, actions) + renderProductCatalog(state, actions) + renderAIPredictor(state, actions);
-      break;
-    case 'marketplace':
-      bodyContent = renderProductCatalog(state, actions);
-      break;
-    case 'ai-insights':
-      bodyContent = renderAIPredictor(state, actions);
-      break;
-    case 'nearby-farms':
-      bodyContent = renderNearbyFarms(state, actions);
-      break;
-    case 'farmer-dashboard':
-      bodyContent = renderFarmerDashboard(state, actions);
-      break;
-    case 'buyer-dashboard':
-      bodyContent = renderBuyerDashboard(state, actions);
-      break;
-    case 'admin-dashboard':
-      bodyContent = renderAdminDashboard(state, actions);
-      break;
 
-    // === ECOSYSTEM & VERIFICATION VIEWS ===
-    case 'farmer-verification':
-      bodyContent = renderFarmerVerificationView(state, actions);
-      break;
-    case 'farmer-pending-approval':
-      bodyContent = renderFarmerPendingApprovalView(state, actions);
-      break;
-    case 'admin-review':
-      bodyContent = renderAdminReviewScreen(state, actions);
-      break;
-    case 'rfq-board':
-      bodyContent = renderReverseMarketplace(state, actions);
-      break;
-    case 'commodity-index':
-      bodyContent = renderCommodityIndex(state, actions);
-      break;
-    case 'agro-doctor':
-      bodyContent = renderAgroDoctorAI(state, actions);
-      break;
-    case 'weather':
-      bodyContent = renderWeatherDashboard(state, actions);
-      break;
-    case 'cooperatives':
-      bodyContent = renderCooperatives(state, actions);
-      break;
-    case 'forum':
-      bodyContent = renderCommunityForum(state, actions);
-      break;
-    case 'learning-center':
-      bodyContent = renderLearningCenter(state, actions);
-      break;
-    case 'wallet':
-      bodyContent = renderDigitalWallet(state, actions);
-      break;
-    case 'logistics':
-      bodyContent = renderSmartLogistics(state, actions);
-      break;
-    case 'export-trade':
-      bodyContent = renderExportMarketplace(state, actions);
-      break;
-    case 'bulk-b2b':
-      bodyContent = renderBulkB2B(state, actions);
-      break;
-    case 'subscriptions':
-      bodyContent = renderSubscriptionPlans(state, actions);
-      break;
-    case 'traceability':
-      bodyContent = renderTraceabilityView(state, actions);
-      break;
-    case 'buyer-onboarding':
-      bodyContent = renderBuyerOnboardingView(state, actions);
-      break;
+  if (isSuspended && state.currentView !== 'account-settings') {
+    bodyContent = typeof renderSuspendedAccountView === 'function'
+      ? renderSuspendedAccountView(state, actions)
+      : '<div class="p-8 text-center font-bold">Account Blocked Pending Review.</div>';
+  } else {
+    switch (state.currentView) {
+      case 'landing':
+        bodyContent = renderHero(state, actions) + renderProductCatalog(state, actions) + renderAIPredictor(state, actions);
+        break;
+      case 'marketplace':
+        bodyContent = renderProductCatalog(state, actions);
+        break;
+      case 'ai-insights':
+        bodyContent = renderAIPredictor(state, actions);
+        break;
+      case 'nearby-farms':
+        bodyContent = renderNearbyFarms(state, actions);
+        break;
+      case 'farmer-dashboard':
+        bodyContent = renderFarmerDashboard(state, actions);
+        break;
+      case 'buyer-dashboard':
+        bodyContent = renderBuyerDashboard(state, actions);
+        break;
+      case 'admin-dashboard':
+        bodyContent = renderAdminDashboard(state, actions);
+        break;
 
-    // === ACCOUNT SETTINGS ===
-    case 'account-settings':
-      bodyContent = renderAccountSettings(state, actions);
-      break;
+      // === ECOSYSTEM & VERIFICATION VIEWS ===
+      case 'farmer-verification':
+        bodyContent = renderFarmerVerificationView(state, actions);
+        break;
+      case 'farmer-pending-approval':
+        bodyContent = renderFarmerPendingApprovalView(state, actions);
+        break;
+      case 'admin-review':
+        bodyContent = renderAdminReviewScreen(state, actions);
+        break;
+      case 'rfq-board':
+        bodyContent = renderReverseMarketplace(state, actions);
+        break;
+      case 'commodity-index':
+        bodyContent = renderCommodityIndex(state, actions);
+        break;
+      case 'agro-doctor':
+        bodyContent = renderAgroDoctorAI(state, actions);
+        break;
+      case 'weather':
+        bodyContent = renderWeatherDashboard(state, actions);
+        break;
+      case 'cooperatives':
+        bodyContent = renderCooperatives(state, actions);
+        break;
+      case 'forum':
+        bodyContent = renderCommunityForum(state, actions);
+        break;
+      case 'learning-center':
+        bodyContent = renderLearningCenter(state, actions);
+        break;
+      case 'wallet':
+        bodyContent = renderDigitalWallet(state, actions);
+        break;
+      case 'logistics':
+        bodyContent = renderSmartLogistics(state, actions);
+        break;
+      case 'export-trade':
+        bodyContent = renderExportMarketplace(state, actions);
+        break;
+      case 'bulk-b2b':
+        bodyContent = renderBulkB2B(state, actions);
+        break;
+      case 'subscriptions':
+        bodyContent = renderSubscriptionPlans(state, actions);
+        break;
+      case 'traceability':
+        bodyContent = renderTraceabilityView(state, actions);
+        break;
+      case 'buyer-onboarding':
+        bodyContent = renderBuyerOnboardingView(state, actions);
+        break;
 
-    default:
-      bodyContent = renderHero(state, actions) + renderProductCatalog(state, actions);
+      // === ACCOUNT SETTINGS ===
+      case 'account-settings':
+        bodyContent = renderAccountSettings(state, actions);
+        break;
+
+      default:
+        bodyContent = renderHero(state, actions) + renderProductCatalog(state, actions);
+    }
   }
 
-  const isLockedHeader = state.isFarmerLocked() || (state.isBuyerLocked && state.isBuyerLocked() && state.currentView === 'buyer-onboarding');
+  const isLockedHeader = isSuspended || state.isFarmerLocked() || (state.isBuyerLocked && state.isBuyerLocked() && state.currentView === 'buyer-onboarding');
 
   const newHtml = `
     <div class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-gray-100 transition-colors">
@@ -3921,12 +4118,12 @@ function renderAppImmediate() {
       ${isLockedHeader
         ? `
         <div class="sticky top-0 z-40 w-full h-14 border-b border-gray-200 dark:border-slate-800 bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl flex items-center px-4 safe-area-top">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr ${state.isFarmerLocked() ? 'from-emerald-700 via-emerald-600 to-amber-500' : 'from-blue-700 via-blue-600 to-emerald-500'} flex items-center justify-center text-white shadow-md flex-shrink-0">
-            <i class="fa-solid ${state.isFarmerLocked() ? 'fa-wheat-awn' : 'fa-truck-ramp-box'} text-sm"></i>
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr ${isSuspended ? 'from-rose-700 via-rose-600 to-amber-500' : (state.isFarmerLocked() ? 'from-emerald-700 via-emerald-600 to-amber-500' : 'from-blue-700 via-blue-600 to-emerald-500')} flex items-center justify-center text-white shadow-md flex-shrink-0">
+            <i class="fa-solid ${isSuspended ? 'fa-user-lock' : (state.isFarmerLocked() ? 'fa-wheat-awn' : 'fa-truck-ramp-box')} text-sm"></i>
           </div>
           <div class="min-w-0 flex-1 px-3">
-            <div class="text-[10px] uppercase tracking-wider font-extrabold ${state.isFarmerLocked() ? 'text-emerald-700 dark:text-emerald-400' : 'text-blue-700 dark:text-blue-400'} leading-none">Agrein</div>
-            <div class="text-xs font-extrabold text-slate-900 dark:text-white truncate leading-tight">${state.isFarmerLocked() ? 'Farm Verification' : 'Buyer Profile Setup'}</div>
+            <div class="text-[10px] uppercase tracking-wider font-extrabold ${isSuspended ? 'text-rose-700 dark:text-rose-400' : (state.isFarmerLocked() ? 'text-emerald-700 dark:text-emerald-400' : 'text-blue-700 dark:text-blue-400')} leading-none">Agrein</div>
+            <div class="text-xs font-extrabold text-slate-900 dark:text-white truncate leading-tight">${isSuspended ? 'Account Status: Suspended' : (state.isFarmerLocked() ? 'Farm Verification' : 'Buyer Profile Setup')}</div>
           </div>
           <button onclick="actions.logout()" class="px-3 py-2 rounded-xl text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-1.5">
             <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
@@ -3962,8 +4159,8 @@ function renderAppImmediate() {
       ${typeof renderPwaInstallSheet === 'function' ? renderPwaInstallSheet(state, actions) : ''}
       ${typeof renderSwUpdateToast === 'function' ? renderSwUpdateToast(state, actions) : ''}
 
-      <!-- Footer (hidden for locked farmers — standalone onboarding page) -->
-      ${state.isFarmerLocked() ? '' : renderFooter(state, actions)}
+      <!-- Footer (hidden for locked farmers & suspended accounts) -->
+      ${(isSuspended || state.isFarmerLocked()) ? '' : renderFooter(state, actions)}
 
     </div>
   `;

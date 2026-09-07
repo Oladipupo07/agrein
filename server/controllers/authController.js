@@ -28,7 +28,9 @@ function mintToken(user) {
       sub: user.id,
       email: user.email,
       role: user.role,
-      vs: user.verification_status || 'APPROVED'
+      vs: user.verification_status || 'APPROVED',
+      is_suspended: Boolean(user.is_suspended),
+      suspension_reason: user.suspension_reason || null
     },
     process.env.JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
@@ -223,6 +225,8 @@ function profileToRecord(profile) {
     role: String(profile.role || 'BUYER').toUpperCase(),
     email_verified: Boolean(profile.email_verified),
     is_verified: Boolean(profile.is_verified),
+    is_suspended: Boolean(profile.is_suspended),
+    suspension_reason: profile.suspension_reason || null,
     verification_status: profile.verification_status || 'APPROVED',
     state: profile.state || '',
     lga: profile.lga || '',
@@ -430,6 +434,75 @@ const authController = {
         user: toClientUser(updated)
       });
     } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  // Admin: Block/Suspend or Unblock any user account (Buyer, Farmer, Admin)
+  async toggleBlockUser(req, res) {
+    try {
+      const { id } = req.params;
+      const { suspended, reason } = req.body;
+      const isSuspended = suspended !== undefined ? Boolean(suspended) : true;
+      const cleanReason = (reason || '').trim() || (isSuspended ? 'Account suspended by platform administrator pending compliance review.' : null);
+
+      const sb = getSupabaseAdmin();
+      if (!sb) return res.status(503).json({ success: false, message: 'Auth database unavailable.' });
+
+      // Find user in Supabase profiles by id, email, or local_id
+      let targetProfile = null;
+      let query = sb.from('profiles').select('*');
+      if (id.includes('@')) {
+        query = query.eq('email', id.toLowerCase());
+      } else {
+        query = query.eq('id', id);
+      }
+      const { data: profile, error: findErr } = await query.maybeSingle();
+      if (findErr) throw findErr;
+      targetProfile = profile;
+
+      if (!targetProfile) {
+        return res.status(404).json({ success: false, message: 'User not found in database.' });
+      }
+
+      const updates = {
+        is_suspended: isSuspended,
+        suspension_reason: isSuspended ? cleanReason : null,
+        updated_at: new Date().toISOString()
+      };
+
+      if (targetProfile.role === 'FARMER') {
+        updates.verification_status = isSuspended ? 'SUSPENDED' : (targetProfile.verification_status === 'SUSPENDED' ? 'APPROVED' : targetProfile.verification_status);
+      }
+
+      const { data: updated, error: updateErr } = await sb
+        .from('profiles')
+        .update(updates)
+        .eq('id', targetProfile.id)
+        .select('*')
+        .single();
+
+      if (updateErr) throw updateErr;
+
+      // Keep farmer_verifications table in sync if farmer
+      if (targetProfile.role === 'FARMER') {
+        await sb.from('farmer_verifications')
+          .update({
+            status: isSuspended ? 'SUSPENDED' : 'APPROVED',
+            admin_notes: isSuspended ? `SUSPENDED: ${cleanReason}` : 'REINSTATED: Account unblocked by admin.'
+          })
+          .eq('user_id', targetProfile.id);
+      }
+
+      const safeUser = toClientUser(profileToRecord(updated));
+
+      return res.json({
+        success: true,
+        message: isSuspended ? `User ${targetProfile.email} has been blocked/suspended.` : `User ${targetProfile.email} has been unblocked.`,
+        user: safeUser
+      });
+    } catch (error) {
+      console.error('[toggleBlockUser] error:', error);
       res.status(500).json({ success: false, message: error.message });
     }
   },
@@ -1140,6 +1213,30 @@ const authController = {
       res.json({
         success: true,
         message: 'Password updated successfully. Please use your new password next time you sign in.'
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  // Get current user profile (with fresh data from Supabase)
+  async getMe(req, res) {
+    try {
+      const email = (req.user && req.user.email) || (req.headers['x-user-email'] || '').toLowerCase();
+      if (!email) {
+        return res.status(401).json({ success: false, message: 'Authentication required.' });
+      }
+      const user = await findUserRecordByEmail(email);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found.' });
+      }
+      await applyFarmerVerificationStatus(user);
+      res.json({
+        success: true,
+        user: {
+          ...toClientUser(user),
+          token: mintToken(user)
+        }
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

@@ -482,18 +482,22 @@ function renderAdminDashboard(state, actions) {
                     <th class="py-3 px-4">Email Address</th>
                     <th class="py-3 px-4">Phone Number</th>
                     <th class="py-3 px-4">KYC / Verification</th>
+                    <th class="py-3 px-4">Account Status</th>
                     <th class="py-3 px-4">Registered Date</th>
                     <th class="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
                   ${filteredUsers.map(u => `
-                    <tr class="hover:bg-blue-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                    <tr class="hover:bg-blue-50/30 dark:hover:bg-slate-800/40 transition-colors ${u.is_suspended ? 'bg-rose-50/20 dark:bg-rose-950/10' : ''}">
                       <td class="py-3.5 px-4 font-bold text-slate-900 dark:text-white flex items-center space-x-2.5">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <div class="w-8 h-8 rounded-full ${u.is_suspended ? 'bg-gradient-to-tr from-rose-600 to-red-600' : 'bg-gradient-to-tr from-purple-600 to-indigo-600'} text-white font-extrabold text-xs flex items-center justify-center flex-shrink-0 shadow-sm">
                           ${(u.full_name || u.email || 'U')[0].toUpperCase()}
                         </div>
-                        <span class="truncate max-w-[150px] sm:max-w-none">${u.full_name || 'Agrein User'}</span>
+                        <div>
+                          <div class="truncate max-w-[150px] sm:max-w-none">${u.full_name || 'Agrein User'}</div>
+                          ${u.is_suspended ? `<div class="text-[10px] text-rose-600 font-medium truncate max-w-[150px] sm:max-w-xs" title="${u.suspension_reason || ''}">Blocked: ${u.suspension_reason || 'Under review'}</div>` : ''}
+                        </div>
                       </td>
                       <td class="py-3.5 px-4">
                         <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${u.role === 'FARMER' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300' : (u.role === 'BUYER' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300' : 'bg-purple-100 text-purple-800 border-purple-300')}">
@@ -506,26 +510,54 @@ function renderAdminDashboard(state, actions) {
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           u.verification_status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
                           u.verification_status === 'PENDING' || u.verification_status === 'PENDING_REVIEW' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
+                          u.verification_status === 'SUSPENDED' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
                           'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-gray-400'
                         }">
                           ${u.verification_status || 'NOT_STARTED'}
                         </span>
                       </td>
+                      <td class="py-3.5 px-4">
+                        ${u.is_suspended ? `
+                          <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 inline-flex items-center gap-1">
+                            <i class="fa-solid fa-ban text-[9px]"></i>
+                            <span>Blocked</span>
+                          </span>
+                        ` : `
+                          <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300/60 inline-flex items-center gap-1">
+                            <i class="fa-solid fa-check text-[9px]"></i>
+                            <span>Active</span>
+                          </span>
+                        `}
+                      </td>
                       <td class="py-3.5 px-4 text-gray-500 text-[11px]">
                         ${new Date(u.created_at || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                       <td class="py-3.5 px-4 text-right">
-                        ${u.role === 'FARMER' ? `
-                          <button onclick="actions.openAdminReview('${u.id || u.email}')" class="px-2.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-[10px] shadow-sm transition-all inline-flex items-center space-x-1">
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                            <span>Inspect Farm</span>
-                          </button>
-                        ` : (u.role === 'BUYER' ? `
-                          <button onclick="actions.openAdminBuyerInspect('${u.id || u.email}')" class="px-2.5 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-extrabold text-[10px] shadow-sm transition-all inline-flex items-center space-x-1">
-                            <i class="fa-solid fa-address-card"></i>
-                            <span>Inspect Buyer</span>
-                          </button>
-                        ` : '')}
+                        <div class="inline-flex items-center space-x-1.5">
+                          ${u.role === 'FARMER' ? `
+                            <button onclick="actions.openAdminReview('${u.id || u.email}')" class="px-2.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-[10px] shadow-sm transition-all inline-flex items-center space-x-1">
+                              <i class="fa-solid fa-magnifying-glass"></i>
+                              <span>Inspect</span>
+                            </button>
+                          ` : (u.role === 'BUYER' ? `
+                            <button onclick="actions.openAdminBuyerInspect('${u.id || u.email}')" class="px-2.5 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-extrabold text-[10px] shadow-sm transition-all inline-flex items-center space-x-1">
+                              <i class="fa-solid fa-address-card"></i>
+                              <span>Inspect</span>
+                            </button>
+                          ` : '')}
+
+                          ${u.is_suspended ? `
+                            <button onclick="actions.unblockUser('${u.id || u.email}')" class="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] shadow-sm transition-all inline-flex items-center space-x-1" title="Unblock user account">
+                              <i class="fa-solid fa-lock-open"></i>
+                              <span>Unblock</span>
+                            </button>
+                          ` : `
+                            <button onclick="actions.openBlockUserModal('${u.id || u.email}')" class="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-[10px] shadow-sm transition-all inline-flex items-center space-x-1" title="Block/Suspend user account">
+                              <i class="fa-solid fa-ban"></i>
+                              <span>Block</span>
+                            </button>
+                          `}
+                        </div>
                       </td>
                     </tr>
                   `).join('')}
@@ -862,6 +894,52 @@ function renderAdminDashboard(state, actions) {
           <div class="pt-3 border-t border-gray-100 dark:border-slate-800 flex justify-end">
             <button onclick="actions.closeAdminBuyerInspect()" class="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-gray-200 font-bold text-xs hover:bg-slate-200">
               Close Dossier
+            </button>
+          </div>
+
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- ═══ BLOCK / SUSPEND USER MODAL ═══ -->
+    ${state.adminBlockModalActive && state.adminBlockTargetUser ? `
+      <div class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+        <div class="modal-fullscreen-mobile bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full border border-rose-500/30 shadow-2xl overflow-hidden animate-modal p-6 space-y-5">
+          
+          <div class="flex items-center space-x-3 text-rose-600">
+            <div class="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-950/70 flex items-center justify-center text-xl flex-shrink-0">
+              <i class="fa-solid fa-user-slash"></i>
+            </div>
+            <div>
+              <h3 class="font-heading font-extrabold text-lg text-slate-900 dark:text-white">Block / Suspend User</h3>
+              <p class="text-xs text-gray-500">Restricts user from trading & platform actions</p>
+            </div>
+          </div>
+
+          <!-- User Card -->
+          <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 text-xs space-y-1">
+            <div class="font-bold text-slate-900 dark:text-white">${state.adminBlockTargetUser.full_name || 'User'}</div>
+            <div class="font-mono text-gray-500">${state.adminBlockTargetUser.email}</div>
+            <div class="text-[10px] font-extrabold text-purple-600 dark:text-purple-400 uppercase tracking-wider">${state.adminBlockTargetUser.role}</div>
+          </div>
+
+          <!-- Reason Input -->
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-gray-700 dark:text-gray-300">
+              Reason for Suspension <span class="text-rose-500">*</span>
+            </label>
+            <textarea id="adminBlockReasonInput" rows="3" placeholder="Enter reason (e.g., Quality dispute investigation, failed identity verification, suspicious bidding activity)..." class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500 outline-none">${state.adminBlockReason || ''}</textarea>
+            <p class="text-[10px] text-gray-400">This explanation will be shown directly on the user's suspended screen when they log in.</p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center space-x-2 pt-2">
+            <button onclick="actions.closeBlockUserModal()" class="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 text-slate-700 dark:text-gray-200 text-xs font-bold hover:bg-gray-100 dark:hover:bg-slate-800 transition-all">
+              Cancel
+            </button>
+            <button onclick="actions.submitBlockUser()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 text-white text-xs font-extrabold shadow-lg shadow-rose-600/20 transition-all flex items-center justify-center space-x-1.5">
+              <i class="fa-solid fa-ban text-xs"></i>
+              <span>Confirm Block</span>
             </button>
           </div>
 

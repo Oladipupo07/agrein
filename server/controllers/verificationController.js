@@ -231,7 +231,7 @@ const verificationController = {
       }
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('id, role, verification_status')
+        .select('id, role, verification_status, is_suspended, suspension_reason')
         .eq('email', email)
         .maybeSingle();
       if (error) throw error;
@@ -258,6 +258,8 @@ const verificationController = {
         found: true,
         role: (profile.role || '').toUpperCase(),
         verification_status: profile.verification_status || 'NOT_STARTED',
+        is_suspended: Boolean(profile.is_suspended),
+        suspension_reason: profile.suspension_reason || null,
         rejection_reason: rejectionReason,
         changes_requested_notes: changesRequestedNotes
       });
