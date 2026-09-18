@@ -8,7 +8,7 @@ function renderFarmerVerificationView(state, actions) {
   const isApplicationSubmitted = submittedStatuses.includes(status) || submittedStatuses.includes(userStatus);
 
   if (isApplicationSubmitted) {
-    return renderFarmerPendingApprovalView(state, actions);
+    return (typeof renderApplicationSubmittedView === 'function' ? renderApplicationSubmittedView : renderFarmerPendingApprovalView)(state, actions);
   }
 
   const statusConfig = {
@@ -47,6 +47,18 @@ function renderFarmerVerificationView(state, actions) {
   const farmAddressVal = app.farm_location || '';
   const farmStateVal = app.farm_state || app.state || '';
   const farmLgaVal = app.farm_lga || app.lga || '';
+
+  const nigerianStates = (typeof ALL_NIGERIAN_STATES !== 'undefined' ? ALL_NIGERIAN_STATES : (window.ALL_NIGERIAN_STATES || [
+    'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+    'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja', 'Gombe',
+    'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
+    'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
+    'Taraba', 'Yobe', 'Zamfara'
+  ]));
+
+  const getLgas = typeof getLgasForState === 'function' ? getLgasForState : (st => (typeof NIGERIAN_STATES_LGAS !== 'undefined' ? NIGERIAN_STATES_LGAS[st] : (window.NIGERIAN_STATES_LGAS && window.NIGERIAN_STATES_LGAS[st])) || []);
+  const personalLgas = getLgas(stateVal);
+  const farmLgas = getLgas(farmStateVal);
 
   const personalItems = [
     { key: 'name', label: 'Full Name', done: Boolean(farmerName.trim()) },
@@ -313,22 +325,20 @@ function renderFarmerVerificationView(state, actions) {
                         onchange="actions.updateVerificationField('state', this.value)"
                         class="w-full mt-1 px-4 py-2.5 rounded-xl border ${stateVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
                   <option value="">Select Residential State</option>
-                  ${[
-                    'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
-                    'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja', 'Gombe',
-                    'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
-                    'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
-                    'Taraba', 'Yobe', 'Zamfara'
-                  ].map(st => `<option value="${st}" ${stateVal === st ? 'selected' : ''}>${st}</option>`).join('')}
+                  ${nigerianStates.map(st => `<option value="${st}" ${stateVal === st ? 'selected' : ''}>${st}</option>`).join('')}
                 </select>
               </div>
 
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Residential LGA <span class="text-red-500">*</span></label>
-                <input type="text" id="personalLga" placeholder="e.g. Zaria"
-                       value="${escapeHtml(lgaVal)}"
-                       oninput="actions.updateVerificationField('lga', this.value)"
-                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${lgaVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+                <select id="personalLga"
+                        onchange="actions.updateVerificationField('lga', this.value)"
+                        ${!stateVal ? 'disabled' : ''}
+                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${lgaVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 ${!stateVal ? 'opacity-60 cursor-not-allowed' : ''}">
+                  <option value="">${stateVal ? 'Select Residential LGA *' : 'Select Residential State First'}</option>
+                  ${personalLgas.map(lga => `<option value="${escapeHtml(lga)}" ${lgaVal.toLowerCase() === lga.toLowerCase() ? 'selected' : ''}>${escapeHtml(lga)}</option>`).join('')}
+                  ${lgaVal && !personalLgas.some(l => l.toLowerCase() === lgaVal.toLowerCase()) ? `<option value="${escapeHtml(lgaVal)}" selected>${escapeHtml(lgaVal)}</option>` : ''}
+                </select>
               </div>
 
               <div>
@@ -453,22 +463,20 @@ function renderFarmerVerificationView(state, actions) {
                         onchange="actions.updateVerificationField('farm_state', this.value)"
                         class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmStateVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
                   <option value="">Select Farm State *</option>
-                  ${[
-                    'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
-                    'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja', 'Gombe',
-                    'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
-                    'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
-                    'Taraba', 'Yobe', 'Zamfara'
-                  ].map(st => `<option value="${st}" ${farmStateVal === st ? 'selected' : ''}>${st}</option>`).join('')}
+                  ${nigerianStates.map(st => `<option value="${st}" ${farmStateVal === st ? 'selected' : ''}>${st}</option>`).join('')}
                 </select>
               </div>
 
               <div>
                 <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Farm LGA <span class="text-red-500">*</span></label>
-                <input type="text" id="farmLga" placeholder="e.g. Zaria"
-                       value="${escapeHtml(farmLgaVal)}"
-                       oninput="actions.updateVerificationField('farm_lga', this.value)"
-                       class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmLgaVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500">
+                <select id="farmLga"
+                        onchange="actions.updateVerificationField('farm_lga', this.value)"
+                        ${!farmStateVal ? 'disabled' : ''}
+                        class="w-full mt-1 px-4 py-2.5 rounded-xl border ${farmLgaVal ? 'border-gray-300 dark:border-slate-700' : 'border-amber-300 dark:border-amber-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 ${!farmStateVal ? 'opacity-60 cursor-not-allowed' : ''}">
+                  <option value="">${farmStateVal ? 'Select Farm LGA *' : 'Select Farm State First'}</option>
+                  ${farmLgas.map(lga => `<option value="${escapeHtml(lga)}" ${farmLgaVal.toLowerCase() === lga.toLowerCase() ? 'selected' : ''}>${escapeHtml(lga)}</option>`).join('')}
+                  ${farmLgaVal && !farmLgas.some(l => l.toLowerCase() === farmLgaVal.toLowerCase()) ? `<option value="${escapeHtml(farmLgaVal)}" selected>${escapeHtml(farmLgaVal)}</option>` : ''}
+                </select>
               </div>
 
             </div>

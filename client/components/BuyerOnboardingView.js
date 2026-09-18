@@ -239,10 +239,14 @@ function renderBuyerOnboardingView(state, actions) {
 
             <div>
               <label class="text-[11px] font-bold text-gray-500 dark:text-gray-400">Destination LGA <span class="text-red-500">*</span></label>
-              <input type="text" id="buyerLga" placeholder="e.g. Ikeja / Kano Municipal"
-                     value="${deliveryLga}"
-                     oninput="actions.updateBuyerField('lga', this.value)"
-                     class="w-full mt-1 px-4 py-2.5 rounded-xl border ${deliveryLga ? 'border-gray-300 dark:border-slate-700' : 'border-blue-300 dark:border-blue-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500">
+              <select id="buyerLga"
+                      onchange="actions.updateBuyerField('lga', this.value)"
+                      ${!deliveryState ? 'disabled' : ''}
+                      class="w-full mt-1 px-4 py-2.5 rounded-xl border ${deliveryLga ? 'border-gray-300 dark:border-slate-700' : 'border-blue-300 dark:border-blue-700/60'} bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 ${!deliveryState ? 'opacity-60 cursor-not-allowed' : ''}">
+                <option value="">${deliveryState ? 'Select Destination LGA *' : 'Select Destination State First'}</option>
+                ${(typeof window.getLgasForState === 'function' ? window.getLgasForState(deliveryState) : ((window.NIGERIAN_STATES_LGAS && window.NIGERIAN_STATES_LGAS[deliveryState]) || [])).map(lga => `<option value="${escapeHtml(lga)}" ${deliveryLga.toLowerCase() === lga.toLowerCase() ? 'selected' : ''}>${escapeHtml(lga)}</option>`).join('')}
+                ${deliveryLga && !(typeof window.getLgasForState === 'function' ? window.getLgasForState(deliveryState) : []).some(l => l.toLowerCase() === deliveryLga.toLowerCase()) ? `<option value="${escapeHtml(deliveryLga)}" selected>${escapeHtml(deliveryLga)}</option>` : ''}
+              </select>
             </div>
 
             <div class="sm:col-span-2">

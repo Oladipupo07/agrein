@@ -295,6 +295,14 @@ const SEO_REGISTRY = {
     title: "Farmer KYC Verification & Identity Audit | Agrein",
     description: "Complete your 7-stage farm verification to earn the Verified Producer badge and start selling on Agrein."
   },
+  'application-submitted': {
+    title: "Application Submitted — Verification Pending Review | Agrein",
+    description: "Your farmer verification application has been submitted and is currently under review by the Agrein Compliance team."
+  },
+  'farmer-pending-approval': {
+    title: "Application Submitted — Verification Pending Review | Agrein",
+    description: "Your farmer verification application has been submitted and is currently under review by the Agrein Compliance team."
+  },
   'buyer-onboarding': {
     title: "Buyer Verification & Delivery Setup | Agrein Marketplace",
     description: "Complete your compulsory buyer delivery details and sourcing profile to unlock marketplace orders and ColdChain logistics."
@@ -392,10 +400,10 @@ const actions = {
     if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
       const verificationStatus = getFarmerVerificationStatus();
       const isSubmitted = verificationStatus === 'PENDING' || verificationStatus === 'PENDING_REVIEW' || verificationStatus === 'UNDER_REVIEW';
-      const allowedViews = isSubmitted ? ['farmer-pending-approval', 'account-settings'] : ['farmer-verification', 'account-settings'];
+      const allowedViews = isSubmitted ? ['application-submitted', 'farmer-pending-approval', 'account-settings'] : ['farmer-verification', 'account-settings'];
       if (!allowedViews.includes(view)) {
         actions.triggerToast('🔒 Complete your farm verification before accessing the platform.');
-        view = isSubmitted ? 'farmer-pending-approval' : 'farmer-verification';
+        view = isSubmitted ? 'application-submitted' : 'farmer-verification';
       }
     }
 
@@ -431,7 +439,7 @@ const actions = {
       actions.fetchRegisteredUsers();
     }
 
-    if (view === 'farmer-verification' || view === 'farmer-pending-approval') {
+    if (view === 'farmer-verification' || view === 'farmer-pending-approval' || view === 'application-submitted') {
       if (state.currentUser && state.currentUser.role === 'FARMER' && state.currentUser.verification_status !== 'APPROVED') {
         actions.startFarmerVerificationPolling();
       }
@@ -1796,21 +1804,45 @@ const actions = {
           return '';
         };
 
+        const matchLgaOption = (select, detectedValue, stateVal) => {
+          if (!select) return '';
+          const getLgas = typeof window.getLgasForState === 'function' ? window.getLgasForState : (st => (window.NIGERIAN_STATES_LGAS && window.NIGERIAN_STATES_LGAS[st]) || []);
+          const lgas = getLgas(stateVal);
+          if (lgas.length > 0) {
+            select.disabled = false;
+            select.classList.remove('opacity-60', 'cursor-not-allowed');
+            select.innerHTML = `<option value="">Select LGA *</option>` +
+              lgas.map(lga => `<option value="${escapeHtml(lga)}">${escapeHtml(lga)}</option>`).join('');
+          }
+          if (!detectedValue) return '';
+          const normalized = detectedValue.toLowerCase().trim();
+          const option = Array.from(select.options).find(opt => {
+            const optVal = opt.value.toLowerCase().trim();
+            return optVal === normalized || optVal.includes(normalized) || normalized.includes(optVal);
+          });
+          if (option) {
+            select.value = option.value;
+            return option.value;
+          }
+          return '';
+        };
+
         // Auto-fill Farm State
         const farmStateEl = document.getElementById('farmState');
         const farmStateValue = matchStateOption(farmStateEl, detectedState);
 
         // Auto-fill Farm LGA
         const farmLgaEl = document.getElementById('farmLga');
-        if (farmLgaEl && detectedLga) {
-          farmLgaEl.value = detectedLga;
+        let resolvedFarmLga = '';
+        if (farmLgaEl && farmStateValue) {
+          resolvedFarmLga = matchLgaOption(farmLgaEl, detectedLga, farmStateValue);
         }
 
         // Auto-fill Farm Physical Address
         const farmAddrEl = document.getElementById('farmAddress');
         if (farmAddrEl) {
           if (!farmAddrEl.value || farmAddrEl.value.trim() === '') {
-            farmAddrEl.value = detectedAddress || `${detectedLga ? detectedLga + ', ' : ''}${detectedState}`;
+            farmAddrEl.value = detectedAddress || `${resolvedFarmLga || detectedLga ? (resolvedFarmLga || detectedLga) + ', ' : ''}${detectedState}`;
           }
         }
 
@@ -1818,8 +1850,9 @@ const actions = {
         const personalStateEl = document.getElementById('personalState');
         const personalStateValue = matchStateOption(personalStateEl, detectedState);
         const personalLgaEl = document.getElementById('personalLga');
-        if (personalLgaEl && !personalLgaEl.value && detectedLga) {
-          personalLgaEl.value = detectedLga;
+        let resolvedPersonalLga = '';
+        if (personalLgaEl && personalStateValue) {
+          resolvedPersonalLga = matchLgaOption(personalLgaEl, detectedLga, personalStateValue);
         }
 
         // Update state
@@ -1827,10 +1860,10 @@ const actions = {
         verificationApp.gps_latitude = parseFloat(lat);
         verificationApp.gps_longitude = parseFloat(lng);
         if (farmStateValue) verificationApp.farm_state = farmStateValue;
-        if (detectedLga) verificationApp.farm_lga = detectedLga;
+        if (resolvedFarmLga || detectedLga) verificationApp.farm_lga = resolvedFarmLga || detectedLga;
         if (farmAddrEl?.value) verificationApp.farm_location = farmAddrEl.value;
         if (personalStateValue) verificationApp.state = personalStateValue;
-        if (personalLgaEl?.value) verificationApp.lga = personalLgaEl.value;
+        if (resolvedPersonalLga || detectedLga) verificationApp.lga = resolvedPersonalLga || detectedLga;
         verificationApp.sectionCompletion = verificationApp.sectionCompletion || {};
         verificationApp.sectionCompletion.location = true;
         StorageManager.saveFarmerVerification(verificationApp);
@@ -2020,6 +2053,58 @@ const actions = {
       if (field === 'residential_address') state.currentUser.address = value;
       StorageManager.saveUser(state.currentUser);
     }
+
+    // Dynamically update LGA dropdown options if State changed
+    if (field === 'state') {
+      const personalLgaEl = document.getElementById('personalLga');
+      if (personalLgaEl) {
+        const getLgas = typeof window.getLgasForState === 'function' ? window.getLgasForState : (st => (window.NIGERIAN_STATES_LGAS && window.NIGERIAN_STATES_LGAS[st]) || []);
+        const lgas = getLgas(value);
+        if (lgas && lgas.length > 0) {
+          personalLgaEl.disabled = false;
+          personalLgaEl.classList.remove('opacity-60', 'cursor-not-allowed');
+          const currentLga = app.lga || (state.currentUser && state.currentUser.lga) || '';
+          const hasMatch = lgas.some(l => l.toLowerCase() === currentLga.toLowerCase());
+          personalLgaEl.innerHTML = `<option value="">Select Residential LGA *</option>` +
+            lgas.map(lga => `<option value="${escapeHtml(lga)}" ${hasMatch && currentLga.toLowerCase() === lga.toLowerCase() ? 'selected' : ''}>${escapeHtml(lga)}</option>`).join('');
+          if (!hasMatch) {
+            app.lga = '';
+            if (state.currentUser) state.currentUser.lga = '';
+          }
+        } else {
+          personalLgaEl.disabled = true;
+          personalLgaEl.classList.add('opacity-60', 'cursor-not-allowed');
+          personalLgaEl.innerHTML = `<option value="">Select Residential State First</option>`;
+          app.lga = '';
+          if (state.currentUser) state.currentUser.lga = '';
+        }
+      }
+    }
+
+    if (field === 'farm_state') {
+      const farmLgaEl = document.getElementById('farmLga');
+      if (farmLgaEl) {
+        const getLgas = typeof window.getLgasForState === 'function' ? window.getLgasForState : (st => (window.NIGERIAN_STATES_LGAS && window.NIGERIAN_STATES_LGAS[st]) || []);
+        const lgas = getLgas(value);
+        if (lgas && lgas.length > 0) {
+          farmLgaEl.disabled = false;
+          farmLgaEl.classList.remove('opacity-60', 'cursor-not-allowed');
+          const currentFarmLga = app.farm_lga || '';
+          const hasMatch = lgas.some(l => l.toLowerCase() === currentFarmLga.toLowerCase());
+          farmLgaEl.innerHTML = `<option value="">Select Farm LGA *</option>` +
+            lgas.map(lga => `<option value="${escapeHtml(lga)}" ${hasMatch && currentFarmLga.toLowerCase() === lga.toLowerCase() ? 'selected' : ''}>${escapeHtml(lga)}</option>`).join('');
+          if (!hasMatch) {
+            app.farm_lga = '';
+          }
+        } else {
+          farmLgaEl.disabled = true;
+          farmLgaEl.classList.add('opacity-60', 'cursor-not-allowed');
+          farmLgaEl.innerHTML = `<option value="">Select Farm State First</option>`;
+          app.farm_lga = '';
+        }
+      }
+    }
+
     // Auto-save draft silently so reload preserves every keystroke without resetting focus
     StorageManager.saveFarmerVerification(app);
   },
@@ -2305,7 +2390,7 @@ const actions = {
     }
 
     actions.triggerToast('✅ Farm verification application submitted! 100% compulsory criteria satisfied.');
-    state.currentView = 'farmer-pending-approval';
+    state.currentView = 'application-submitted';
     renderApp();
   },
 
@@ -3236,6 +3321,33 @@ const actions = {
       if (field === 'procurementVolume') state.currentUser.procurement_volume = value;
       if (field === 'deliveryFrequency') state.currentUser.delivery_frequency = value;
     }
+
+    if (field === 'state') {
+      const buyerLgaEl = document.getElementById('buyerLga');
+      if (buyerLgaEl) {
+        const getLgas = typeof window.getLgasForState === 'function' ? window.getLgasForState : (st => (window.NIGERIAN_STATES_LGAS && window.NIGERIAN_STATES_LGAS[st]) || []);
+        const lgas = getLgas(value);
+        if (lgas && lgas.length > 0) {
+          buyerLgaEl.disabled = false;
+          buyerLgaEl.classList.remove('opacity-60', 'cursor-not-allowed');
+          const currentLga = state.buyerOnboardingDraft.lga || (state.currentUser && state.currentUser.lga) || '';
+          const hasMatch = lgas.some(l => l.toLowerCase() === currentLga.toLowerCase());
+          buyerLgaEl.innerHTML = `<option value="">Select Destination LGA *</option>` +
+            lgas.map(lga => `<option value="${escapeHtml(lga)}" ${hasMatch && currentLga.toLowerCase() === lga.toLowerCase() ? 'selected' : ''}>${escapeHtml(lga)}</option>`).join('');
+          if (!hasMatch) {
+            state.buyerOnboardingDraft.lga = '';
+            if (state.currentUser) state.currentUser.lga = '';
+          }
+        } else {
+          buyerLgaEl.disabled = true;
+          buyerLgaEl.classList.add('opacity-60', 'cursor-not-allowed');
+          buyerLgaEl.innerHTML = `<option value="">Select Destination State First</option>`;
+          state.buyerOnboardingDraft.lga = '';
+          if (state.currentUser) state.currentUser.lga = '';
+        }
+      }
+    }
+
     StorageManager.saveBuyerProfile(state.mockData.buyerProfile);
   },
 
@@ -4043,7 +4155,8 @@ function renderAppImmediate() {
         bodyContent = renderFarmerVerificationView(state, actions);
         break;
       case 'farmer-pending-approval':
-        bodyContent = renderFarmerPendingApprovalView(state, actions);
+      case 'application-submitted':
+        bodyContent = (typeof renderApplicationSubmittedView === 'function' ? renderApplicationSubmittedView : renderFarmerPendingApprovalView)(state, actions);
         break;
       case 'admin-review':
         bodyContent = renderAdminReviewScreen(state, actions);
