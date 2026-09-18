@@ -1,20 +1,24 @@
 // Supabase Database Client for Agrein Backend
 const { createClient } = require('@supabase/supabase-js');
+const path = require('path');
+
+// Ensure .env is loaded regardless of process working directory
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 require('dotenv').config();
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://hjksxxwucfnubtcellbm.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const DEFAULT_SUPABASE_URL = 'https://hjksxxwucfnubtcellbm.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqa3N4eHd1Y2ZudWJ0Y2VsbGJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4ODQ4NDAsImV4cCI6MjEwMDQ2MDg0MH0.zCTkJK75X2LMVMvU4Maon34KZPLpd5FWhF2fWImLFKY';
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.warn('⚠️ Supabase service-role credentials missing from environment variables.');
-}
+const supabaseUrl = process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
 
 const supabaseKey = supabaseServiceKey || supabaseAnonKey;
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 function getSupabaseAdmin() {
-  if (supabaseServiceKey && supabase) return supabase;
+  if (supabase) return supabase;
   return null;
 }
 
