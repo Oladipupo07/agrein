@@ -70,7 +70,7 @@ function renderFarmerPendingApprovalView(state, actions) {
                 </div>
                 <div>
                   <p class="text-xs font-bold text-slate-900 dark:text-white">Our Team Reviews Your Application</p>
-                  <p class="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5">An Agrein admin will verify your documents, farm photos, GPS location, and identity information.</p>
+                  <p class="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5">An Agrein admin will verify your profile photo, Interswitch NIMC identity record, CAC corporate registration (Test), and farm location.</p>
                 </div>
               </div>
               <div class="flex items-start space-x-3">
@@ -105,12 +105,17 @@ function renderFarmerPendingApprovalView(state, actions) {
           </div>
 
           <!-- Action Buttons -->
-          <div class="flex justify-center pt-4">
-            <button onclick="actions.openChatDrawer('Agrein Support')" class="w-full sm:w-auto sm:min-w-64 px-6 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs transition-all shadow-lg flex items-center justify-center space-x-2">
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+            <button onclick="actions.openChatDrawer('Agrein Support')" class="w-full sm:w-auto px-6 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs transition-all shadow-lg flex items-center justify-center space-x-2">
               <i class="fa-solid fa-headset"></i>
               <span>Contact Support</span>
             </button>
+            <button onclick="state.isEditingVerification = true; actions.setView('farmer-verification');" class="w-full sm:w-auto px-6 py-3 rounded-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-800 dark:text-gray-200 hover:text-emerald-600 font-extrabold text-xs transition-all shadow-sm flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-pen-to-square"></i>
+              <span>Edit Application</span>
+            </button>
           </div>
+
 
           <!-- Refresh Hint -->
           <div class="pt-2 text-center">

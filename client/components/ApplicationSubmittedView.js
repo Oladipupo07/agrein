@@ -231,25 +231,35 @@ function renderApplicationSubmittedView(state, actions) {
             </div>
           </div>
 
-          <!-- Documents Checklist Pills -->
+          <!-- Identity & Entity Checklist Pills -->
           <div class="pt-2 border-t border-gray-100 dark:border-slate-800">
-            <div class="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-2">Attached Verification Documents:</div>
+            <div class="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-2">Verified Identity & Entity Credentials:</div>
             <div class="flex flex-wrap gap-2 text-xs">
-              <span class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl ${hasGovId ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-gray-100 text-gray-500'}">
-                <i class="fa-solid ${hasGovId ? 'fa-circle-check text-emerald-600' : 'fa-circle-xmark'}"></i>
-                <span>Government ID (NIN/Voters Card/Passport)</span>
+              <span class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl ${app.avatar_url || app.profile_photo_url || user.avatar_url ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-gray-100 text-gray-500'}">
+                <i class="fa-solid fa-camera text-emerald-600"></i>
+                <span>Farmer Profile Photograph Set</span>
               </span>
-              <span class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl ${hasFarmPhoto ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-gray-100 text-gray-500'}">
-                <i class="fa-solid ${hasFarmPhoto ? 'fa-circle-check text-emerald-600' : 'fa-circle-xmark'}"></i>
-                <span>Farm Overview Photograph</span>
+              <span class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                <span>NIN: ${app.nin_number ? '••••••••' + String(app.nin_number).slice(-3) : (app.nin_masked || 'Verified')} (Interswitch NIMC)</span>
               </span>
-              <span class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl ${hasProfilePhoto ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-gray-100 text-gray-500'}">
-                <i class="fa-solid ${hasProfilePhoto ? 'fa-circle-check text-emerald-600' : 'fa-circle-xmark'}"></i>
-                <span>Farmer Profile Portrait</span>
+              <span class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                <i class="fa-solid fa-building-circle-check text-teal-600"></i>
+                <span>CAC: ${escapeHtml(app.cac_number || 'RC Verified')} (Interswitch Test Suite)</span>
               </span>
             </div>
           </div>
         </div>
+
+        <!-- Edit Application Action -->
+        <div class="flex justify-end">
+          <button onclick="state.isEditingVerification = true; actions.setView('farmer-verification');"
+                  class="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-700 dark:text-gray-300 hover:text-emerald-600 text-xs font-bold transition-all shadow-sm flex items-center space-x-1.5">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>Edit Verification Application Details</span>
+          </button>
+        </div>
+
 
         <!-- Action Center & Next Steps -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

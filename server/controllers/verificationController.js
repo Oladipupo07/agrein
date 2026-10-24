@@ -2,6 +2,7 @@
 
 const supabase = require('../utils/supabaseClient');
 const mailer = require('../utils/mailer');
+const interswitch = require('../utils/interswitch');
 
 // In-memory reliable document cache to ensure uploaded docs are always visible to Admin
 const inMemoryFarmerDocuments = new Map();
@@ -99,6 +100,8 @@ function dossierForClient(row, profile, docs, farmProfile) {
   const verificationId = r.id;
 
   const combinedDocs = getCombinedDocuments(userId, email, verificationId, docs);
+  const avatarUrl = (p && p.avatar_url) || (r && r.avatar_url) || (fp && fp.avatar_url) || null;
+  const cacNum = fp.cac_number || r.cac_number || null;
 
   return {
     id: r.id || `ver-${p.id || p.email || 'new'}`,
@@ -107,6 +110,8 @@ function dossierForClient(row, profile, docs, farmProfile) {
     email: email,
     farmer_email: email,
     phone: (p && p.phone_number) || r.phone || null,
+    avatar_url: avatarUrl,
+    profile_photo_url: avatarUrl,
     state: (p && p.state) || r.state || fp.farm_state || null,
     lga: (p && p.lga) || r.lga || fp.farm_lga || null,
     residential_address: (p && p.address) || r.residential_address || null,
@@ -122,8 +127,11 @@ function dossierForClient(row, profile, docs, farmProfile) {
     gps_latitude: fp.gps_latitude !== undefined && fp.gps_latitude !== null ? Number(fp.gps_latitude) : (r.gps_latitude ? Number(r.gps_latitude) : null),
     gps_longitude: fp.gps_longitude !== undefined && fp.gps_longitude !== null ? Number(fp.gps_longitude) : (r.gps_longitude ? Number(r.gps_longitude) : null),
     status: (p && p.verification_status) || r.status || 'PENDING_REVIEW',
+    nin_number: r.nin_number || null,
     nin_masked: r.nin_number ? `••••••••${String(r.nin_number).slice(-3)}` : '••••••••789',
     bvn_masked: r.bvn_number ? `••••••••${String(r.bvn_number).slice(-3)}` : '••••••••456',
+    cac_number: cacNum,
+    cac_masked: cacNum ? (cacNum.length > 5 ? `${cacNum.slice(0, 3)}••••${cacNum.slice(-3)}` : cacNum) : null,
     submitted_at: r.submitted_at || p.created_at || new Date().toISOString(),
     reviewed_at: r.reviewed_at || null,
     reviewed_by: r.reviewed_by || null,
@@ -135,6 +143,44 @@ function dossierForClient(row, profile, docs, farmProfile) {
 }
 
 const verificationController = {
+  async verifyNin(req, res) {
+    try {
+      const { nin, fullName, phone } = req.body || {};
+      const cleanNin = String(nin || '').replace(/\D/g, '').trim();
+      if (!cleanNin || cleanNin.length !== 11) {
+        return res.status(400).json({ success: false, message: 'NIN must be an 11-digit national identity number.' });
+      }
+
+      const result = await interswitch.verifyNinWithInterswitch(cleanNin, { fullName, phone });
+      return res.json({
+        success: true,
+        message: 'NIN verified successfully via Interswitch Identity Service.',
+        verification: result
+      });
+    } catch (err) {
+      return res.status(400).json({ success: false, message: err.message || 'NIN verification failed.' });
+    }
+  },
+
+  async verifyCac(req, res) {
+    try {
+      const { cacNumber, companyName } = req.body || {};
+      const cleanCac = String(cacNumber || '').trim();
+      if (!cleanCac || cleanCac.length < 3) {
+        return res.status(400).json({ success: false, message: 'Please provide a valid CAC Registration Number (e.g. RC-1234567 or BN-9876543).' });
+      }
+
+      const result = await interswitch.verifyCacWithInterswitch(cleanCac, { companyName });
+      return res.json({
+        success: true,
+        message: 'CAC registration verified successfully via Interswitch Corporate Registry (Test Mode).',
+        verification: result
+      });
+    } catch (err) {
+      return res.status(400).json({ success: false, message: err.message || 'CAC verification failed.' });
+    }
+  },
+
   verifyFarmerIdentity(req, res) {
     const { nin, bvn } = req.body || {};
     if (!nin || nin.length !== 11) return res.status(400).json({ success: false, message: 'NIN must be an 11-digit national identity number.' });
@@ -151,6 +197,7 @@ const verificationController = {
       }
     });
   },
+
 
   async getFarmerVerification(req, res) {
     try {
@@ -353,15 +400,18 @@ const verificationController = {
 
       const {
         fullName, phone,
-        nin, bvn, adminNotes,
+        nin, bvn, cacNumber, adminNotes,
         farmName, farmLocation, farmSize, farmType, cropsProduced, yearsExperience,
         state, lga, address, farmState, farmLga, gpsLatitude, gpsLongitude, intendedProducts,
+        avatarUrl, profilePhotoUrl,
         documents
       } = req.body || {};
       const cleanNin = (nin && String(nin).trim()) || '12345678901';
       const cleanBvn = (bvn && String(bvn).trim()) || '12345678901';
+      const cleanCac = (cacNumber && String(cacNumber).trim()) || null;
+      const userPhoto = avatarUrl || profilePhotoUrl || null;
 
-      // Save documents to inMemoryFarmerDocuments cache
+      // Save documents to inMemoryFarmerDocuments cache if provided
       if (Array.isArray(documents) && documents.length > 0) {
         const storeKeys = [farmerId, email].filter(Boolean).map(k => String(k).toLowerCase());
         for (const key of storeKeys) {
@@ -383,7 +433,7 @@ const verificationController = {
         }
       }
 
-      // Update the profile with personal & contact details
+      // Update the profile with personal & contact details and profile avatar
       const profileUpdates = {
         state: state || null,
         lga: lga || null,
@@ -393,6 +443,7 @@ const verificationController = {
       };
       if (fullName && fullName.trim()) profileUpdates.full_name = fullName.trim();
       if (phone && phone.trim()) profileUpdates.phone_number = phone.trim();
+      if (userPhoto) profileUpdates.avatar_url = userPhoto;
 
       const profileId = await resolveFarmerProfileId(farmerId, email);
       if (!profileId) throw new Error('Farmer profile could not be resolved.');
@@ -404,7 +455,7 @@ const verificationController = {
         ? cropsProduced
         : String(cropsProduced || '').split(',').map((x) => x.trim()).filter(Boolean);
 
-      const farmerProfileResult = await supabase.from('farmer_profiles').upsert({
+      const farmerProfilePayload = {
         user_id: profileId,
         farm_name: farmName || 'Agrein Verified Farm',
         farm_location: farmLocation || address || 'Nigeria',
@@ -417,7 +468,15 @@ const verificationController = {
         gps_latitude: gpsLatitude != null && gpsLatitude !== '' ? Number(gpsLatitude) : null,
         gps_longitude: gpsLongitude != null && gpsLongitude !== '' ? Number(gpsLongitude) : null,
         intended_products: intendedProducts || (Array.isArray(cropsProduced) ? cropsProduced.join(', ') : (cropsProduced || null))
-      }, { onConflict: 'user_id' });
+      };
+      if (cleanCac) farmerProfilePayload.cac_number = cleanCac;
+
+      let farmerProfileResult = await supabase.from('farmer_profiles').upsert(farmerProfilePayload, { onConflict: 'user_id' });
+      if (farmerProfileResult.error && /cac_number/i.test(farmerProfileResult.error.message)) {
+        // Fallback without cac_number if column not yet migrated
+        delete farmerProfilePayload.cac_number;
+        farmerProfileResult = await supabase.from('farmer_profiles').upsert(farmerProfilePayload, { onConflict: 'user_id' });
+      }
       if (farmerProfileResult.error) throw farmerProfileResult.error;
 
       // Upsert verification row in PENDING_REVIEW
@@ -432,6 +491,8 @@ const verificationController = {
         submitted_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
+      if (cleanCac) verificationData.cac_number = cleanCac;
+
       let verificationResult = await supabase.from('farmer_verifications')
         .upsert(verificationData, { onConflict: 'user_id' })
         .select('*')

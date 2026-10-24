@@ -57,6 +57,8 @@ router.get('/farmers/verification/status', authenticateToken, verificationContro
 // from non-admin sessions. Returns only verification_status + role, no PII.
 router.get('/farmers/verification-status-public', verificationController.getPublicVerificationStatus);
 router.post('/verification/verify-identity', verificationController.verifyFarmerIdentity);
+router.post('/verification/verify-nin', verificationController.verifyNin);
+router.post('/verification/verify-cac', verificationController.verifyCac);
 
 // ===== ADMIN VERIFICATION MANAGEMENT =====
 router.get('/admin/farmer-verifications', authenticateToken, requireRole(['ADMIN']), verificationController.getAdminFarmerVerifications);

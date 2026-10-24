@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS public.farmer_profiles (
     gps_latitude NUMERIC(10, 6),
     gps_longitude NUMERIC(10, 6),
     intended_products TEXT,
+    cac_number VARCHAR(50),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS public.farmer_verifications (
     )),
     nin_number VARCHAR(20),
     bvn_number VARCHAR(20),
+    cac_number VARCHAR(50),
     admin_notes TEXT,
     rejection_reason TEXT,
     changes_requested_notes TEXT,
@@ -59,6 +61,7 @@ CREATE TABLE IF NOT EXISTS public.farmer_verifications (
     reviewed_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
 
   CREATE UNIQUE INDEX IF NOT EXISTS farmer_verifications_user_id_uidx
     ON public.farmer_verifications(user_id);

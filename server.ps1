@@ -1,7 +1,8 @@
 # Agrein PowerShell HTTP Server
 $port = 5000
-$root = "c:\Users\akobe\OneDrive\Desktop\A"
+$root = $PSScriptRoot
 $listener = New-Object System.Net.HttpListener
+
 $listener.Prefixes.Add("http://localhost:$port/")
 
 try {
