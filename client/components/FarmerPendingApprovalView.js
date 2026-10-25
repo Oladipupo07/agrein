@@ -70,7 +70,7 @@ function renderFarmerPendingApprovalView(state, actions) {
                 </div>
                 <div>
                   <p class="text-xs font-bold text-slate-900 dark:text-white">Our Team Reviews Your Application</p>
-                  <p class="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5">An Agrein compliance auditor will review your profile portrait, Interswitch NIMC identity record, CAC corporate registration, and farm location.</p>
+                  <p class="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5">An Agrein compliance auditor will review your profile portrait, government identity record, CAC corporate registration, and farm location.</p>
                 </div>
               </div>
               <div class="flex items-start space-x-3">

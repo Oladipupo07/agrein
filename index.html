@@ -12,7 +12,7 @@
   <!-- Primary SEO Meta Tags -->
   <title>Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade</title>
   <meta name="title" content="Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade">
-  <meta name="description" content="Connect directly with 14,800+ verified smallholder farmers across 36 Nigerian states. Buy and sell grains, tubers, cash crops, and livestock with Interswitch escrow protection, cold-chain logistics, and AI harvest price forecasting.">
+  <meta name="description" content="Connect directly with 14,800+ verified smallholder farmers across 36 Nigerian states. Buy and sell grains, tubers, cash crops, and livestock with secure escrow protection, cold-chain logistics, and AI harvest price forecasting.">
   <meta name="keywords" content="agriculture marketplace Nigeria, buy crops direct from farmers, sell harvest Nigeria, farm produce B2B wholesale, yellow maize, sesame seeds, cassava tubers, organic farming, Escrow crop payment, agribusiness Africa, crop price forecast, cold chain logistics Nigeria">
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <meta name="author" content="Agrein Technologies">
@@ -32,7 +32,7 @@
   <meta property="og:url" content="https://agrein.ng/">
   <meta property="og:site_name" content="Agrein Marketplace">
   <meta property="og:title" content="Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade">
-  <meta property="og:description" content="Direct agricultural trade across 36 Nigerian states. Connect with 14,800+ verified farmers, 100% Interswitch escrow protection, and AI harvest price analytics.">
+  <meta property="og:description" content="Direct agricultural trade across 36 Nigerian states. Connect with 14,800+ verified farmers, 100% escrow protection, and AI harvest price analytics.">
   <meta property="og:image" content="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=75">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -99,14 +99,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"></noscript>
 
-  <!-- Leaflet + OpenStreetMap (free map stack for Nearby Farms) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
-  <!-- Supabase JS (UMD) — live marketplace + dashboard channel subscriptions -->
-  <!-- Deferred so it doesn't block parsing; first paint can show hero while this streams -->
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.min.js"></script>
-
   <!-- PWA Manifest & Multi-Device Icons -->
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
@@ -122,59 +114,13 @@
 
   <!-- Utilities & Storage -->
   <script defer src="./client/utils/storageManager.js"></script>
-  <script defer src="./client/utils/supabaseClient.js"></script>
-  <script defer src="./client/utils/realtime.js"></script>
-
-  <!-- Client Data & Reference Scripts -->
-  <script defer src="./client/data/nigeriaGeo.js"></script>
   <script defer src="./client/data/mockData.js"></script>
 
-  <!-- Modular Components -->
+  <!-- Core App Components (Homepage, Authentication, Navbar, Footer) -->
   <script defer src="./client/components/Navbar.js"></script>
   <script defer src="./client/components/Hero.js"></script>
-  <script defer src="./client/components/ProductCatalog.js"></script>
-  <script defer src="./client/components/ProductModal.js"></script>
-  <script defer src="./client/components/FarmerDashboard.js"></script>
-  <script defer src="./client/components/BuyerDashboard.js"></script>
-  <script defer src="./client/components/AdminDashboard.js"></script>
-  <script defer src="./client/components/AIPredictor.js"></script>
-  <script defer src="./client/components/NearbyFarms.js"></script>
-  <script defer src="./client/components/CheckoutModal.js"></script>
-  <script defer src="./client/components/ChatDrawer.js"></script>
-  <script defer src="./client/components/CartDrawer.js"></script>
-  <script defer src="./client/components/WishlistDrawer.js"></script>
-  <script defer src="./client/components/Footer.js"></script>
-
-  <!-- Ecosystem Expansion Components -->
-  <script defer src="./client/components/VerifiedBadge.js"></script>
-  <script defer src="./client/components/FarmerTrustScoreCard.js"></script>
   <script defer src="./client/components/AuthModal.js"></script>
-  <script defer src="./client/components/FarmerVerificationView.js"></script>
-  <script defer src="./client/components/BuyerOnboardingView.js"></script>
-  <script defer src="./client/components/FarmerPendingApprovalView.js"></script>
-  <script defer src="./client/components/ApplicationSubmittedView.js"></script>
-  <script defer src="./client/components/AdminVerificationDashboard.js"></script>
-  <script defer src="./client/components/AdminReviewScreen.js"></script>
-  <script defer src="./client/components/BuyerDisputeModal.js"></script>
-  <script defer src="./client/components/ChangePasswordModal.js"></script>
-  <script defer src="./client/components/AccountSettings.js"></script>
-  <script defer src="./client/components/VerificationModal.js"></script>
-  <script defer src="./client/components/ReverseMarketplace.js"></script>
-  <script defer src="./client/components/SmartLogistics.js"></script>
-  <script defer src="./client/components/Cooperatives.js"></script>
-  <script defer src="./client/components/CommodityIndex.js"></script>
-  <script defer src="./client/components/BulkB2B.js"></script>
-  <script defer src="./client/components/DigitalWallet.js"></script>
-  <script defer src="./client/components/SubscriptionPlans.js"></script>
-  <script defer src="./client/components/WeatherDashboard.js"></script>
-  <script defer src="./client/components/LearningCenter.js"></script>
-  <script defer src="./client/components/ExportMarketplace.js"></script>
-  <script defer src="./client/components/CommunityForum.js"></script>
-  <script defer src="./client/components/AgroDoctorAI.js"></script>
-  <script defer src="./client/components/TraceabilityModal.js"></script>
-  <script defer src="./client/components/PwaInstallBanner.js"></script>
-  <script defer src="./client/components/SwUpdateToast.js"></script>
-  <script defer src="./client/components/SuspendedAccountView.js"></script>
+  <script defer src="./client/components/Footer.js"></script>
 
   <!-- App Orchestrator -->
   <script defer src="./app.js"></script>

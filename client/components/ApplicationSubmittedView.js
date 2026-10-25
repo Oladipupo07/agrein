@@ -241,11 +241,11 @@ function renderApplicationSubmittedView(state, actions) {
               </span>
               <span class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                 <i class="fa-solid fa-circle-check text-emerald-600"></i>
-                <span>NIN: ${app.nin_number ? '••••••••' + String(app.nin_number).slice(-3) : (app.nin_masked || 'Verified')} (Interswitch NIMC)</span>
+                <span>NIN: ${app.nin_number ? '••••••••' + String(app.nin_number).slice(-3) : (app.nin_masked || 'Verified')} (NIMC Verified)</span>
               </span>
               <span class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                 <i class="fa-solid fa-building-circle-check text-teal-600"></i>
-                <span>CAC: ${escapeHtml(app.cac_number || 'RC Verified')} (Interswitch Test Suite)</span>
+                <span>CAC: ${escapeHtml(app.cac_number || 'RC Verified')} (CAC Verified)</span>
               </span>
             </div>
           </div>

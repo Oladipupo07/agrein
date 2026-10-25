@@ -1,6 +1,6 @@
 // Agrein Enterprise Verification Portal — Institutional Farmer & Producer Accreditation
 // Senior Principal Engineer standard: Clean design hierarchy, bank-grade trust indicators,
-// real-time Interswitch NIMC identity & CAC corporate validation.
+// real-time government identity & CAC corporate validation.
 
 function renderFarmerVerificationView(state, actions) {
   const app = state.mockData.farmerVerificationApp || {};
@@ -41,7 +41,7 @@ function renderFarmerVerificationView(state, actions) {
   const lgaVal = app.lga || (state.currentUser && state.currentUser.lga) || '';
   const addressVal = app.residential_address || (state.currentUser && state.currentUser.address) || '';
 
-  // NIN & Interswitch validation
+  // NIN validation
   const ninVal = String(app.nin || app.nin_number || '').replace(/\D/g, '');
   const isNinVerified = Boolean(app.nin_verified && ninVal.length === 11);
   const ninData = app.nin_data || null;
@@ -54,7 +54,7 @@ function renderFarmerVerificationView(state, actions) {
   const cropsVal = Array.isArray(app.crops_produced) ? app.crops_produced.join(', ') : (app.crops_produced || '');
   const intendedVal = app.intended_products || '';
 
-  // CAC & Interswitch validation
+  // CAC validation
   const cacVal = String(app.cac_number || '').trim();
   const isCacVerified = Boolean(app.cac_verified && cacVal.length >= 3);
   const cacData = app.cac_data || null;
@@ -119,7 +119,7 @@ function renderFarmerVerificationView(state, actions) {
             </span>
             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-medium">
               <i class="fa-solid fa-bolt text-emerald-600 text-[10px]"></i>
-              <span>Interswitch Identity Gateway</span>
+              <span>Real-Time Identity Verification</span>
             </span>
           </div>
         </div>
@@ -266,8 +266,8 @@ function renderFarmerVerificationView(state, actions) {
             <div class="flex items-center space-x-3">
               <span class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center justify-center">2</span>
               <div>
-                <h2 class="text-base font-heading font-bold text-slate-900 dark:text-white">Legal Identity & National Identity (NIN)</h2>
-                <p class="text-xs text-slate-500">Government identity validation through Interswitch National Identity Management Commission (NIMC) Gateway</p>
+                <h2 class="text-base font-heading font-bold text-slate-900 dark:text-white">Legal Identity & National Identity Number (NIN)</h2>
+                <p class="text-xs text-slate-500">Secure government identity verification against the National Identity Management Commission (NIMC) registry</p>
               </div>
             </div>
             <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${isPersonalComplete ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}">
@@ -281,7 +281,7 @@ function renderFarmerVerificationView(state, actions) {
               <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Full Legal Name <span class="text-rose-500">*</span>
               </label>
-              <input type="text" id="personalFullName" placeholder="As registered with NIMC"
+              <input type="text" id="personalFullName" placeholder="As it appears on your national ID"
                      value="${escapeHtml(farmerName)}"
                      oninput="actions.updateVerificationField('farmer_name', this.value)"
                      class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none transition-all">
@@ -355,7 +355,7 @@ function renderFarmerVerificationView(state, actions) {
                     <span>National Identity Number (NIN) Validation</span>
                     <span class="text-rose-500">*</span>
                   </div>
-                  <p class="text-[11px] text-slate-500 dark:text-slate-400">Direct biometric registry query against NIMC via Interswitch Identity Network</p>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400">Your NIN will be validated securely against the official NIMC government registry</p>
                 </div>
               </div>
 
@@ -391,7 +391,7 @@ function renderFarmerVerificationView(state, actions) {
                       ${state.ninVerifying ? 'disabled' : ''}
                       class="px-5 py-2.5 rounded-xl ${isNinVerified ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-emerald-700 hover:bg-emerald-800 text-white'} text-xs font-bold transition-all flex items-center justify-center space-x-2 whitespace-nowrap shadow-sm ${state.ninVerifying ? 'opacity-70 cursor-wait' : ''}">
                 <i class="fa-solid ${state.ninVerifying ? 'fa-spinner fa-spin' : (isNinVerified ? 'fa-rotate-right' : 'fa-shield-halved')}"></i>
-                <span>${state.ninVerifying ? 'Validating with NIMC...' : (isNinVerified ? 'Re-Verify Identity' : 'Verify Identity via NIMC')}</span>
+                <span>${state.ninVerifying ? 'Verifying Identity...' : (isNinVerified ? 'Re-Verify Identity' : 'Verify Identity')}</span>
               </button>
             </div>
 
@@ -404,11 +404,11 @@ function renderFarmerVerificationView(state, actions) {
                     <span>${escapeHtml((ninData && ninData.verified_name) || farmerName || 'Verified Citizen')}</span>
                   </div>
                   <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                    NIN: ••••••••${ninVal.slice(-3)} • NIMC Registry Match Confirmed
+                    NIN: ••••••••${ninVal.slice(-3)} • Government Registry Match Confirmed
                   </div>
                 </div>
                 <div class="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-md border border-emerald-200 dark:border-emerald-800 self-start sm:self-auto">
-                  Audit Ref: ISW-NIMC-${ninVal.slice(-4)}-OK
+                  Identity Verified
                 </div>
               </div>
             ` : ''}
@@ -511,7 +511,7 @@ function renderFarmerVerificationView(state, actions) {
                     <span>Corporate Affairs Commission (CAC) Verification</span>
                     <span class="text-rose-500">*</span>
                   </div>
-                  <p class="text-[11px] text-slate-500 dark:text-slate-400">Incorporation lookup for RC Number, Business Name (BN), or Agricultural Cooperative</p>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400">Your registration number will be verified against the official CAC corporate registry</p>
                 </div>
               </div>
 
@@ -544,7 +544,7 @@ function renderFarmerVerificationView(state, actions) {
                       ${state.cacVerifying ? 'disabled' : ''}
                       class="px-5 py-2.5 rounded-xl ${isCacVerified ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-emerald-700 hover:bg-emerald-800 text-white'} text-xs font-bold transition-all flex items-center justify-center space-x-2 whitespace-nowrap shadow-sm ${state.cacVerifying ? 'opacity-70 cursor-wait' : ''}">
                 <i class="fa-solid ${state.cacVerifying ? 'fa-spinner fa-spin' : (isCacVerified ? 'fa-rotate-right' : 'fa-building-shield')}"></i>
-                <span>${state.cacVerifying ? 'Validating with CAC...' : (isCacVerified ? 'Re-Verify CAC' : 'Verify Entity via CAC')}</span>
+                <span>${state.cacVerifying ? 'Verifying Registration...' : (isCacVerified ? 'Re-Verify Registration' : 'Verify Registration')}</span>
               </button>
             </div>
 
@@ -561,7 +561,7 @@ function renderFarmerVerificationView(state, actions) {
                   </div>
                 </div>
                 <div class="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-md border border-emerald-200 dark:border-emerald-800 self-start sm:self-auto">
-                  CAC Registry Verified
+                  Registration Verified
                 </div>
               </div>
             ` : ''}
@@ -679,7 +679,7 @@ function renderFarmerVerificationView(state, actions) {
               <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
               <div>
                 <strong>All Mandatory Verification Disclosures Satisfied</strong>
-                <p class="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">Your official portrait, Interswitch-verified NIN, and CAC registration are validated and ready for compliance audit.</p>
+                <p class="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">Your official portrait, verified NIN, and CAC registration are validated and ready for compliance audit.</p>
               </div>
             </div>
           ` : `

@@ -1,4 +1,4 @@
-// Footer Component for Agrein
+// Clean, Professional Footer Component for Agrein
 
 function renderFooter(state, actions) {
   return `
@@ -8,7 +8,7 @@ function renderFooter(state, actions) {
         <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
 
           <!-- Column 1: Brand Info -->
-          <div class="md:col-span-5 space-y-4">
+          <div class="md:col-span-6 space-y-4">
             <div class="flex items-center space-x-3">
               <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-amber-500 flex items-center justify-center text-white text-xl shadow-lg">
                 <i class="fa-solid fa-wheat-awn"></i>
@@ -16,42 +16,50 @@ function renderFooter(state, actions) {
               <span class="font-heading font-extrabold text-2xl tracking-tight text-white">Agrein</span>
             </div>
 
-            <p class="text-sm text-gray-400 max-w-sm leading-relaxed">
-              "Connecting Farmers to Buyers, One Harvest at a Time." Eliminating middlemen, empowering smallholders, and bringing transparent digital commerce to African agriculture.
+            <p class="text-sm text-gray-400 max-w-md leading-relaxed">
+              "Connecting Farmers to Buyers, One Harvest at a Time." Eliminating middlemen, empowering smallholders, and bringing transparent digital commerce to Nigerian agriculture.
             </p>
 
             <div class="flex flex-wrap items-center gap-2 text-xs text-gray-400">
               <span class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 flex items-center space-x-1">
                 <i class="fa-solid fa-shield-check text-emerald-500"></i>
-                <span>Escrow Protected</span>
+                <span>100% Escrow Protected</span>
               </span>
               <span class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 flex items-center space-x-1">
-                <i class="fa-solid fa-shield-halved text-emerald-400"></i>
-                <span>Agrein Trust</span>
+                <i class="fa-solid fa-certificate text-amber-400"></i>
+                <span>Verified Agricultural Network</span>
               </span>
             </div>
           </div>
 
-          <!-- Column 2: Platform Links -->
+          <!-- Column 2: Navigation Links -->
           <div class="md:col-span-3 space-y-3">
-            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400">Agrein Ecosystem</h4>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400">Quick Links</h4>
             <ul class="space-y-2 text-xs text-gray-400">
-              <li><button onclick="actions.setView('marketplace')" class="hover:text-emerald-400 transition-colors">Direct Harvest Marketplace</button></li>
-              <li><button onclick="actions.guardView('farmer-dashboard')" class="hover:text-emerald-400 transition-colors">Farmer Merchant Portal</button></li>
-              <li><button onclick="actions.guardView('buyer-dashboard')" class="hover:text-emerald-400 transition-colors">Bulk Buyer Logistics</button></li>
-              <li><button onclick="actions.setView('ai-insights')" class="hover:text-emerald-400 transition-colors">AI Crop Price Forecasting</button></li>
-              <li><button onclick="actions.setView('nearby-farms')" class="hover:text-emerald-400 transition-colors">Geospatial Farm Finder</button></li>
+              <li><button onclick="actions.goHome()" class="hover:text-emerald-400 transition-colors">Home</button></li>
+              <li><button onclick="actions.openAuthModal('login')" class="hover:text-emerald-400 transition-colors">Sign In</button></li>
+              <li><button onclick="actions.openAuthModal('register'); actions.setAuthRegisterRole('FARMER');" class="hover:text-emerald-400 transition-colors">Sign Up as Farmer</button></li>
+              <li><button onclick="actions.openAuthModal('register'); actions.setAuthRegisterRole('BUYER');" class="hover:text-emerald-400 transition-colors">Sign Up as Buyer</button></li>
             </ul>
           </div>
 
-          <!-- Column 3: Newsletter Sign up -->
-          <div class="md:col-span-4 space-y-4">
-            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400">Agricultural Market Insights</h4>
-            <p class="text-xs text-gray-400">Get weekly commodity price indices and harvest forecasts delivered to your inbox.</p>
-            <form onsubmit="event.preventDefault(); actions.triggerToast('Subscribed to Agrein Market Report!');" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              <input type="email" required placeholder="Enter your email..." class="flex-1 min-w-0 w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-              <button type="submit" class="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 font-extrabold text-xs text-white whitespace-nowrap">Subscribe</button>
-            </form>
+          <!-- Column 3: Contact & Support -->
+          <div class="md:col-span-3 space-y-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400">Direct Support</h4>
+            <ul class="space-y-2 text-xs text-gray-400">
+              <li class="flex items-center space-x-2">
+                <i class="fa-solid fa-phone text-emerald-500 text-xs"></i>
+                <span>+234-800-AGREIN-NG</span>
+              </li>
+              <li class="flex items-center space-x-2">
+                <i class="fa-solid fa-envelope text-emerald-500 text-xs"></i>
+                <span>support@agrein.ng</span>
+              </li>
+              <li class="flex items-center space-x-2">
+                <i class="fa-solid fa-location-dot text-emerald-500 text-xs"></i>
+                <span>Abuja & Lagos, Nigeria</span>
+              </li>
+            </ul>
           </div>
 
         </div>
