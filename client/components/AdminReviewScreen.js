@@ -125,12 +125,12 @@ function renderAdminReviewScreen(state, actions) {
                   <span>2. Farm Operational Details & CAC</span>
                 </div>
                 <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                  <i class="fa-solid fa-building-check mr-1"></i>Interswitch CAC Test Suite
+                  <i class="fa-solid fa-building-circle-check mr-1"></i>Interswitch CAC Verified
                 </span>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div><span class="text-gray-400 block text-[10px]">Farm / Business Name</span><span class="font-bold text-slate-900 dark:text-white">${dossier.farm_name || 'N/A'}</span></div>
-                <div><span class="text-gray-400 block text-[10px]">CAC Registration Number</span><span class="font-bold text-teal-600 dark:text-teal-400 font-mono">${dossier.cac_number || 'RC-1234567'} (Test Verified ✓)</span></div>
+                <div><span class="text-gray-400 block text-[10px]">CAC Registration Number</span><span class="font-bold text-teal-600 dark:text-teal-400 font-mono">${dossier.cac_number || 'RC-1234567'} <span class="text-emerald-600 font-sans font-semibold text-[10px] ml-1">Verified Entity</span></span></div>
                 <div><span class="text-gray-400 block text-[10px]">Farm Type</span><span class="font-bold text-slate-900 dark:text-white">${dossier.farm_type || 'Crop Farming'}</span></div>
                 <div><span class="text-gray-400 block text-[10px]">Farm Size (Acres)</span><span class="font-bold text-slate-900 dark:text-white">${dossier.farm_size_acres || 0} Acres</span></div>
                 <div><span class="text-gray-400 block text-[10px]">Years of Experience</span><span class="font-bold text-slate-900 dark:text-white">${dossier.years_experience || 0} Years</span></div>

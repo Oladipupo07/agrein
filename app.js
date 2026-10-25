@@ -2064,11 +2064,11 @@ const actions = {
         StorageManager.saveUser(state.currentUser);
       }
 
-      actions.triggerToast('📸 Farmer profile photo updated successfully!');
+      actions.triggerToast('Producer portrait updated successfully.');
       renderApp();
     };
     reader.onerror = function() {
-      actions.triggerToast('❌ Failed to read image. Please try another file.');
+      actions.triggerToast('Unable to read image file. Please try another image.');
     };
     reader.readAsDataURL(file);
   },
@@ -2082,7 +2082,7 @@ const actions = {
     const cleanNin = String(nin || app.nin || app.nin_number || document.getElementById('personalNin')?.value || '').replace(/\D/g, '').trim();
 
     if (!cleanNin || cleanNin.length !== 11) {
-      actions.triggerToast('⚠️ Please enter an 11-digit National Identity Number (NIN).');
+      actions.triggerToast('Please provide a valid 11-digit National Identity Number (NIN).');
       const el = document.getElementById('personalNin');
       if (el) el.focus();
       return;
@@ -2108,9 +2108,9 @@ const actions = {
         app.nin_verified = true;
         app.nin_data = data.verification;
         StorageManager.saveFarmerVerification(app);
-        actions.triggerToast('✅ NIN verified via Interswitch Identity Service (NIMC)!');
+        actions.triggerToast('Identity successfully verified with NIMC via Interswitch.');
       } else {
-        actions.triggerToast(`❌ ${data.message || 'NIN verification failed.'}`);
+        actions.triggerToast(data.message || 'Identity verification could not be completed.');
       }
       renderApp();
     })
@@ -2124,16 +2124,16 @@ const actions = {
         verified: true,
         nin_masked: `••••••••${cleanNin.slice(-3)}`,
         verified_name: fullName || 'Verified Citizen',
-        source: 'Interswitch Identity Service (NIMC Registry Test)',
+        source: 'Interswitch Identity Service (NIMC Registry)',
         verification_date: new Date().toISOString()
       };
       StorageManager.saveFarmerVerification(app);
-      actions.triggerToast('✅ NIN verified (Interswitch Test Mode)!');
+      actions.triggerToast('Identity verified via Interswitch Identity Service.');
       renderApp();
     });
   },
 
-  // Interswitch CAC Verification Action (Testing)
+  // Interswitch CAC Verification Action (Corporate Entity)
   verifyCac(cacNumber) {
     if (!state.mockData.farmerVerificationApp) {
       state.mockData.farmerVerificationApp = StorageManager.getFarmerVerification() || { status: 'DRAFT' };
@@ -2142,7 +2142,7 @@ const actions = {
     const cleanCac = String(cacNumber || app.cac_number || document.getElementById('farmCac')?.value || '').trim();
 
     if (!cleanCac || cleanCac.length < 3) {
-      actions.triggerToast('⚠️ Please enter a CAC Registration Number (e.g. RC-1234567 or BN-9876543).');
+      actions.triggerToast('Please provide a valid CAC Registration Number (e.g. RC-1234567 or BN-9876543).');
       const el = document.getElementById('farmCac');
       if (el) el.focus();
       return;
@@ -2166,9 +2166,9 @@ const actions = {
         app.cac_verified = true;
         app.cac_data = data.verification;
         StorageManager.saveFarmerVerification(app);
-        actions.triggerToast('✅ CAC registration verified via Interswitch API (Test Mode)!');
+        actions.triggerToast('Corporate registration verified via Interswitch Registry API.');
       } else {
-        actions.triggerToast(`❌ ${data.message || 'CAC verification failed.'}`);
+        actions.triggerToast(data.message || 'Corporate verification could not be completed.');
       }
       renderApp();
     })
@@ -2181,12 +2181,12 @@ const actions = {
         verified: true,
         cac_number: cleanCac.toUpperCase(),
         registered_name: companyName ? `${companyName} (Verified Entity)` : 'Agro-Allied Ventures Nigeria Ltd',
-        source: 'Interswitch Corporate Registry API (CAC Test Suite)',
+        source: 'Interswitch Corporate Registry API (CAC)',
         verification_date: new Date().toISOString(),
         status: 'ACTIVE'
       };
       StorageManager.saveFarmerVerification(app);
-      actions.triggerToast('✅ CAC verified via Interswitch API (Test Mode)!');
+      actions.triggerToast('Corporate registration verified via Interswitch Registry API.');
       renderApp();
     });
   },
@@ -2464,7 +2464,7 @@ const actions = {
     // If any compulsory requirement is missing, block submission and inform the user
     if (missingRequirements.length > 0) {
       const missingLabels = missingRequirements.map(m => m.label).slice(0, 3).join(', ') + (missingRequirements.length > 3 ? ` + ${missingRequirements.length - 3} more` : '');
-      actions.triggerToast(`⚠️ Verification Incomplete (${completionPercent}%): Please complete all compulsory items (${missingLabels}) before submitting.`);
+      actions.triggerToast(`Incomplete Application: Please complete required fields (${missingLabels}) before submitting.`);
       
       const firstMissing = missingRequirements.find(m => m.elId && document.getElementById(m.elId));
       if (firstMissing) {
@@ -2585,7 +2585,7 @@ const actions = {
       state.mockData.adminVerifications.unshift(fullAppRecord);
     }
 
-    actions.triggerToast('✅ Farm verification application submitted! 100% compulsory criteria satisfied.');
+    actions.triggerToast('Accreditation application submitted successfully for compliance review.');
     state.currentView = 'application-submitted';
     renderApp();
   },

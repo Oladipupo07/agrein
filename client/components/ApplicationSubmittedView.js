@@ -57,7 +57,7 @@ function renderApplicationSubmittedView(state, actions) {
           </div>
 
           <h1 class="text-2xl sm:text-4xl font-heading font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Application Submitted Successfully! 🎉
+            Accreditation Application Submitted
           </h1>
           <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-300 max-w-xl mx-auto mt-2 leading-relaxed">
             Thank you, <span class="font-bold text-emerald-600 dark:text-emerald-400">${escapeHtml(app.farmer_name || user.full_name || 'Farmer')}</span>. Your verification dossier has been securely dispatched to the Agrein Compliance and Trust Audit team.
@@ -75,7 +75,7 @@ function renderApplicationSubmittedView(state, actions) {
             </div>
             <div class="px-3.5 py-1.5 rounded-xl bg-emerald-100/80 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-extrabold flex items-center space-x-1.5">
               <i class="fa-solid fa-shield-halved text-emerald-600"></i>
-              <span>100% Compulsory Data Provided</span>
+              <span>Accreditation Dossier Complete</span>
             </div>
           </div>
         </div>

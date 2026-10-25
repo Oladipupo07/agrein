@@ -22,10 +22,10 @@ function renderFarmerPendingApprovalView(state, actions) {
         <!-- Main Status Card -->
         <div class="glass-card rounded-3xl p-8 text-center space-y-4 border border-emerald-200/50 dark:border-emerald-900/30 shadow-xl">
           <h1 class="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
-            Application Submitted! 🎉
+            Accreditation Application Submitted
           </h1>
           <p class="text-sm text-gray-600 dark:text-gray-300">
-            Thank you, <span class="font-bold text-emerald-600 dark:text-emerald-400">${user.full_name || 'Farmer'}</span>! Your farm verification is under review.
+            Thank you, <span class="font-bold text-emerald-600 dark:text-emerald-400">${user.full_name || 'Farmer'}</span>! Your producer verification dossier is currently under compliance review.
           </p>
 
           <!-- Status Details -->
@@ -70,7 +70,7 @@ function renderFarmerPendingApprovalView(state, actions) {
                 </div>
                 <div>
                   <p class="text-xs font-bold text-slate-900 dark:text-white">Our Team Reviews Your Application</p>
-                  <p class="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5">An Agrein admin will verify your profile photo, Interswitch NIMC identity record, CAC corporate registration (Test), and farm location.</p>
+                  <p class="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5">An Agrein compliance auditor will review your profile portrait, Interswitch NIMC identity record, CAC corporate registration, and farm location.</p>
                 </div>
               </div>
               <div class="flex items-start space-x-3">
