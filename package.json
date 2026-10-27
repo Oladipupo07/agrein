@@ -1,12 +1,12 @@
 {
   "name": "agrein",
-  "version": "1.0.0",
-  "description": "Agrein Agricultural Marketplace",
+  "version": "2.0.0",
+  "description": "Agrein Authentication & Email Service",
   "main": "index.js",
   "scripts": {
     "postinstall": "cd server && npm install",
-    "build": "cd server && npm run build",
-    "start": "cd server && node index.js"
+    "start": "cd server && node index.js",
+    "dev": "cd server && node --watch index.js"
   },
   "engines": {
     "node": ">=18.0.0"

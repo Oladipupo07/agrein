@@ -1,132 +1,318 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes, maximum-scale=5, interactive-widget=resizes-content">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Agrein">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#059669">
-  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#022c22">
-  <!-- Primary SEO Meta Tags -->
-  <title>Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade</title>
-  <meta name="title" content="Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade">
-  <meta name="description" content="Connect directly with 14,800+ verified smallholder farmers across 36 Nigerian states. Buy and sell grains, tubers, cash crops, and livestock with secure escrow protection, cold-chain logistics, and AI harvest price forecasting.">
-  <meta name="keywords" content="agriculture marketplace Nigeria, buy crops direct from farmers, sell harvest Nigeria, farm produce B2B wholesale, yellow maize, sesame seeds, cassava tubers, organic farming, Escrow crop payment, agribusiness Africa, crop price forecast, cold chain logistics Nigeria">
-  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
-  <meta name="author" content="Agrein Technologies">
-  <meta name="publisher" content="Agrein Technologies">
-  <link rel="canonical" href="https://agrein.ng/">
-
-  <!-- Performance: warm DNS + TLS to third-party origins we always hit -->
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
-  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-  <link rel="dns-prefetch" href="https://images.unsplash.com">
-
-  <!-- Open Graph / Facebook / WhatsApp / LinkedIn Meta Tags -->
-  <meta property="og:type" content="website">
-  <meta property="og:locale" content="en_NG">
-  <meta property="og:url" content="https://agrein.ng/">
-  <meta property="og:site_name" content="Agrein Marketplace">
-  <meta property="og:title" content="Agrein — Nigeria's Premier Agricultural Marketplace & Direct Farm Trade">
-  <meta property="og:description" content="Direct agricultural trade across 36 Nigerian states. Connect with 14,800+ verified farmers, 100% escrow protection, and AI harvest price analytics.">
-  <meta property="og:image" content="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=75">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Agrein Agricultural Marketplace Fresh Harvest">
-
-  <!-- Twitter Card Meta Tags -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:site" content="@AgreinMarket">
-  <meta name="twitter:creator" content="@AgreinMarket">
-  <meta name="twitter:url" content="https://agrein.ng/">
-  <meta name="twitter:title" content="Agrein — Connecting Farmers to Buyers, One Harvest at a Time">
-  <meta name="twitter:description" content="Direct agricultural trade across 36 Nigerian states. Zero middleman exploitation, 100% escrow protection, and AI harvest price forecasting.">
-  <meta name="twitter:image" content="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=75">
-
-  <!-- JSON-LD Structured Data: Organization & WebSite -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        "@id": "https://agrein.ng/#organization",
-        "name": "Agrein",
-        "url": "https://agrein.ng/",
-        "logo": "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=500&q=80",
-        "sameAs": [
-          "https://twitter.com/AgreinMarket",
-          "https://facebook.com/AgreinMarket",
-          "https://linkedin.com/company/agrein"
-        ],
-        "contactPoint": {
-          "@type": "ContactPoint",
-          "telephone": "+234-800-AGREIN-NG",
-          "contactType": "customer service",
-          "areaServed": "NG",
-          "availableLanguage": ["English", "Hausa", "Yoruba", "Igbo"]
-        },
-        "description": "Africa's trusted agricultural technology marketplace connecting smallholder farmers directly to wholesale and retail buyers with escrow guarantee."
-      },
-      {
-        "@type": "WebSite",
-        "@id": "https://agrein.ng/#website",
-        "url": "https://agrein.ng/",
-        "name": "Agrein Agricultural Marketplace",
-        "publisher": {
-          "@id": "https://agrein.ng/#organization"
-        },
-        "potentialAction": {
-          "@type": "SearchAction",
-          "target": "https://agrein.ng/#marketplace?search={search_term_string}",
-          "query-input": "required name=search_term_string"
-        }
-      }
-    ]
-  }
+  <title>Agrein - Direct Farm Trade Marketplace</title>
+  <meta name="description" content="Nigeria's premier direct agricultural marketplace. Trade farm produce directly with verified farmers and buyers with guaranteed escrow protection.">
+  <script>
+    (function() {
+      const saved = localStorage.getItem('agrein_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+    })();
   </script>
-
-  <!-- Compiled Tailwind CSS + Custom Styles -->
-  <link rel="stylesheet" href="/styles.css">
-
-  <!-- Font Awesome 6 — UI icons (fa-solid, fa-brands, etc.) -->
-  <!-- Non-blocking load: tell browser this CSS isn't critical for first paint, swap media once fetched -->
-  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" as="style" crossorigin="anonymous">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"></noscript>
-
-  <!-- PWA Manifest & Multi-Device Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
   <link rel="manifest" href="/manifest.json">
-  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/icon-512.png">
-  <link rel="apple-touch-icon" sizes="152x152" href="/icon-512.png">
-  <link rel="mask-icon" href="/icon-512.png" color="#059669">
+  <link rel="stylesheet" href="/home.css">
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-gray-100 antialiased selection:bg-emerald-500 selection:text-white touch-scroll">
-  
-  <!-- Root App Container -->
-  <div id="app"></div>
+<body>
+  <div class="bg-grid"></div>
+  <div class="ambient-orb orb-1"></div>
+  <div class="ambient-orb orb-2"></div>
+  <div class="ambient-orb orb-3"></div>
 
-  <!-- Utilities & Storage -->
-  <script defer src="./client/utils/storageManager.js"></script>
-  <script defer src="./client/data/mockData.js"></script>
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="container">
+      <div class="nav-inner">
+        <a href="/" class="brand">
+          <div class="brand-icon"><i class="fa-solid fa-wheat-awn"></i></div>
+          <div>
+            <div class="brand-name">Agrein</div>
+            <div class="brand-sub">Direct Farm Trade</div>
+          </div>
+        </a>
 
-  <!-- Core App Components (Homepage, Authentication, Navbar, Footer) -->
-  <script defer src="./client/components/Navbar.js"></script>
-  <script defer src="./client/components/Hero.js"></script>
-  <script defer src="./client/components/AuthModal.js"></script>
-  <script defer src="./client/components/Footer.js"></script>
+        <ul class="nav-links">
+          <li><a href="#ecosystem" class="nav-link">Ecosystem</a></li>
+          <li><a href="#features" class="nav-link">Features</a></li>
+          <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
+          <li><a href="/privacy-policy.html" class="nav-link">Trust &amp; Privacy</a></li>
+        </ul>
 
-  <!-- App Orchestrator -->
-  <script defer src="./app.js"></script>
+        <div class="nav-actions">
+          <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+            <i class="fa-solid fa-sun light-icon"></i>
+            <i class="fa-solid fa-moon dark-icon"></i>
+          </button>
+          <a href="/login" class="btn-nav-login">Sign In</a>
+          <a href="/register" class="btn-nav-register">
+            <span>Create Account</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
 
-  <!-- PWA wiring (SW register + beforeinstallprompt + notification permission)
-       lives in app.js's DOMContentLoaded bootstrap, which keeps everything in
-       one place and avoids duplicate listeners. -->
+  <main>
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="container">
+        <div class="pill-badge">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>Direct Farm-to-Buyer Trade • 100% Escrow Protected</span>
+        </div>
+
+        <h1 class="hero-title">
+          Connecting Nigeria's Harvest to Buyers, <span class="gradient-emerald">Zero Middlemen</span>
+        </h1>
+
+        <p class="hero-subtitle">
+          Trade bulk farm produce directly with verified growers and off-takers across all 36 states. Enjoy guaranteed escrow payouts, transparent farmgate pricing, and secure nationwide trade.
+        </p>
+
+        <div class="hero-ctas">
+          <a href="/register" class="btn-cta-primary" id="heroStartBtn">
+            <span>Get Started Free</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </a>
+          <a href="/login" class="btn-cta-secondary" id="heroLoginBtn">
+            <i class="fa-solid fa-right-to-bracket"></i>
+            <span>Sign In to Account</span>
+          </a>
+        </div>
+
+        <!-- Metrics Strip -->
+        <div class="metrics-strip">
+          <div class="metric-item">
+            <div class="metric-num">14.8K<span>+</span></div>
+            <div class="metric-label">Verified Farmers</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-num">36</div>
+            <div class="metric-label">States Covered</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-num">100<span>%</span></div>
+            <div class="metric-label">Escrow Security</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-num">₦2.4B<span>+</span></div>
+            <div class="metric-label">Safe Trade Volume</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Roles / Ecosystem Section -->
+    <section class="roles-section" id="ecosystem">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Empowering Both Sides</div>
+          <h2 class="section-title">Built for Farmers and Wholesale Buyers</h2>
+          <p class="section-desc">Agrein brings transparency and trust to every harvest transaction, eliminating exploitative middlemen and delayed payments.</p>
+        </div>
+
+        <div class="roles-grid">
+          <!-- Farmer Box -->
+          <div class="role-box farmer">
+            <div class="role-icon-wrap"><i class="fa-solid fa-tractor"></i></div>
+            <h3 class="role-title">For Farmers &amp; Producers</h3>
+            <p class="role-desc">Connect directly with nationwide FMCGs, food processors, and commodity traders. Guarantee your payment before shipping a single crate.</p>
+            <ul class="role-perks">
+              <li><i class="fa-solid fa-circle-check"></i> Direct access to verified wholesale buyers</li>
+              <li><i class="fa-solid fa-circle-check"></i> Automated escrow payments released upon delivery</li>
+              <li><i class="fa-solid fa-circle-check"></i> Fair farmgate pricing without predatory brokers</li>
+              <li><i class="fa-solid fa-circle-check"></i> Free profile creation and simple product listing</li>
+            </ul>
+            <a href="/register" class="btn-cta-primary" style="width:100%;justify-content:center">Join as Farmer</a>
+          </div>
+
+          <!-- Buyer Box -->
+          <div class="role-box buyer">
+            <div class="role-icon-wrap"><i class="fa-solid fa-cart-shopping"></i></div>
+            <h3 class="role-title">For Buyers &amp; Off-Takers</h3>
+            <p class="role-desc">Source fresh agricultural commodities directly from verified rural farming clusters with guaranteed quality and delivery inspection.</p>
+            <ul class="role-perks">
+              <li><i class="fa-solid fa-circle-check"></i> Fresh produce directly from verified origins</li>
+              <li><i class="fa-solid fa-circle-check"></i> 100% money-back escrow guarantee if specs don't match</li>
+              <li><i class="fa-solid fa-circle-check"></i> Bulk volume discounts directly from farmers</li>
+              <li><i class="fa-solid fa-circle-check"></i> Real-time shipment and delivery notifications</li>
+            </ul>
+            <a href="/register" class="btn-cta-primary" style="width:100%;justify-content:center;background:linear-gradient(135deg,var(--amber-500),var(--amber-400));color:#04130d;box-shadow:0 8px 30px rgba(245,158,11,0.3)">Join as Buyer</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section" id="features">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Platform Highlights</div>
+          <h2 class="section-title">The Foundation of Trusted Agri-Trade</h2>
+          <p class="section-desc">Every tool on Agrein is engineered to make agricultural commerce frictionless, reliable, and secure.</p>
+        </div>
+
+        <div class="features-grid">
+          <div class="feat-card">
+            <div class="feat-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <h4 class="feat-title">Escrow Protection</h4>
+            <p class="feat-text">Payments are held in secure escrow. Sellers know funds are locked before dispatch, and buyers approve release only after inspection.</p>
+          </div>
+
+          <div class="feat-card">
+            <div class="feat-icon"><i class="fa-solid fa-id-card-clip"></i></div>
+            <h4 class="feat-title">Verified Identity</h4>
+            <p class="feat-text">Every seller undergoes multi-tier verification including NIN validation and cooperative endorsement to eliminate fraud.</p>
+          </div>
+
+          <div class="feat-card">
+            <div class="feat-icon"><i class="fa-solid fa-chart-line"></i></div>
+            <h4 class="feat-title">Fair Market Pricing</h4>
+            <p class="feat-text">Access transparent price benchmarks across major Nigerian agricultural belts from Kano grains to Benue tubers.</p>
+          </div>
+
+          <div class="feat-card">
+            <div class="feat-icon"><i class="fa-solid fa-truck-fast"></i></div>
+            <h4 class="feat-title">Nationwide Haulage</h4>
+            <p class="feat-text">Connect with verified haulage partners specialized in agricultural cargo, transit security, and fast turnaround.</p>
+          </div>
+
+          <div class="feat-card">
+            <div class="feat-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+            <h4 class="feat-title">Rapid Dispute Mediation</h4>
+            <p class="feat-text">Our dedicated arbiters resolve quality or volume discrepancies swiftly with evidence-backed mediation.</p>
+          </div>
+
+          <div class="feat-card">
+            <div class="feat-icon"><i class="fa-solid fa-bolt"></i></div>
+            <h4 class="feat-title">Instant Settlement</h4>
+            <p class="feat-text">Funds hit your verified bank account instantly upon buyer approval with zero hidden transaction deductions.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="how-section" id="how-it-works">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Seamless Process</div>
+          <h2 class="section-title">How Agrein Works</h2>
+          <p class="section-desc">From account creation to final payout in three transparent steps.</p>
+        </div>
+
+        <div class="steps-row">
+          <div class="step-card">
+            <div class="step-badge">01</div>
+            <div class="feat-icon"><i class="fa-solid fa-user-check"></i></div>
+            <h3 class="step-title">Create Account</h3>
+            <p class="step-desc">Sign up as a Farmer or Buyer in less than two minutes. Verify your email with our secure 6-digit one-time code.</p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-badge">02</div>
+            <div class="feat-icon"><i class="fa-solid fa-handshake"></i></div>
+            <h3 class="step-title">Agree &amp; Fund Escrow</h3>
+            <p class="step-desc">Connect with verified counterparties. The buyer deposits funds into the secure Agrein Escrow vault.</p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-badge">03</div>
+            <div class="feat-icon"><i class="fa-solid fa-boxes-packing"></i></div>
+            <h3 class="step-title">Deliver &amp; Get Paid</h3>
+            <p class="step-desc">Produce is dispatched, inspected, and verified on arrival. Escrow funds disburse immediately to the farmer.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Banner -->
+    <section class="cta-banner-section">
+      <div class="container">
+        <div class="cta-banner">
+          <h2 class="cta-banner-title">Ready to Elevate Your Agricultural Trade?</h2>
+          <p class="cta-banner-desc">Join over 14,800 Nigerian agricultural stakeholders who trade with confidence, fair pricing, and escrow security.</p>
+          <div class="hero-ctas" style="margin-bottom:0">
+            <a href="/register" class="btn-cta-primary">
+              <span>Create Free Account</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </a>
+            <a href="/login" class="btn-cta-secondary">
+              <i class="fa-solid fa-right-to-bracket"></i>
+              <span>Sign In</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <a href="/" class="brand">
+            <div class="brand-icon"><i class="fa-solid fa-wheat-awn"></i></div>
+            <div>
+              <div class="brand-name">Agrein</div>
+              <div class="brand-sub">Direct Farm Trade</div>
+            </div>
+          </a>
+          <p>Connecting Nigerian farmers to nationwide wholesale buyers with guaranteed escrow protection and transparent farmgate pricing.</p>
+        </div>
+
+        <div class="footer-links-group">
+          <div class="footer-col">
+            <h4>Platform</h4>
+            <ul>
+              <li><a href="/register">Farmer Registration</a></li>
+              <li><a href="/register">Buyer Registration</a></li>
+              <li><a href="/login">Account Sign In</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h4>Ecosystem</h4>
+            <ul>
+              <li><a href="#ecosystem">Farmer Network</a></li>
+              <li><a href="#ecosystem">Wholesale Off-takers</a></li>
+              <li><a href="#features">Escrow Protection</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h4>Trust &amp; Legal</h4>
+            <ul>
+              <li><a href="/privacy-policy.html">Privacy Policy</a></li>
+              <li><a href="/privacy-policy.html">Terms of Service</a></li>
+              <li><a href="/api/status" target="_blank">System Status <span style="display:inline-block;width:7px;height:7px;background:#34d399;border-radius:50%;margin-left:4px"></span></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>&copy; 2026 Agrein Marketplace. All rights reserved.</div>
+        <div>Built for Nigeria's Agricultural Prosperity.</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('agrein_theme', next);
+    }
+  </script>
 </body>
 </html>

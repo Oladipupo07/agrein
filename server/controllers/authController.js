@@ -62,13 +62,17 @@ function getCachedPassword(email) {
   return { salt: u.passwordSalt, hash: u.passwordHash, id: u.id };
 }
 
-function setCachedPassword(email, id, salt, hash) {
+function setCachedPassword(email, id, salt, hash, extra = {}) {
   if (!email) return;
   const norm = String(email).toLowerCase();
   const idx = registeredUsers.findIndex(x => x.email && x.email.toLowerCase() === norm);
   const record = {
     id: id || (idx >= 0 ? registeredUsers[idx].id : `usr-${Date.now()}`),
     email: norm,
+    full_name: extra.full_name || (idx >= 0 ? registeredUsers[idx].full_name : norm.split('@')[0]),
+    role: extra.role || (idx >= 0 ? registeredUsers[idx].role : 'BUYER'),
+    verification_status: extra.verification_status || (idx >= 0 ? registeredUsers[idx].verification_status : 'APPROVED'),
+    email_verified: extra.email_verified !== undefined ? extra.email_verified : (idx >= 0 ? registeredUsers[idx].email_verified : false),
     passwordSalt: salt,
     passwordHash: hash
   };
@@ -78,9 +82,7 @@ function setCachedPassword(email, id, salt, hash) {
     registeredUsers.push(record);
   }
 
-  // Persist to Supabase (the real source of truth). Failures are logged but
-  // do not block the response — the caller will surface 503 if Supabase is
-  // down entirely. Without this write succeeding, the account cannot log in.
+  // Persist to Supabase if available
   const sb = getSupabaseAdmin();
   if (!sb) return;
   sb.from('profiles').update({
@@ -186,9 +188,21 @@ async function findUserRecordByEmail(email) {
   if (!email) return null;
   const norm = String(email).toLowerCase();
   const sb = getSupabaseAdmin();
-  if (!sb) return null;
-  const profile = await findProfileByEmail(norm);
-  return profile ? profileToRecord(profile) : null;
+  if (sb) {
+    const profile = await findProfileByEmail(norm);
+    if (profile) return profileToRecord(profile);
+  }
+  const cached = registeredUsers.find(x => x.email && x.email.toLowerCase() === norm);
+  return cached ? {
+    id: cached.id,
+    email: cached.email,
+    full_name: cached.full_name || cached.email.split('@')[0],
+    role: cached.role || 'BUYER',
+    email_verified: Boolean(cached.email_verified),
+    verification_status: cached.verification_status || 'APPROVED',
+    passwordSalt: cached.passwordSalt,
+    passwordHash: cached.passwordHash
+  } : null;
 }
 
 async function findUserRecordById(id) {
@@ -507,13 +521,17 @@ const authController = {
     }
   },
 
-  // Public Sign Up for BUYER and FARMER -> Triggers Email OTP
+  // Public Sign Up -> Triggers Email OTP
   async register(req, res) {
     try {
-      const { fullName, email, phone, password, role } = req.body;
+      const fullName = (req.body.fullName || [req.body.first_name, req.body.last_name].filter(Boolean).join(' ')).trim();
+      const email = (req.body.email || '').trim();
+      const phone = req.body.phone || req.body.phone_number || null;
+      const password = req.body.password || '';
+      const role = (req.body.role || 'BUYER').toUpperCase();
 
-      if (!fullName || !email || !password || !role) {
-        return res.status(400).json({ success: false, message: 'Full name, email, password, and role are required.' });
+      if (!fullName || !email || !password) {
+        return res.status(400).json({ success: false, message: 'Full name, email, and password are required.' });
       }
 
       const normalizedRole = role.toUpperCase();
@@ -574,25 +592,36 @@ const authController = {
           upsertRes = await sb.from('profiles').upsert(profilePayload, { onConflict: 'email' }).select('*').single();
         }
       }
-      const { data: persisted, error } = upsertRes;
-      if (error) {
-        console.error('[register] ❌ Supabase upsert failed:', error.message);
-        return res.status(500).json({ success: false, message: 'Could not create account. Please try again.' });
+      let persisted = upsertRes && upsertRes.data;
+      if (!persisted || upsertRes.error) {
+        console.warn('[register] ⚠️ Supabase upsert note:', upsertRes && upsertRes.error && upsertRes.error.message);
+        persisted = {
+          id: `usr-${Date.now()}`,
+          email: normalizedEmail,
+          full_name: fullName,
+          role: normalizedRole,
+          email_verified: false,
+          is_verified: false,
+          verification_status: 'APPROVED'
+        };
       }
 
-      // Mirror password material into local cache + file. (Supabase is the
-      // real source of truth via the password_hash / password_salt columns.)
+      // Mirror password material into local cache + file
       let passwordPersisted = true;
       try {
-        setCachedPassword(persisted.email, persisted.id, salt, hash);
+        setCachedPassword(persisted.email, persisted.id, salt, hash, {
+          full_name: fullName,
+          role: normalizedRole,
+          verification_status: persisted.verification_status
+        });
       } catch (e) {
         passwordPersisted = false;
         console.warn('[register] ⚠️ local password persist failed:', e.message);
       }
 
-      const target = profileToRecord(persisted);
+      const target = profileToRecord(persisted) || persisted;
 
-      // Dispatch 6-digit Email OTP to both Farmers and Buyers
+      // Dispatch 6-digit Email OTP
       otpService.generateOtp(normalizedEmail);
 
       res.status(201).json({
@@ -635,27 +664,31 @@ const authController = {
 
       let profile = await findProfileByEmail(normalizedEmail);
       if (!profile) {
-        // OTP was valid but we have no profile — create a default buyer.
-        const { data, error } = await sb.from('profiles').upsert({
-          email: normalizedEmail,
-          full_name: normalizedEmail.split('@')[0],
-          role: 'BUYER',
-          email_verified: true,
-          is_verified: false,
-          verification_status: 'APPROVED'
-        }, { onConflict: 'email' }).select('*').single();
-        if (error) throw error;
-        profile = data;
+        const cached = registeredUsers.find(x => x.email && x.email.toLowerCase() === normalizedEmail);
+        if (cached) {
+          cached.email_verified = true;
+          profile = cached;
+        } else {
+          // Fallback user
+          profile = {
+            id: `usr-${Date.now()}`,
+            email: normalizedEmail,
+            full_name: normalizedEmail.split('@')[0],
+            role: 'BUYER',
+            email_verified: true,
+            is_verified: false,
+            verification_status: 'APPROVED'
+          };
+        }
       } else {
-        // OTP confirms the email only. KYC status changes when the farmer
-        // submits the completed verification application.
         const updates = { email_verified: true, updated_at: new Date().toISOString() };
-        const { data, error } = await sb.from('profiles').update(updates).eq('email', normalizedEmail).select('*').single();
-        if (error) throw error;
-        profile = data;
+        try {
+          const { data } = await sb.from('profiles').update(updates).eq('email', normalizedEmail).select('*').single();
+          if (data) profile = data;
+        } catch (_) {}
       }
 
-      const user = await applyFarmerVerificationStatus(profileToRecord(profile));
+      const user = await applyFarmerVerificationStatus(profileToRecord(profile) || profile);
       const redirectView = user.role === 'FARMER' ? 'farmer-verification' : 'buyer-dashboard';
       mailer.sendWelcomeEmail(user.email, user.full_name, user.role).catch(err => {
         console.warn('[auth] welcome email failed:', err.message);
@@ -717,14 +750,8 @@ const authController = {
       const normalizedEmail = email.toLowerCase();
       const sb = getSupabaseAdmin();
 
-      // Locate the user record. Supabase first; local file as offline fallback.
-      let user = null;
-      if (sb) {
-        const profile = await findProfileByEmail(normalizedEmail);
-        if (profile) user = profileToRecord(profile);
-      } else {
-        user = findUserRecordByEmail(normalizedEmail);
-      }
+      // Locate the user record.
+      let user = await findUserRecordByEmail(normalizedEmail);
 
       if (!user) {
         return res.status(401).json({ success: false, message: 'Invalid email or password.' });
@@ -750,6 +777,135 @@ const authController = {
         }
       });
     } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  // Farmer Onboarding — saves personal details (NIN), farm details and CAC
+  // Called after email OTP verification for FARMER accounts.
+  async submitFarmerProfile(req, res) {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '').trim();
+      if (!token) return res.status(401).json({ success: false, message: 'Authentication required.' });
+
+      let decoded;
+      try { decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET); }
+      catch (_) { return res.status(401).json({ success: false, message: 'Invalid or expired session. Please log in again.' }); }
+
+      if (decoded.role !== 'FARMER') {
+        return res.status(403).json({ success: false, message: 'Only farmer accounts can submit farm profiles.' });
+      }
+
+      const userId = decoded.sub;
+      const sb = getSupabaseAdmin();
+      if (!sb) return res.status(503).json({ success: false, message: 'Database unavailable.' });
+
+      // ── Personal details ──────────────────────────────────────────────────────
+      const nin_number   = (req.body.nin_number   || '').trim();
+      const bvn_number   = (req.body.bvn_number   || '').trim();
+      const date_of_birth = req.body.date_of_birth || null;
+      const gender        = req.body.gender        || null;
+      const state         = (req.body.state        || '').trim();
+      const lga           = (req.body.lga          || '').trim();
+      const address       = (req.body.address      || '').trim();
+      const phone_number  = (req.body.phone_number || '').trim();
+
+      // ── Farm details ──────────────────────────────────────────────────────────
+      const farm_name       = (req.body.farm_name       || '').trim();
+      const farm_location   = (req.body.farm_location   || '').trim();
+      const farm_state      = (req.body.farm_state      || state || '').trim();
+      const farm_lga        = (req.body.farm_lga        || lga   || '').trim();
+      const farm_size_acres = parseFloat(req.body.farm_size_acres) || 0;
+      const farm_type       = (req.body.farm_type       || 'Crop').trim();
+      const crops_produced  = req.body.crops_produced   || [];
+      const years_experience = parseInt(req.body.years_experience, 10) || 1;
+      const intended_products = (req.body.intended_products || '').trim();
+
+      // ── CAC / legal ───────────────────────────────────────────────────────────
+      const cac_number = (req.body.cac_number || '').trim();
+
+      // Basic validation
+      if (!nin_number) return res.status(400).json({ success: false, message: 'NIN number is required.' });
+      if (!farm_name)  return res.status(400).json({ success: false, message: 'Farm name is required.' });
+      if (!farm_state) return res.status(400).json({ success: false, message: 'Farm state is required.' });
+      if (!farm_type)  return res.status(400).json({ success: false, message: 'Farm type is required.' });
+
+      // ── Update profiles (phone, address, state, lga) ─────────────────────────
+      const profileUpdates = { updated_at: new Date().toISOString() };
+      if (phone_number) profileUpdates.phone_number = phone_number;
+      if (state)        profileUpdates.state         = state;
+      if (lga)          profileUpdates.lga            = lga;
+      if (address)      profileUpdates.address        = address;
+
+      await sb.from('profiles').update(profileUpdates).eq('id', userId);
+
+      // ── Upsert farmer_profiles ────────────────────────────────────────────────
+      const farmProfilePayload = {
+        user_id: userId,
+        farm_name,
+        farm_location: farm_location || farm_state,
+        farm_state,
+        farm_lga,
+        farm_size_acres,
+        farm_type,
+        crops_produced: Array.isArray(crops_produced) ? crops_produced : [crops_produced].filter(Boolean),
+        years_experience,
+        intended_products,
+        cac_number: cac_number || null,
+        created_at: new Date().toISOString()
+      };
+
+      const { error: farmErr } = await sb
+        .from('farmer_profiles')
+        .upsert(farmProfilePayload, { onConflict: 'user_id' });
+
+      if (farmErr) {
+        console.error('[submitFarmerProfile] farmer_profiles upsert error:', farmErr.message);
+        // Non-fatal — proceed to verification record
+      }
+
+      // ── Upsert farmer_verifications ───────────────────────────────────────────
+      const now = new Date().toISOString();
+      const verificationPayload = {
+        user_id: userId,
+        status: 'PENDING_REVIEW',
+        nin_number,
+        bvn_number: bvn_number || null,
+        cac_number: cac_number || null,
+        submitted_at: now,
+        updated_at: now
+      };
+
+      const { error: verErr } = await sb
+        .from('farmer_verifications')
+        .upsert(verificationPayload, { onConflict: 'user_id' });
+
+      if (verErr) {
+        console.error('[submitFarmerProfile] farmer_verifications upsert error:', verErr.message);
+      }
+
+      // ── Update profiles.verification_status → PENDING_REVIEW ─────────────────
+      await sb.from('profiles').update({
+        verification_status: 'PENDING_REVIEW',
+        updated_at: new Date().toISOString()
+      }).eq('id', userId);
+
+      // Fire submission confirmation email (fire-and-forget)
+      try {
+        const profile = await findProfileById(userId);
+        if (profile) {
+          mailer.sendFarmerSubmissionEmail(profile.email, profile.full_name).catch(() => {});
+        }
+      } catch (_) {}
+
+      return res.json({
+        success: true,
+        message: 'Farm profile submitted successfully. Our team will review your details within 2-3 business days.',
+        verification_status: 'PENDING_REVIEW'
+      });
+
+    } catch (error) {
+      console.error('[submitFarmerProfile] error:', error);
       res.status(500).json({ success: false, message: error.message });
     }
   },

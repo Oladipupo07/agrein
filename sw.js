@@ -1,16 +1,19 @@
 // Agrein Progressive Web App Service Worker
 // Provides offline functionality, caching strategy, and background sync
 
-const CACHE_NAME = 'agrein-v10';
-const APP_SHELL_CACHE = 'agrein-shell-v10';
-const RUNTIME_CACHE = 'agrein-runtime-v10';
+const CACHE_NAME = 'agrein-v12';
+const APP_SHELL_CACHE = 'agrein-shell-v12';
+const RUNTIME_CACHE = 'agrein-runtime-v12';
 const OFFLINE_URL = '/public/offline.html';
 
 const APP_SHELL_URLS = [
   '/',
   '/index.html',
-  '/styles.css',
-  '/public/styles.css',
+  '/login.html',
+  '/register.html',
+  '/home.css',
+  '/auth.css',
+  '/auth.js',
   '/public/offline.html',
   '/manifest.json'
 ];

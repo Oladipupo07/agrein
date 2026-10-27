@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#059669">
+  <title>Create Account - Agrein</title>
+  <meta name="description" content="Create your Agrein account to trade directly with verified agricultural partners across Nigeria.">
+  <script>
+    (function() {
+      const saved = localStorage.getItem('agrein_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body>
+  <div class="bg-scene"></div>
+  <div class="bg-grid"></div>
+  <div class="floating-orb orb-1"></div>
+  <div class="floating-orb orb-2"></div>
+  <div class="floating-orb orb-3"></div>
+
+  <div id="app">
+    <nav class="navbar">
+      <a href="/" class="brand" style="text-decoration:none">
+        <div class="brand-icon"><i class="fa-solid fa-wheat-awn"></i></div>
+        <div>
+          <div class="brand-name">Agrein</div>
+          <div class="brand-tagline">Direct Farm Trade</div>
+        </div>
+      </a>
+      <div style="display:flex;align-items:center;gap:0.85rem">
+        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+          <i class="fa-solid fa-sun light-icon"></i>
+          <i class="fa-solid fa-moon dark-icon"></i>
+        </button>
+        <a href="/" class="back-btn" style="margin-bottom:0;text-decoration:none"><i class="fa-solid fa-arrow-left"></i> Home</a>
+        <a href="/login" class="nav-badge" style="text-decoration:none;cursor:pointer">Sign In <i class="fa-solid fa-arrow-right" style="font-size:0.7rem;margin-left:0.25rem"></i></a>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <div class="left-panel">
+        <div>
+          <div class="headline">Start Trading on <span class="hl-green">Agrein</span> Today</div>
+          <p class="subheadline" style="margin-top:1rem;">Join thousands of agricultural partners benefiting from direct market trade, guaranteed escrow protection, and nationwide logistics.</p>
+        </div>
+        <div class="stats-row">
+          <div class="stat-box"><div class="stat-number">100%</div><div class="stat-label">Escrow</div></div>
+          <div class="stat-box"><div class="stat-number">36</div><div class="stat-label">States</div></div>
+          <div class="stat-box"><div class="stat-number">24/7</div><div class="stat-label">Support</div></div>
+        </div>
+        <div class="feature-list">
+          <div class="feature-item"><div class="feature-icon"><i class="fa-solid fa-cart-shopping"></i></div><div class="feature-text"><strong>For Buyers</strong> - Direct access to fresh farm produce with 100% escrow protection.</div></div>
+          <div class="feature-item"><div class="feature-icon"><i class="fa-solid fa-store"></i></div><div class="feature-text"><strong>For Sellers</strong> - Reach off-takers nationwide and receive guaranteed payouts upon delivery.</div></div>
+        </div>
+      </div>
+
+      <div class="auth-card" id="authCard">
+        <div class="card-header">
+          <div class="card-logo" id="cardLogo"><i class="fa-solid fa-user-plus"></i></div>
+          <div class="card-title" id="cardTitle">Create Account</div>
+          <div class="card-subtitle" id="cardSubtitle">Join Nigeria's trusted agricultural network</div>
+        </div>
+
+        <div class="card-body">
+          <!-- REGISTER VIEW -->
+          <div class="view active" id="viewRegister">
+            <div class="alert alert-error hidden" id="registerError"><i class="fa-solid fa-triangle-exclamation"></i><span id="registerErrorMsg"></span></div>
+
+            <div class="form-group">
+              <label class="form-label">I want to register as:</label>
+              <div class="role-grid">
+                <div class="role-card selected" id="roleBuyer" onclick="selectRole('BUYER')">
+                  <i class="fa-solid fa-cart-shopping"></i>
+                  <div class="role-label">Buyer</div>
+                  <div class="role-sub">Source &amp; buy produce</div>
+                </div>
+                <div class="role-card" id="roleSeller" onclick="selectRole('SELLER')">
+                  <i class="fa-solid fa-store"></i>
+                  <div class="role-label">Seller</div>
+                  <div class="role-sub">List &amp; sell harvest</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="name-grid">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">First Name</label>
+                <div class="input-wrap"><i class="input-icon fa-solid fa-user"></i><input class="form-input" id="regFirst" type="text" placeholder="Ibrahim" autocomplete="given-name"></div>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Last Name</label>
+                <div class="input-wrap"><i class="input-icon fa-solid fa-user"></i><input class="form-input" id="regLast" type="text" placeholder="Bello" autocomplete="family-name"></div>
+              </div>
+            </div>
+            <div style="margin-bottom:1rem"></div>
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <div class="input-wrap"><i class="input-icon fa-solid fa-envelope"></i><input class="form-input" id="regEmail" type="email" placeholder="you@example.com" autocomplete="email"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-lock"></i>
+                <input class="form-input" id="regPassword" type="password" placeholder="create password" oninput="checkPwStrength(this.value)">
+                <button type="button" class="password-toggle" onclick="togglePw('regPassword','eyeReg')"><i id="eyeReg" class="fa-solid fa-eye"></i></button>
+              </div>
+              <div class="pw-requirements">
+                <div class="pw-req" id="req_len"><i class="fa-regular fa-circle"></i> At least 8 characters</div>
+                <div class="pw-req" id="req_upper"><i class="fa-regular fa-circle"></i> One uppercase letter (A-Z)</div>
+                <div class="pw-req" id="req_lower"><i class="fa-regular fa-circle"></i> One lowercase letter (a-z)</div>
+                <div class="pw-req" id="req_num"><i class="fa-regular fa-circle"></i> One number (0-9)</div>
+                <div class="pw-req" id="req_special"><i class="fa-regular fa-circle"></i> One special character</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm Password</label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-lock"></i>
+                <input class="form-input" id="regConfirm" type="password" placeholder="confirm password" oninput="checkMatch()">
+                <button type="button" class="password-toggle" onclick="togglePw('regConfirm','eyeConf')"><i id="eyeConf" class="fa-solid fa-eye"></i></button>
+              </div>
+              <div class="match-error" id="matchErr"><i class="fa-solid fa-circle-xmark"></i> Passwords do not match.</div>
+            </div>
+            <button class="btn-primary" id="registerBtn" onclick="submitRegister()"><i class="fa-solid fa-user-plus"></i><span>Create Free Account</span></button>
+            <div style="text-align:center;margin-top:1rem;font-size:0.78rem">
+              Already have an account? <a href="/login" style="color:var(--emerald-400);text-decoration:none;font-weight:700">Sign in here →</a>
+            </div>
+          </div>
+
+          <!-- OTP VIEW -->
+          <div class="view" id="viewOtp">
+            <button class="back-btn" onclick="showView('register')"><i class="fa-solid fa-arrow-left"></i> Back to Registration</button>
+            <div class="info-box" style="margin-bottom:1rem"><i class="fa-solid fa-envelope-circle-check"></i><span>We sent a 6-digit code to <strong id="otpEmailDisplay" style="color:#fcd34d"></strong>. Check your inbox or spam.</span></div>
+            <div class="alert alert-error hidden" id="otpError"><i class="fa-solid fa-triangle-exclamation"></i><span id="otpErrorMsg"></span></div>
+            <div id="otpSuccessScreen" class="hidden success-screen">
+              <div class="success-icon"><i class="fa-solid fa-circle-check"></i></div>
+              <div style="font-family:Outfit,sans-serif;font-size:1.2rem;font-weight:800;color:var(--text-main)">Email Verified!</div>
+              <div style="font-size:.8rem;color:var(--text-muted);margin-top:.5rem">Your account is ready. Redirecting...</div>
+            </div>
+            <div id="otpForm">
+              <label class="form-label" style="text-align:center;display:block">Enter 6-Digit Code</label>
+              <div class="otp-grid">
+                <input class="otp-input" id="otp0" type="text" maxlength="1" oninput="otpInput(event,0)" onkeydown="otpKey(event,0)">
+                <input class="otp-input" id="otp1" type="text" maxlength="1" oninput="otpInput(event,1)" onkeydown="otpKey(event,1)">
+                <input class="otp-input" id="otp2" type="text" maxlength="1" oninput="otpInput(event,2)" onkeydown="otpKey(event,2)">
+                <input class="otp-input" id="otp3" type="text" maxlength="1" oninput="otpInput(event,3)" onkeydown="otpKey(event,3)">
+                <input class="otp-input" id="otp4" type="text" maxlength="1" oninput="otpInput(event,4)" onkeydown="otpKey(event,4)">
+                <input class="otp-input" id="otp5" type="text" maxlength="1" oninput="otpInput(event,5)" onkeydown="otpKey(event,5)">
+              </div>
+              <div class="resend-row">
+                <span style="display:flex;align-items:center;gap:.4rem"><i class="fa-regular fa-clock" style="color:var(--emerald-500)"></i><span id="timerText">5:00</span></span>
+                <button class="resend-btn" id="resendBtn" onclick="resendOtp()" disabled>Resend Code</button>
+              </div>
+              <button class="btn-primary" id="otpBtn" onclick="submitOtp()"><i class="fa-solid fa-shield-check"></i><span>Verify & Activate</span></button>
+            </div>
+          </div>
+
+          <!-- AUTHENTICATED PROFILE VIEW -->
+          <div class="view" id="viewProfile">
+            <div class="profile-card-content">
+              <div class="profile-avatar"><i class="fa-solid fa-user-check"></i></div>
+              <div class="profile-name" id="profName">User Account</div>
+              <div class="profile-role-badge" id="profRoleBadge"><i class="fa-solid fa-shield-check"></i> <span id="profRoleText">Active Member</span></div>
+
+              <div class="profile-meta-list">
+                <div class="profile-meta-item">
+                  <span class="meta-label"><i class="fa-solid fa-envelope"></i> Email</span>
+                  <span class="meta-val" id="profEmail">user@example.com</span>
+                </div>
+                <div class="profile-meta-item">
+                  <span class="meta-label"><i class="fa-solid fa-id-badge"></i> Account ID</span>
+                  <span class="meta-val" id="profId" style="font-family:monospace;font-size:0.75rem">--</span>
+                </div>
+                <div class="profile-meta-item">
+                  <span class="meta-label"><i class="fa-solid fa-circle-check"></i> Email Status</span>
+                  <span class="meta-badge-status" id="profStatus">Verified</span>
+                </div>
+              </div>
+
+              <div class="profile-actions">
+                <button class="btn-logout" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i><span>Sign Out</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <p class="terms-note">By creating an account, you agree to Agrein's <a href="/privacy-policy.html">Privacy Policy</a> &bull; Terms of Service.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/auth.js"></script>
+</body>
+</html>

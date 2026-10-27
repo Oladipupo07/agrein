@@ -5,17 +5,7 @@ require('dotenv').config();
 
 const path = require('path');
 const apiRoutes = require('./routes/api');
-const { assertInterswitchConfig } = require('./utils/interswitch');
 const { profilesHasPasswordColumns } = require('./utils/supabaseClient');
-
-// Refuse to boot in LIVE mode without Interswitch credentials. Better to crash
-// here than to charge real cards with an empty merchant_code.
-try {
-  assertInterswitchConfig();
-} catch (e) {
-  console.error('\n❌ Boot aborted:', e.message, '\n');
-  process.exit(1);
-}
 
 // Refuse to boot in production if the profiles.password_hash /
 // password_salt columns don't exist. Without them, every new account created
@@ -56,10 +46,31 @@ async function bootApp() {
   app.get('/api/status', (req, res) => {
     res.json({
       status: 'online',
-      name: 'Agrein Marketplace API',
-      version: '1.0.0',
-      tagline: 'Connecting Farmers to Buyers, One Harvest at a Time.'
+      name: 'Agrein Auth & Email Service',
+      version: '2.0.0'
     });
+  });
+
+  // Page Routes
+  app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'login.html'));
+  });
+
+  app.get(['/register', '/signup'], (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'register.html'));
+  });
+
+  app.get('/farmer-onboarding', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'farmer-onboarding.html'));
+  });
+
+
+  // SPA fallback for HTML5 history API navigation
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ success: false, message: 'API route not found' });
+    }
+    res.sendFile(path.join(__dirname, '..', 'index.html'));
   });
 
   if (require.main === module) {

@@ -277,12 +277,48 @@ const mailer = {
   async sendLoginNotification(email, name) {
     if (!this.isConfigured()) return { delivered: false, reason: 'NOT_CONFIGURED' };
     const safeName = name || 'Agrein member';
-    const subject = 'New sign-in to your Agrein account';
-    const text = `Hello ${safeName}, your Agrein account was just signed in to. If this was not you, please change your password.`;
-    const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px;color:#0f172a"><h2 style="color:#047857">New sign-in detected</h2><p>Hello ${safeName}, your Agrein account was just signed in to.</p><p>If this was not you, please change your password and contact support.</p></div>`;
+    const loginTime = new Date().toLocaleString('en-NG', { dateStyle: 'full', timeStyle: 'short' });
+    const subject = 'New Sign-In to Your Agrein Account';
+    const text = `Hello ${safeName}, your Agrein account was just signed in to at ${loginTime}. If this was not you, please change your password immediately and contact support.`;
+    const html = `
+      <!DOCTYPE html><html><head><meta charset="utf-8"></head>
+      <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#f8fafc;padding:32px 16px;">
+          <tr><td align="center">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:480px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,.05);border:1px solid #e2e8f0;">
+              <tr><td align="center" style="background:linear-gradient(135deg,#065f46 0%,#047857 100%);padding:32px 24px;color:#ffffff;">
+                <div style="font-size:36px;margin-bottom:8px;">🌾</div>
+                <h1 style="margin:0;font-size:22px;font-weight:800;">New Sign-In Detected</h1>
+                <p style="margin:4px 0 0;font-size:13px;color:#a7f3d0;">Security notification from Agrein</p>
+              </td></tr>
+              <tr><td style="padding:32px 28px;">
+                <h2 style="margin:0 0 12px;font-size:16px;font-weight:700;color:#0f172a;">Hello, ${safeName}</h2>
+                <p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#475569;">
+                  We noticed a new sign-in to your <strong>Agrein Marketplace</strong> account.
+                </p>
+                <div style="background:#f0fdf4;border:1px solid #a7f3d0;border-radius:12px;padding:16px 20px;margin:0 0 20px;">
+                  <div style="font-size:12px;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;">Sign-In Time</div>
+                  <div style="font-size:15px;font-weight:700;color:#065f46;">${loginTime}</div>
+                </div>
+                <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:14px 18px;margin:0 0 20px;">
+                  <p style="margin:0;font-size:13px;color:#92400e;line-height:1.6;">
+                    <strong>⚠️ Was this not you?</strong><br>
+                    If you did not sign in, your account may be at risk. Change your password immediately and contact our support team.
+                  </p>
+                </div>
+                <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;">If this sign-in was made by you, no further action is required. Stay safe!</p>
+              </td></tr>
+              <tr><td align="center" style="background:#f8fafc;padding:16px 24px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;">
+                © ${new Date().getFullYear()} Agrein Digital Marketplace. All rights reserved.
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </body></html>`;
     if (process.env.BREVO_API_KEY) return sendViaBrevoNotification(email, subject, text, html);
     return { delivered: false, reason: 'SMTP_LOGIN_NOT_IMPLEMENTED' };
   },
+
 
   async sendFarmerApprovalEmail(email, name) {
     if (!this.isConfigured()) return { delivered: false, reason: 'NOT_CONFIGURED' };
@@ -292,6 +328,50 @@ const mailer = {
     const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px;color:#0f172a"><h2 style="color:#047857">Farmer verification approved</h2><p>Congratulations ${safeName}.</p><p>Your farm verification has been approved by the Agrein admin team. You can now sign in, access your farmer dashboard, and list your produce.</p><p style="color:#64748b;font-size:13px">Welcome to the verified Agrein farmer community.</p></div>`;
     if (process.env.BREVO_API_KEY) return sendViaBrevoNotification(email, subject, text, html);
     return { delivered: false, reason: 'SMTP_APPROVAL_NOT_IMPLEMENTED' };
+  },
+
+  async sendFarmerSubmissionEmail(email, name) {
+    if (!this.isConfigured()) return { delivered: false, reason: 'NOT_CONFIGURED' };
+    const safeName = name || 'Farmer';
+    const subject = 'Farm Profile Received — Agrein Review Underway';
+    const text = `Hello ${safeName}, we have received your farm profile and KYC details. Our team will review your submission within 2–3 business days. You will receive an email once a decision is made.`;
+    const html = `
+      <!DOCTYPE html><html><head><meta charset="utf-8"></head>
+      <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#f8fafc;padding:32px 16px;">
+          <tr><td align="center">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:480px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,.05);border:1px solid #e2e8f0;">
+              <tr><td align="center" style="background:linear-gradient(135deg,#065f46 0%,#047857 100%);padding:32px 24px;color:#ffffff;">
+                <div style="font-size:36px;margin-bottom:8px;">🌾</div>
+                <h1 style="margin:0;font-size:22px;font-weight:800;">Farm Profile Received</h1>
+                <p style="margin:4px 0 0;font-size:13px;color:#a7f3d0;">Agrein Farmer Verification</p>
+              </td></tr>
+              <tr><td style="padding:32px 28px;">
+                <h2 style="margin:0 0 12px;font-size:17px;font-weight:700;color:#0f172a;">Hello, ${safeName} 👋</h2>
+                <p style="margin:0 0 16px;font-size:14px;line-height:1.7;color:#475569;">
+                  Thank you for submitting your farm profile and KYC documents to <strong>Agrein Marketplace</strong>.
+                  We have received your details and our verification team will review your submission.
+                </p>
+                <div style="background:#f0fdf4;border:1px solid #a7f3d0;border-radius:12px;padding:16px 20px;margin:20px 0;">
+                  <div style="font-size:13px;font-weight:700;color:#065f46;margin-bottom:8px;">⏱ What happens next?</div>
+                  <ul style="margin:0;padding-left:18px;font-size:13px;color:#047857;line-height:1.8;">
+                    <li>Our admin team reviews your NIN, farm details &amp; CAC</li>
+                    <li>Review typically takes <strong>2–3 business days</strong></li>
+                    <li>You will receive an email with the decision</li>
+                    <li>Once approved, your farmer dashboard will be unlocked</li>
+                  </ul>
+                </div>
+                <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;">If you have questions, contact our support team at support@agrein.com.</p>
+              </td></tr>
+              <tr><td align="center" style="background:#f8fafc;padding:16px 24px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;">
+                © ${new Date().getFullYear()} Agrein Digital Marketplace. All rights reserved.
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </body></html>`;
+    if (process.env.BREVO_API_KEY) return sendViaBrevoNotification(email, subject, text, html);
+    return { delivered: false, reason: 'SMTP_SUBMISSION_NOT_IMPLEMENTED' };
   },
 
 };

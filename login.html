@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#059669">
+  <title>Sign In - Agrein</title>
+  <meta name="description" content="Sign in to your Agrein account to manage farm produce, orders, and secure escrow payments.">
+  <script>
+    (function() {
+      const saved = localStorage.getItem('agrein_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body>
+  <div class="bg-scene"></div>
+  <div class="bg-grid"></div>
+  <div class="floating-orb orb-1"></div>
+  <div class="floating-orb orb-2"></div>
+  <div class="floating-orb orb-3"></div>
+
+  <div id="app">
+    <nav class="navbar">
+      <a href="/" class="brand" style="text-decoration:none">
+        <div class="brand-icon"><i class="fa-solid fa-wheat-awn"></i></div>
+        <div>
+          <div class="brand-name">Agrein</div>
+          <div class="brand-tagline">Direct Farm Trade</div>
+        </div>
+      </a>
+      <div style="display:flex;align-items:center;gap:0.85rem">
+        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+          <i class="fa-solid fa-sun light-icon"></i>
+          <i class="fa-solid fa-moon dark-icon"></i>
+        </button>
+        <a href="/" class="back-btn" style="margin-bottom:0;text-decoration:none"><i class="fa-solid fa-arrow-left"></i> Home</a>
+        <a href="/register" class="nav-badge" style="text-decoration:none;cursor:pointer">Sign Up <i class="fa-solid fa-arrow-right" style="font-size:0.7rem;margin-left:0.25rem"></i></a>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <div class="left-panel">
+        <div>
+          <div class="headline">Welcome Back to <span class="hl-green">Agrein</span></div>
+          <p class="subheadline" style="margin-top:1rem;">Access Nigeria's most trusted direct agricultural marketplace. Secure escrow transactions, verified farmers, and guaranteed trade.</p>
+        </div>
+        <div class="stats-row">
+          <div class="stat-box"><div class="stat-number">14.8K+</div><div class="stat-label">Farmers</div></div>
+          <div class="stat-box"><div class="stat-number">36</div><div class="stat-label">States</div></div>
+          <div class="stat-box"><div class="stat-number">100%</div><div class="stat-label">Escrow</div></div>
+        </div>
+        <div class="feature-list">
+          <div class="feature-item"><div class="feature-icon"><i class="fa-solid fa-shield-check"></i></div><div class="feature-text"><strong>Zero Middlemen</strong> - Connect and transact directly with verified farm producers.</div></div>
+          <div class="feature-item"><div class="feature-icon"><i class="fa-solid fa-lock"></i></div><div class="feature-text"><strong>Protected Escrow</strong> - Payments are released only when produce arrives safely.</div></div>
+        </div>
+      </div>
+
+      <div class="auth-card" id="authCard">
+        <div class="card-header">
+          <div class="card-logo" id="cardLogo"><i class="fa-solid fa-right-to-bracket"></i></div>
+          <div class="card-title" id="cardTitle">Sign In</div>
+          <div class="card-subtitle" id="cardSubtitle">Enter your credentials to access your account</div>
+        </div>
+
+        <div class="card-body">
+          <!-- LOGIN VIEW -->
+          <div class="view active" id="viewLogin">
+            <div class="alert alert-error hidden" id="loginError"><i class="fa-solid fa-triangle-exclamation"></i><span id="loginErrorMsg"></span></div>
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-envelope"></i>
+                <input class="form-input" id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-lock"></i>
+                <input class="form-input" id="loginPassword" type="password" placeholder="enter password" autocomplete="current-password">
+                <button type="button" class="password-toggle" onclick="togglePw('loginPassword','eyeLogin')"><i id="eyeLogin" class="fa-solid fa-eye"></i></button>
+              </div>
+            </div>
+            <button class="btn-primary" id="loginBtn" onclick="submitLogin()"><i class="fa-solid fa-right-to-bracket"></i><span>Sign In</span></button>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;font-size:0.78rem">
+              <button class="forgot-link" style="width:auto;margin:0" onclick="showForgot()">Forgot Password?</button>
+              <a href="/register" style="color:var(--emerald-400);text-decoration:none;font-weight:600">Create an account →</a>
+            </div>
+          </div>
+
+          <!-- OTP VIEW -->
+          <div class="view" id="viewOtp">
+            <button class="back-btn" onclick="showView('login')"><i class="fa-solid fa-arrow-left"></i> Back to Sign In</button>
+            <div class="info-box" style="margin-bottom:1rem"><i class="fa-solid fa-envelope-circle-check"></i><span>We sent a 6-digit code to <strong id="otpEmailDisplay" style="color:#fcd34d"></strong>. Check your inbox or spam.</span></div>
+            <div class="alert alert-error hidden" id="otpError"><i class="fa-solid fa-triangle-exclamation"></i><span id="otpErrorMsg"></span></div>
+            <div id="otpSuccessScreen" class="hidden success-screen">
+              <div class="success-icon"><i class="fa-solid fa-circle-check"></i></div>
+              <div style="font-family:Outfit,sans-serif;font-size:1.2rem;font-weight:800;color:#f1f5f9">Email Verified!</div>
+              <div style="font-size:.8rem;color:#94a3b8;margin-top:.5rem">Your account is ready. Redirecting...</div>
+            </div>
+            <div id="otpForm">
+              <label class="form-label" style="text-align:center;display:block">Enter 6-Digit Code</label>
+              <div class="otp-grid">
+                <input class="otp-input" id="otp0" type="text" maxlength="1" oninput="otpInput(event,0)" onkeydown="otpKey(event,0)">
+                <input class="otp-input" id="otp1" type="text" maxlength="1" oninput="otpInput(event,1)" onkeydown="otpKey(event,1)">
+                <input class="otp-input" id="otp2" type="text" maxlength="1" oninput="otpInput(event,2)" onkeydown="otpKey(event,2)">
+                <input class="otp-input" id="otp3" type="text" maxlength="1" oninput="otpInput(event,3)" onkeydown="otpKey(event,3)">
+                <input class="otp-input" id="otp4" type="text" maxlength="1" oninput="otpInput(event,4)" onkeydown="otpKey(event,4)">
+                <input class="otp-input" id="otp5" type="text" maxlength="1" oninput="otpInput(event,5)" onkeydown="otpKey(event,5)">
+              </div>
+              <div class="resend-row">
+                <span style="display:flex;align-items:center;gap:.4rem"><i class="fa-regular fa-clock" style="color:#34d399"></i><span id="timerText">5:00</span></span>
+                <button class="resend-btn" id="resendBtn" onclick="resendOtp()" disabled>Resend Code</button>
+              </div>
+              <button class="btn-primary" id="otpBtn" onclick="submitOtp()"><i class="fa-solid fa-shield-check"></i><span>Verify & Sign In</span></button>
+            </div>
+          </div>
+
+          <!-- FORGOT VIEW -->
+          <div class="view" id="viewForgot">
+            <button class="back-btn" onclick="showView('login')"><i class="fa-solid fa-arrow-left"></i> Back to Sign In</button>
+            <div class="info-box" style="margin-bottom:1rem"><i class="fa-solid fa-circle-info"></i><span>Enter your Agrein email and we will send a 6-digit reset code.</span></div>
+            <div class="alert alert-error hidden" id="forgotError"><i class="fa-solid fa-triangle-exclamation"></i><span id="forgotErrorMsg"></span></div>
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <div class="input-wrap"><i class="input-icon fa-solid fa-envelope"></i><input class="form-input" id="forgotEmail" type="email" placeholder="you@example.com"></div>
+            </div>
+            <button class="btn-primary" id="forgotBtn" onclick="submitForgot()"><i class="fa-solid fa-paper-plane"></i><span>Send Reset Code</span></button>
+          </div>
+
+          <!-- RESET VIEW -->
+          <div class="view" id="viewReset">
+            <div class="info-box" style="margin-bottom:1rem"><i class="fa-solid fa-circle-check" style="color:#34d399"></i><span>Choose a new password for <strong id="resetEmailDisplay" style="color:#fcd34d"></strong>.</span></div>
+            <div class="alert alert-error hidden" id="resetError"><i class="fa-solid fa-triangle-exclamation"></i><span id="resetErrorMsg"></span></div>
+            <div class="form-group">
+              <label class="form-label">6-Digit Reset Code</label>
+              <div class="otp-grid">
+                <input class="otp-input" id="rotp0" type="text" maxlength="1" oninput="rotpInput(event,0)" onkeydown="rotpKey(event,0)">
+                <input class="otp-input" id="rotp1" type="text" maxlength="1" oninput="rotpInput(event,1)" onkeydown="rotpKey(event,1)">
+                <input class="otp-input" id="rotp2" type="text" maxlength="1" oninput="rotpInput(event,2)" onkeydown="rotpKey(event,2)">
+                <input class="otp-input" id="rotp3" type="text" maxlength="1" oninput="rotpInput(event,3)" onkeydown="rotpKey(event,3)">
+                <input class="otp-input" id="rotp4" type="text" maxlength="1" oninput="rotpInput(event,4)" onkeydown="rotpKey(event,4)">
+                <input class="otp-input" id="rotp5" type="text" maxlength="1" oninput="rotpInput(event,5)" onkeydown="rotpKey(event,5)">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">New Password</label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-lock"></i>
+                <input class="form-input" id="newPassword" type="password" placeholder="new password" oninput="checkResetPwStrength(this.value)">
+                <button type="button" class="password-toggle" onclick="togglePw('newPassword','eyeNew')"><i id="eyeNew" class="fa-solid fa-eye"></i></button>
+              </div>
+              <div class="pw-requirements">
+                <div class="pw-req" id="rreq_len"><i class="fa-regular fa-circle"></i> At least 8 characters</div>
+                <div class="pw-req" id="rreq_upper"><i class="fa-regular fa-circle"></i> One uppercase letter</div>
+                <div class="pw-req" id="rreq_lower"><i class="fa-regular fa-circle"></i> One lowercase letter</div>
+                <div class="pw-req" id="rreq_num"><i class="fa-regular fa-circle"></i> One number</div>
+                <div class="pw-req" id="rreq_special"><i class="fa-regular fa-circle"></i> One special character</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm New Password</label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-lock"></i>
+                <input class="form-input" id="newConfirm" type="password" placeholder="confirm new password" oninput="checkResetMatch()">
+                <button type="button" class="password-toggle" onclick="togglePw('newConfirm','eyeNewC')"><i id="eyeNewC" class="fa-solid fa-eye"></i></button>
+              </div>
+              <div class="match-error" id="resetMatchErr"><i class="fa-solid fa-circle-xmark"></i> Passwords do not match.</div>
+            </div>
+            <button class="btn-primary" id="resetBtn" onclick="submitReset()"><i class="fa-solid fa-shield-check"></i><span>Reset Password</span></button>
+          </div>
+
+          <!-- AUTHENTICATED PROFILE VIEW -->
+          <div class="view" id="viewProfile">
+            <div class="profile-card-content">
+              <div class="profile-avatar"><i class="fa-solid fa-user-check"></i></div>
+              <div class="profile-name" id="profName">User Account</div>
+              <div class="profile-role-badge" id="profRoleBadge"><i class="fa-solid fa-shield-check"></i> <span id="profRoleText">Farmer</span></div>
+
+              <div class="profile-meta-list">
+                <div class="profile-meta-item">
+                  <span class="meta-label"><i class="fa-solid fa-envelope"></i> Email</span>
+                  <span class="meta-val" id="profEmail">user@example.com</span>
+                </div>
+                <div class="profile-meta-item">
+                  <span class="meta-label"><i class="fa-solid fa-phone"></i> Phone</span>
+                  <span class="meta-val" id="profPhone">--</span>
+                </div>
+                <div class="profile-meta-item">
+                  <span class="meta-label"><i class="fa-solid fa-id-badge"></i> Account ID</span>
+                  <span class="meta-val" id="profId" style="font-family:monospace;font-size:0.75rem">--</span>
+                </div>
+                <div class="profile-meta-item">
+                  <span class="meta-label"><i class="fa-solid fa-circle-check"></i> Email Status</span>
+                  <span class="meta-badge-status" id="profStatus">Verified</span>
+                </div>
+              </div>
+
+              <div class="profile-actions">
+                <button class="btn-primary" onclick="showChangePw()"><i class="fa-solid fa-key"></i><span>Change Password</span></button>
+                <button class="btn-logout" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i><span>Sign Out</span></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- CHANGE PASSWORD VIEW -->
+          <div class="view" id="viewChangePw">
+            <button class="back-btn" onclick="showView('profile')"><i class="fa-solid fa-arrow-left"></i> Back to Profile</button>
+            <div class="alert alert-error hidden" id="changePwError"><i class="fa-solid fa-triangle-exclamation"></i><span id="changePwErrorMsg"></span></div>
+            <div class="form-group">
+              <label class="form-label">Current Password</label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-lock"></i>
+                <input class="form-input" id="currentPw" type="password" placeholder="current password">
+                <button type="button" class="password-toggle" onclick="togglePw('currentPw','eyeCurrentPw')"><i id="eyeCurrentPw" class="fa-solid fa-eye"></i></button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">New Password</label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-lock"></i>
+                <input class="form-input" id="changeNewPw" type="password" placeholder="new password" oninput="checkChangePwStrength(this.value)">
+                <button type="button" class="password-toggle" onclick="togglePw('changeNewPw','eyeChangePw')"><i id="eyeChangePw" class="fa-solid fa-eye"></i></button>
+              </div>
+              <div class="pw-requirements">
+                <div class="pw-req" id="creq_len"><i class="fa-regular fa-circle"></i> At least 8 characters</div>
+                <div class="pw-req" id="creq_upper"><i class="fa-regular fa-circle"></i> One uppercase letter</div>
+                <div class="pw-req" id="creq_lower"><i class="fa-regular fa-circle"></i> One lowercase letter</div>
+                <div class="pw-req" id="creq_num"><i class="fa-regular fa-circle"></i> One number</div>
+                <div class="pw-req" id="creq_special"><i class="fa-regular fa-circle"></i> One special character</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm New Password</label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-lock"></i>
+                <input class="form-input" id="changeConfirmPw" type="password" placeholder="confirm new password" oninput="checkChangePwMatch()">
+                <button type="button" class="password-toggle" onclick="togglePw('changeConfirmPw','eyeChangeConf')"><i id="eyeChangeConf" class="fa-solid fa-eye"></i></button>
+              </div>
+              <div class="match-error" id="changeMatchErr"><i class="fa-solid fa-circle-xmark"></i> Passwords do not match.</div>
+            </div>
+            <button class="btn-primary" id="changePwBtn" onclick="submitChangePw()"><i class="fa-solid fa-shield-check"></i><span>Update Password</span></button>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <p class="terms-note">Need an account? <a href="/register" style="font-weight:700">Create one free</a> &bull; <a href="/privacy-policy.html">Privacy</a></p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/auth.js"></script>
+</body>
+</html>
