@@ -1,4 +1,4 @@
-﻿// Agrein Farmer Onboarding JS
+// Agrein Farmer Onboarding JS
 const API = '/api';
 let currentStep = 1;
 let selectedGender = 'male';
@@ -359,13 +359,40 @@ function initNavSession() {
 
 window.addEventListener('DOMContentLoaded', function() {
   populateStates();
-  initNavSession();
   updateProgress(1);
 
-  // Guard: if not logged in as farmer, redirect
+  // Guard: if not logged in, redirect to login
   const token = localStorage.getItem('agrein_token');
   if (!token) {
     window.location.href = '/login';
     return;
+  }
+
+  // Decode JWT payload (no signature verification — display only)
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // Accept FARMER (server role for sellers) and SELLER (UI alias)
+    const role = (payload.role || '').toUpperCase();
+    if (role && role !== 'FARMER' && role !== 'SELLER') {
+      // Buyers and admins don't belong here
+      window.location.href = '/';
+      return;
+    }
+  } catch (_) {
+    // Malformed token — let server validate on submit
+  }
+
+  initNavSession();
+
+  // Pre-fill phone number from stored profile if available
+  const userRaw = localStorage.getItem('agrein_user');
+  if (userRaw) {
+    try {
+      const u = JSON.parse(userRaw);
+      if (u.phone_number) {
+        const phoneEl = document.getElementById('phoneNumber');
+        if (phoneEl) phoneEl.value = u.phone_number;
+      }
+    } catch (_) {}
   }
 });

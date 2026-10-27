@@ -3,7 +3,7 @@ const API = '/api';
 let state = {
   tab: 'login',
   view: 'login',
-  role: 'FARMER',
+  role: 'BUYER',  // BUYER is the pre-selected role card in register.html
   otpEmail: '',
   otpTimerInterval: null,
   otpSeconds: 300,
@@ -316,6 +316,9 @@ async function submitRegister() {
   if (password !== confirm) return showErr('registerError', 'registerErrorMsg', 'Passwords do not match.');
   setLoading('registerBtn', true, '<i class="fa-solid fa-user-plus"></i><span>Create Free Account</span>');
   try {
+    // 'SELLER' on the UI maps to 'FARMER' in the server's role schema.
+    // Sellers go through the same KYC / farmer-verification pipeline.
+    const serverRole = state.role === 'SELLER' ? 'FARMER' : (state.role || 'BUYER');
     const res = await fetch(API + '/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -325,12 +328,14 @@ async function submitRegister() {
         fullName: `${first} ${last}`.trim(),
         email,
         password,
-        role: state.role || 'BUYER'
+        role: serverRole
       })
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.message || 'Registration failed.');
     state.otpEmail = email;
+    // Preserve the UI-facing role (SELLER) so the success message makes sense,
+    // but also track the server role (FARMER) for routing after OTP.
     state.registrationRole = (data.role || state.role || 'BUYER').toUpperCase();
     const display = document.getElementById('otpEmailDisplay');
     if (display) display.textContent = email;
@@ -383,8 +388,9 @@ async function submitOtp() {
     const role = (data.user && data.user.role) || state.registrationRole || '';
 
     setTimeout(function() {
-      if (role === 'FARMER') {
-        // Farmers go to the onboarding page to fill personal + farm details
+      // FARMER = verified seller in server schema; SELLER = UI alias.
+      // Both roles must complete KYC before accessing the seller dashboard.
+      if (role === 'FARMER' || role === 'SELLER') {
         window.location.href = '/farmer-onboarding';
       } else {
         displayProfile(data.user || { email: state.otpEmail });
