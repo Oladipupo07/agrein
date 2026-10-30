@@ -7,6 +7,8 @@ const { authenticateToken, authenticateFromHeader, requireRole } = require('../m
 
 // Controllers
 const authController = require('../controllers/authController');
+const postController = require('../controllers/postController');
+const kycController = require('../controllers/kycController');
 
 // ===== AUTHENTICATION & OTP ROUTES =====
 router.post('/auth/register', authController.register);
@@ -23,6 +25,19 @@ router.post('/auth/cancel-deletion', authenticateFromHeader, authController.canc
 
 // ===== FARMER ONBOARDING =====
 router.post('/farmer/onboarding', authController.submitFarmerProfile);
+
+// ===== INTERSWITCH IDENTITY & KYC VERIFICATION (NIN & CAC) =====
+router.get('/kyc/status', kycController.getStatus);
+router.post('/kyc/verify-nin', kycController.verifyNin);
+router.post('/kyc/verify-cac', kycController.verifyCac);
+
+// ===== POSTS, COMMENTS & REVIEWS =====
+router.get('/posts', postController.getAllPosts);
+router.post('/posts', authenticateToken, postController.createPost);
+router.post('/posts/:id/comments', authenticateToken, postController.addComment);
+router.post('/posts/:id/reviews', authenticateToken, postController.addReview);
+router.post('/posts/:id/like', authenticateToken, postController.toggleLike);
+router.delete('/posts/:id', authenticateToken, postController.deletePost);
 
 
 // ===== ADMIN USER MANAGEMENT =====

@@ -4,6 +4,10 @@ let currentStep = 1;
 let selectedGender = 'male';
 let selectedFarmType = 'Crop';
 let cropTags = [];
+let iswNinVerified = false;
+let iswNinData = null;
+let iswCacVerified = false;
+let iswCacData = null;
 
 // Nigerian States and LGAs data
 const statesLgas = {
@@ -177,7 +181,9 @@ function hideErr(stepNum) {
 function validateStep(step) {
   hideErr(step);
   if (step === 1) {
+    const fullName = (document.getElementById('fullName') || {}).value?.trim();
     const phone = document.getElementById('phoneNumber').value.trim();
+    if (!fullName) { showErr(1, 'Full legal detail name is required.'); return false; }
     const dob = document.getElementById('dateOfBirth').value;
     const addr = document.getElementById('homeAddress').value.trim();
     const state = document.getElementById('stateSelect').value;
@@ -196,7 +202,9 @@ function validateStep(step) {
     const farmName = document.getElementById('farmName').value.trim();
     const farmState = document.getElementById('farmStateSelect').value;
     const farmLga = document.getElementById('farmLgaSelect').value;
+    const farmLocation = (document.getElementById('farmLocation') || {}).value?.trim();
     const yrs = document.getElementById('yearsExp').value;
+    if (!farmLocation) { showErr(3, 'Farm / Business location address is required.'); return false; }
     if (!farmName) { showErr(3, 'Farm name is required.'); return false; }
     if (!farmState) { showErr(3, 'Please select your farm state.'); return false; }
     if (!farmLga) { showErr(3, 'Please select your farm LGA.'); return false; }
@@ -222,6 +230,7 @@ function prevStep(step) {
 function buildReview() {
   const r = {
     personal: {
+      'Legal Name': document.getElementById('fullName')?.value || '-',
       'Phone': document.getElementById('phoneNumber').value,
       'Date of Birth': document.getElementById('dateOfBirth').value,
       'Gender': selectedGender.charAt(0).toUpperCase() + selectedGender.slice(1),
@@ -230,13 +239,14 @@ function buildReview() {
       'LGA': document.getElementById('lgaSelect').value
     },
     identity: {
-      'NIN': maskNin(document.getElementById('ninNumber').value),
+      'NIN': maskNin(document.getElementById('ninNumber').value) + (iswNinVerified ? ' ✓ [Interswitch Verified]' : ' [Pending Check]'),
       'BVN': document.getElementById('bvnNumber').value ? maskNin(document.getElementById('bvnNumber').value) : 'Not provided'
     },
     farm: {
       'Farm Name': document.getElementById('farmName').value,
       'Farm State': document.getElementById('farmStateSelect').value,
       'Farm LGA': document.getElementById('farmLgaSelect').value,
+      'Business Location': (document.getElementById('farmLocation')?.value || '-'),
       'Farm Size': (document.getElementById('farmSize').value || 'Not specified') + (document.getElementById('farmSize').value ? ' acres' : ''),
       'Farm Type': selectedFarmType,
       'Years of Experience': document.getElementById('yearsExp').value + ' yrs',
@@ -244,7 +254,7 @@ function buildReview() {
       'Plans to Sell': document.getElementById('intendedProducts').value || 'Not specified'
     },
     business: {
-      'CAC Number': document.getElementById('cacNumber').value || 'Not registered'
+      'CAC Number': (document.getElementById('cacNumber').value ? (document.getElementById('cacNumber').value + (iswCacVerified ? ' ✓ [Interswitch Verified]' : '')) : 'Not registered')
     }
   };
 
@@ -285,6 +295,7 @@ async function submitOnboarding() {
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch" style="animation:spin .8s linear infinite"></i> Submitting...'; }
 
   const payload = {
+    full_name: (document.getElementById('fullName') || {}).value?.trim(),
     phone_number: document.getElementById('phoneNumber').value.trim(),
     date_of_birth: document.getElementById('dateOfBirth').value,
     gender: selectedGender,
@@ -296,6 +307,7 @@ async function submitOnboarding() {
     farm_name: document.getElementById('farmName').value.trim(),
     farm_state: document.getElementById('farmStateSelect').value,
     farm_lga: document.getElementById('farmLgaSelect').value,
+    farm_location: (document.getElementById('farmLocation') || {}).value?.trim(),
     farm_size_acres: parseFloat(document.getElementById('farmSize').value) || 0,
     farm_type: selectedFarmType,
     crops_produced: cropTags,
@@ -315,6 +327,22 @@ async function submitOnboarding() {
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.message || 'Submission failed.');
+
+    try {
+      const stored = JSON.parse(localStorage.getItem('agrein_user') || '{}');
+      stored.full_name = payload.full_name || stored.full_name;
+      stored.phone_number = payload.phone_number || stored.phone_number;
+      stored.state = payload.state || stored.state;
+      stored.lga = payload.lga || stored.lga;
+      stored.address = payload.address || stored.address;
+      stored.farm_name = payload.farm_name || stored.farm_name;
+      stored.farm_location = payload.farm_location || stored.farm_location;
+      stored.farm_state = payload.farm_state || stored.farm_state;
+      stored.farm_lga = payload.farm_lga || stored.farm_lga;
+      stored.cac_number = payload.cac_number || stored.cac_number;
+      stored.verification_status = 'PENDING_REVIEW';
+      localStorage.setItem('agrein_user', JSON.stringify(stored));
+    } catch (_) {}
 
     // Show success screen
     document.querySelectorAll('.step-panel').forEach(function(p) { p.classList.remove('active'); });
@@ -342,6 +370,15 @@ async function submitOnboarding() {
 
 function initNavSession() {
   const userRaw = localStorage.getItem('agrein_user');
+  if (userRaw) {
+    try {
+      const u = JSON.parse(userRaw);
+      const nameEl = document.getElementById('fullName');
+      if (nameEl && !nameEl.value && u.full_name) {
+        nameEl.value = u.full_name;
+      }
+    } catch (_) {}
+  }
   const navEl = document.getElementById('navSession');
   if (!navEl) return;
   if (!userRaw) {
@@ -396,3 +433,139 @@ window.addEventListener('DOMContentLoaded', function() {
     } catch (_) {}
   }
 });
+
+
+async function verifyNinWithInterswitch() {
+  const nin = (document.getElementById('ninNumber')?.value || '').trim();
+  const fullName = (document.getElementById('fullName')?.value || '').trim();
+  const dob = (document.getElementById('dateOfBirth')?.value || '').trim();
+  const phone = (document.getElementById('phoneNumber')?.value || '').trim();
+  const fb = document.getElementById('ninIswFeedback');
+  const btn = document.getElementById('btnVerifyNin');
+
+  if (!nin || nin.length !== 11) {
+    if (fb) {
+      fb.style.display = 'block';
+      fb.innerHTML = '<div style="background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);color:var(--rose-400);padding:0.6rem 0.85rem;border-radius:8px;font-size:0.8rem"><i class="fa-solid fa-triangle-exclamation"></i> Please enter a valid 11-digit NIN first.</div>';
+    }
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Checking Interswitch...';
+  }
+
+  try {
+    const res = await fetch('/api/kyc/verify-nin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nin, fullName, dateOfBirth: dob, phone })
+    });
+    const result = await res.json();
+    if (!res.ok || !result.verified) {
+      throw new Error(result.message || 'Interswitch NIN verification failed.');
+    }
+
+    iswNinVerified = true;
+    iswNinData = result.data;
+
+    if (fb) {
+      fb.style.display = 'block';
+      fb.innerHTML = `
+        <div style="background:rgba(16,185,129,0.12);border:1px solid rgba(52,211,153,0.4);border-radius:8px;padding:0.75rem 1rem;font-size:0.82rem;color:var(--text-main)">
+          <div style="display:flex;align-items:center;gap:0.4rem;font-weight:700;color:var(--emerald-400)">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>Verified via Interswitch NIMC Identity Gateway</span>
+          </div>
+          <div style="margin-top:0.35rem;font-size:0.78rem;color:var(--text-muted);line-height:1.4">
+            <strong>Matched Record:</strong> ${escapeHtml(iswNinData.details?.fullName || fullName || 'Identity Confirmed')}<br>
+            <strong>Gateway Ref:</strong> <span style="font-family:monospace;color:var(--sky-400)">${escapeHtml(iswNinData.reference)}</span> • Status: <strong>ACTIVE</strong>
+          </div>
+        </div>
+      `;
+    }
+  } catch (err) {
+    if (fb) {
+      fb.style.display = 'block';
+      fb.innerHTML = `<div style="background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);color:var(--rose-400);padding:0.6rem 0.85rem;border-radius:8px;font-size:0.8rem"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(err.message)}</div>`;
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-shield-halved" style="color:var(--emerald-400)"></i> Verify with Interswitch';
+    }
+  }
+}
+
+async function verifyCacWithInterswitch() {
+  const cac = (document.getElementById('cacNumber')?.value || '').trim();
+  const farmName = (document.getElementById('farmName')?.value || '').trim();
+  const fb = document.getElementById('cacIswFeedback');
+  const btn = document.getElementById('btnVerifyCac');
+
+  if (!cac || cac.length < 5) {
+    if (fb) {
+      fb.style.display = 'block';
+      fb.innerHTML = '<div style="background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);color:var(--rose-400);padding:0.6rem 0.85rem;border-radius:8px;font-size:0.8rem"><i class="fa-solid fa-triangle-exclamation"></i> Please enter a valid CAC registration number (e.g. RC123456 or BN123456).</div>';
+    }
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Checking CAC Registry...';
+  }
+
+  try {
+    const res = await fetch('/api/kyc/verify-cac', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cacNumber: cac, companyName: farmName })
+    });
+    const result = await res.json();
+    if (!res.ok || !result.verified) {
+      throw new Error(result.message || 'Interswitch CAC verification failed.');
+    }
+
+    iswCacVerified = true;
+    iswCacData = result.data;
+
+    if (fb) {
+      fb.style.display = 'block';
+      fb.innerHTML = `
+        <div style="background:rgba(16,185,129,0.12);border:1px solid rgba(52,211,153,0.4);border-radius:8px;padding:0.75rem 1rem;font-size:0.82rem;color:var(--text-main)">
+          <div style="display:flex;align-items:center;gap:0.4rem;font-weight:700;color:var(--emerald-400)">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>Verified via Interswitch Corporate Affairs Commission Gateway</span>
+          </div>
+          <div style="margin-top:0.35rem;font-size:0.78rem;color:var(--text-muted);line-height:1.4">
+            <strong>Registered Business:</strong> ${escapeHtml(iswCacData.companyName || farmName)}<br>
+            <strong>Registration Number:</strong> ${escapeHtml(iswCacData.cacNumber)} • Status: <strong>ACTIVE</strong><br>
+            <strong>Gateway Ref:</strong> <span style="font-family:monospace;color:var(--sky-400)">${escapeHtml(iswCacData.reference)}</span>
+          </div>
+        </div>
+      `;
+    }
+  } catch (err) {
+    if (fb) {
+      fb.style.display = 'block';
+      fb.innerHTML = `<div style="background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);color:var(--rose-400);padding:0.6rem 0.85rem;border-radius:8px;font-size:0.8rem"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(err.message)}</div>`;
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-building-shield" style="color:var(--emerald-400)"></i> Verify CAC with Interswitch';
+    }
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}

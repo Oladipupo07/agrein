@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#059669">
+  <title>Admin Operations Console - Agrein Marketplace</title>
+  <meta name="description" content="Agrein Administrative Console — Farmer verification approvals, user role moderation, and escrow oversight.">
+  <script>(function(){var s=localStorage.getItem("agrein_theme")||"dark";document.documentElement.setAttribute("data-theme",s);})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/farmer-onboarding.css">
+  <link rel="stylesheet" href="/dashboard.css">
+  <style>
+    .admin-card-dossier {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-light);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      transition: border-color 0.2s;
+    }
+    .admin-card-dossier:hover {
+      border-color: rgba(5,150,105,0.4);
+    }
+    .dossier-header-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="dash-bg-scene"></div>
+<div class="dash-grid"></div>
+
+<div id="dashApp">
+  <!-- Navbar -->
+  <nav class="dash-nav">
+    <a href="/" class="dash-brand">
+      <div class="dash-brand-icon" style="background:linear-gradient(135deg, #d97706, #f59e0b)"><i class="fa-solid fa-shield-halved"></i></div>
+      <div>
+        <div class="dash-brand-title">Agrein</div>
+        <div class="dash-brand-subtitle">Administrator Console</div>
+      </div>
+    </a>
+
+    <div class="dash-nav-right">
+      <button class="nav-icon-btn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+        <i class="fa-solid fa-sun light-icon"></i>
+        <i class="fa-solid fa-moon dark-icon"></i>
+      </button>
+
+      <div class="user-badge-pill">
+        <i class="fa-solid fa-crown" style="color:var(--amber-400)"></i>
+        <span id="navAdminName">Administrator</span>
+        <span class="role-tag admin">ADMIN</span>
+      </div>
+
+      <button onclick="logout()" class="btn-signout">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        <span>Sign Out</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="dash-container">
+    <!-- Welcome Strip -->
+    <div class="dash-hero">
+      <div>
+        <h1 class="dash-welcome-title" id="adminWelcomeTitle">System &amp; Verification Desk</h1>
+        <div class="dash-welcome-sub">
+          <span>Platform Moderation &amp; Accreditation Engine</span>
+          <span>•</span>
+          <span class="location-chip" style="color:var(--amber-400)"><i class="fa-solid fa-shield"></i> Superuser Access Active</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:0.75rem">
+        <button onclick="refreshData()" class="btn-secondary-action">
+          <i class="fa-solid fa-arrows-rotate"></i>
+          <span>Refresh Records</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Metrics Grid -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div>
+          <div class="metric-val" id="metricTotalUsers">0</div>
+          <div class="metric-title">Total Registered Accounts</div>
+        </div>
+        <div class="metric-icon-wrap emerald"><i class="fa-solid fa-users"></i></div>
+      </div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-val" id="metricPendingFarmers">0</div>
+          <div class="metric-title">Pending Farmer Approvals</div>
+        </div>
+        <div class="metric-icon-wrap amber"><i class="fa-solid fa-user-clock"></i></div>
+      </div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-val" id="metricTotalBuyers">0</div>
+          <div class="metric-title">Verified Buyers</div>
+        </div>
+        <div class="metric-icon-wrap sky"><i class="fa-solid fa-cart-shopping"></i></div>
+      </div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-val" id="metricTotalFarmers">0</div>
+          <div class="metric-title">Total Farmers Listed</div>
+        </div>
+        <div class="metric-icon-wrap purple"><i class="fa-solid fa-tractor"></i></div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="dash-tabs-bar">
+      <button class="dash-tab-btn active" id="btnTabVerifications" onclick="switchAdminTab('tabVerifications')">
+        <i class="fa-solid fa-id-card-clip"></i>
+        <span>Farmer Verification Queue</span>
+        <span class="dash-tab-badge" id="pendingBadge">0</span>
+      </button>
+      <button class="dash-tab-btn" id="btnTabUsers" onclick="switchAdminTab('tabUsers')">
+        <i class="fa-solid fa-users-gear"></i>
+        <span>User Directory &amp; Roles</span>
+      </button>
+      <button class="dash-tab-btn" id="btnTabSystem" onclick="switchAdminTab('tabSystem')">
+        <i class="fa-solid fa-server"></i>
+        <span>System Diagnostics</span>
+      </button>
+      <button class="dash-tab-btn" id="btnTabPosts" onclick="switchAdminTab('tabPosts')">
+        <i class="fa-solid fa-bullhorn"></i>
+        <span>Post Moderation</span>
+        <span class="dash-tab-badge" id="adminPostsBadge">0</span>
+      </button>
+    </div>
+
+    <!-- TAB 1: Farmer Verifications Desk -->
+    <section id="tabVerifications" class="admin-tab-section">
+      <div class="content-card">
+        <div class="content-card-header">
+          <div>
+            <div class="content-card-title"><i class="fa-solid fa-stamp" style="color:var(--amber-400)"></i> Farmer Onboarding Submissions</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">Review detail legal names, NIN, CAC registration, and farm business locations before approving.</p>
+          </div>
+          <div class="input-wrap" style="width:260px">
+            <i class="input-icon fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="verifSearch" class="form-input" style="padding:0.45rem 0.75rem 0.45rem 2.2rem;font-size:0.82rem" placeholder="Filter submissions..." oninput="filterVerifications()">
+          </div>
+        </div>
+
+        <div id="verificationsListContainer">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: User Directory -->
+    <section id="tabUsers" class="admin-tab-section" style="display:none">
+      <div class="content-card">
+        <div class="content-card-header">
+          <div>
+            <div class="content-card-title"><i class="fa-solid fa-users" style="color:var(--sky-400)"></i> Platform User Directory</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">All registered buyers, farmers, and administrative accounts.</p>
+          </div>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+            <select id="userRoleFilter" class="form-input form-select" style="width:140px;padding:0.45rem 0.75rem;font-size:0.82rem" onchange="filterUsersList()">
+              <option value="ALL">All Roles</option>
+              <option value="BUYER">Buyers</option>
+              <option value="FARMER">Farmers</option>
+              <option value="ADMIN">Admins</option>
+            </select>
+            <div class="input-wrap" style="width:240px">
+              <i class="input-icon fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="userDirectorySearch" class="form-input" style="padding:0.45rem 0.75rem 0.45rem 2.2rem;font-size:0.82rem" placeholder="Search users by name, email..." oninput="filterUsersList()">
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-table-wrap">
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th>Name / Email</th>
+                <th>Role</th>
+                <th>Phone Number</th>
+                <th>Location (State / LGA)</th>
+                <th>Verification</th>
+                <th>Status</th>
+                <th>Moderation</th>
+              </tr>
+            </thead>
+            <tbody id="userDirectoryBody">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: System Diagnostics -->
+    <section id="tabSystem" class="admin-tab-section" style="display:none">
+      <div class="content-card" style="max-width:700px">
+        <div class="content-card-title" style="margin-bottom:1.25rem"><i class="fa-solid fa-heart-pulse" style="color:var(--emerald-400)"></i> Health &amp; Environment Diagnostics</div>
+        
+        <div class="dossier-grid">
+          <div class="dossier-item">
+            <div class="dossier-label">Agrein API Gateway</div>
+            <div class="dossier-val" style="color:var(--emerald-400)"><i class="fa-solid fa-circle-check"></i> Online (v2.0.0)</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Supabase Database</div>
+            <div class="dossier-val" style="color:var(--emerald-400)"><i class="fa-solid fa-database"></i> Connected</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Brevo HTTPS Mailer</div>
+            <div class="dossier-val" style="color:var(--emerald-400)"><i class="fa-solid fa-paper-plane"></i> Port 443 Ready</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">RBAC Security Layer</div>
+            <div class="dossier-val" style="color:var(--emerald-400)"><i class="fa-solid fa-lock"></i> Strict Mode</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Community Posts Moderation -->
+    <section id="tabPosts" class="admin-tab-section" style="display:none">
+      <div class="content-card">
+        <div class="content-card-header">
+          <div>
+            <div class="content-card-title"><i class="fa-solid fa-shield-halved" style="color:var(--emerald-400)"></i> Community Harvest Posts &amp; Content Moderation</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">Review all farmer posts, buyer comments, and star ratings across the marketplace. Remove flagged or non-compliant posts.</p>
+          </div>
+          <button onclick="loadAdminPosts()" class="btn-secondary-action" style="font-size:0.8rem">
+            <i class="fa-solid fa-arrows-rotate"></i> Refresh Posts
+          </button>
+        </div>
+
+        <div id="adminPostsContainer" class="posts-feed-list" style="margin-top:1rem">
+          <!-- Rendered by JS -->
+          <div style="text-align:center;padding:2rem;color:var(--text-muted)">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size:1.5rem;color:var(--emerald-400)"></i>
+            <p style="margin-top:0.5rem">Loading community posts...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+let allUsers = [];
+let adminUser = null;
+
+async function initAdminDashboard() {
+  const token = localStorage.getItem('agrein_token');
+  if (!token) {
+    window.location.href = '/login';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.user) {
+      adminUser = data.user;
+      const role = (adminUser.role || '').toUpperCase();
+      if (role !== 'ADMIN') {
+        alert('Access denied: Administrator privileges required.');
+        window.location.href = role === 'FARMER' ? '/farmer-dashboard' : '/buyer-dashboard';
+        return;
+      }
+      document.getElementById('navAdminName').textContent = adminUser.full_name || adminUser.email;
+      document.getElementById('adminWelcomeTitle').textContent = 'Welcome, ' + (adminUser.full_name?.split(' ')[0] || 'Admin');
+    } else {
+      window.location.href = '/login';
+      return;
+    }
+  } catch(e) {
+    window.location.href = '/login';
+    return;
+  }
+
+  await refreshData();
+  loadAdminPosts();
+}
+
+async function refreshData() {
+  const token = localStorage.getItem('agrein_token');
+  try {
+    const res = await fetch('/api/admin/users', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.users) {
+      allUsers = data.users;
+      updateStats(data.counts || {});
+      renderVerificationsQueue();
+      renderUsersTable(allUsers);
+    }
+  } catch(err) {
+    console.error('Error fetching admin users:', err);
+  }
+}
+
+function updateStats(counts) {
+  document.getElementById('metricTotalUsers').textContent = counts.total || allUsers.length;
+  document.getElementById('metricTotalFarmers').textContent = counts.farmers || allUsers.filter(u => u.role === 'FARMER').length;
+  document.getElementById('metricTotalBuyers').textContent = counts.buyers || allUsers.filter(u => u.role === 'BUYER').length;
+
+  const pending = allUsers.filter(u => u.role === 'FARMER' && (u.verification_status === 'PENDING_REVIEW' || !u.verification_status || u.verification_status === 'PENDING')).length;
+  document.getElementById('metricPendingFarmers').textContent = pending;
+  document.getElementById('pendingBadge').textContent = pending;
+}
+
+function switchAdminTab(tabId) {
+  ['tabVerifications', 'tabUsers', 'tabSystem', 'tabPosts'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === tabId ? 'block' : 'none';
+  });
+  document.querySelectorAll('.dash-tab-btn').forEach(b => b.classList.remove('active'));
+  if (tabId === 'tabVerifications') document.getElementById('btnTabVerifications').classList.add('active');
+  if (tabId === 'tabUsers') document.getElementById('btnTabUsers').classList.add('active');
+  if (tabId === 'tabSystem') document.getElementById('btnTabSystem').classList.add('active');
+  if (tabId === 'tabPosts') {
+    document.getElementById('btnTabPosts').classList.add('active');
+    loadAdminPosts();
+  }
+}
+
+async function loadAdminPosts() {
+  const container = document.getElementById('adminPostsContainer');
+  const token = localStorage.getItem('agrein_token');
+  try {
+    const res = await fetch('/api/posts', {
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Failed to load posts');
+
+    const posts = data.posts || [];
+    const badge = document.getElementById('adminPostsBadge');
+    if (badge) badge.textContent = posts.length;
+
+    if (!container) return;
+
+    if (posts.length === 0) {
+      container.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-muted)">No active community posts found.</div>`;
+      return;
+    }
+
+    container.innerHTML = posts.map(p => `
+      <div class="post-feed-card" id="admin-post-${p.id}">
+        <div class="post-top-meta">
+          <div class="post-author-box">
+            <div class="post-avatar-circle">${p.emoji || '🌾'}</div>
+            <div>
+              <div class="post-seller-name">
+                <span>${escapeHtml(p.seller_name || 'Farmer')}</span>
+                ${p.seller_verified ? `<span class="verified-seller-badge"><i class="fa-solid fa-circle-check"></i> Verified</span>` : ''}
+                <span style="font-size:0.75rem;color:var(--text-dim)">(ID: ${escapeHtml(p.id)})</span>
+              </div>
+              <div class="post-farm-meta">
+                <span><i class="fa-solid fa-store"></i> ${escapeHtml(p.farm_name || 'Farm')}</span>
+                <span>•</span>
+                <span><i class="fa-solid fa-location-dot"></i> ${escapeHtml(p.seller_location || '--')}</span>
+                <span>•</span>
+                <span><i class="fa-solid fa-clock"></i> ${new Date(p.created_at).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+          <button class="btn-danger-action" onclick="adminDeletePost('${p.id}')">
+            <i class="fa-solid fa-trash"></i> Remove Post
+          </button>
+        </div>
+
+        <div class="post-title-text">${escapeHtml(p.title)}</div>
+        <div class="post-content-body">${escapeHtml(p.content)}</div>
+
+        <div class="post-commercial-chips">
+          ${p.category ? `<div class="comm-chip"><i class="fa-solid fa-tag"></i> ${escapeHtml(p.category)}</div>` : ''}
+          ${p.crop_tag ? `<div class="comm-chip" style="color:var(--emerald-400)"><i class="fa-solid fa-seedling"></i> ${escapeHtml(p.crop_tag)}</div>` : ''}
+          ${p.price_info ? `<div class="comm-chip price-highlight"><strong>${escapeHtml(p.price_info)}</strong></div>` : ''}
+          <div class="comm-chip"><i class="fa-solid fa-heart" style="color:var(--rose-400)"></i> ${p.likes_count || 0} Likes</div>
+          <div class="comm-chip"><i class="fa-solid fa-comments" style="color:var(--sky-400)"></i> ${(p.comments || []).length} Comments</div>
+          <div class="comm-chip"><i class="fa-solid fa-star" style="color:var(--amber-400)"></i> Rating: ${p.avg_rating ? p.avg_rating.toFixed(1) : '5.0'} (${(p.reviews || []).length} Reviews)</div>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    if (container) {
+      container.innerHTML = `<div style="color:var(--rose-400);padding:1rem;text-align:center">Error loading posts: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+}
+
+async function adminDeletePost(postId) {
+  if (!confirm('ADMIN ACTION: Permanently remove this community post?')) return;
+  const token = localStorage.getItem('agrein_token');
+  try {
+    const res = await fetch('/api/posts/' + postId, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to delete');
+    alert('✓ Post removed by administrator.');
+    loadAdminPosts();
+  } catch(err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderVerificationsQueue(searchQuery = '') {
+  const container = document.getElementById('verificationsListContainer');
+  if (!container) return;
+
+  let farmers = allUsers.filter(u => u.role === 'FARMER');
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    farmers = farmers.filter(u =>
+      (u.full_name && u.full_name.toLowerCase().includes(q)) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.farm_name && u.farm_name.toLowerCase().includes(q)) ||
+      (u.state && u.state.toLowerCase().includes(q))
+    );
+  }
+
+  if (!farmers.length) {
+    container.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-muted)"><i class="fa-solid fa-clipboard-check" style="font-size:2rem;margin-bottom:0.75rem;color:var(--emerald-400)"></i><p>No farmer verification dossiers awaiting review.</p></div>';
+    return;
+  }
+
+  container.innerHTML = farmers.map(f => {
+    const vStatus = (f.verification_status || 'PENDING_REVIEW').toUpperCase();
+    const statusClass = vStatus.toLowerCase();
+    return `
+      <div class="admin-card-dossier">
+        <div class="dossier-header-strip">
+          <div>
+            <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1.15rem;color:var(--text-main)">
+              ${f.farm_name || 'Farm Business'} 
+              <span style="font-weight:400;font-size:0.85rem;color:var(--text-muted)">• Owner: ${f.full_name || f.email}</span>
+            </div>
+            <div style="font-size:0.78rem;color:var(--text-dim);margin-top:0.2rem">
+              <i class="fa-solid fa-envelope"></i> ${f.email} &bull; <i class="fa-solid fa-phone"></i> ${f.phone_number || 'No phone'}
+            </div>
+          </div>
+          <div>
+            <span class="status-pill ${statusClass}">${vStatus.replace(/_/g, ' ')}</span>
+          </div>
+        </div>
+
+        <div class="dossier-grid">
+          <div class="dossier-item">
+            <div class="dossier-label">Detail Legal Name</div>
+            <div class="dossier-val">${f.full_name || '--'}</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Phone Number</div>
+            <div class="dossier-val">${f.phone_number || '--'}</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Personal State &amp; LGA</div>
+            <div class="dossier-val">${(f.state || '--') + ' • ' + (f.lga || '--')}</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Residential Address</div>
+            <div class="dossier-val">${f.address || '--'}</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">National Identity Number (NIN)</div>
+            <div class="dossier-val mono">${f.nin_number || 'Submitted'} ${f.nin_number ? '<span class="status-pill approved" style="font-size:0.65rem;padding:0.15rem 0.4rem;display:inline-flex;align-items:center;gap:0.25rem"><i class="fa-solid fa-circle-check"></i> Interswitch NIMC</span>' : ''}</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Business / Farm Name</div>
+            <div class="dossier-val">${f.farm_name || '--'}</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">CAC Registration</div>
+            <div class="dossier-val mono">${f.cac_number || 'Not Registered'} ${f.cac_number ? '<span class="status-pill approved" style="font-size:0.65rem;padding:0.15rem 0.4rem;display:inline-flex;align-items:center;gap:0.25rem"><i class="fa-solid fa-building-circle-check"></i> Interswitch CAC</span>' : ''}</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Location of Business (State &amp; LGA)</div>
+            <div class="dossier-val">${(f.farm_state || f.state || '--') + ' • ' + (f.farm_lga || f.lga || '--')}</div>
+          </div>
+          <div class="dossier-item" style="grid-column: 1 / -1">
+            <div class="dossier-label">Physical Farm / Business Address</div>
+            <div class="dossier-val">${f.farm_location || f.address || 'Location provided'}</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1rem;flex-wrap:wrap">
+          <button class="btn-danger-action" onclick="updateFarmerStatus('${f.email}', 'REJECTED')">
+            <i class="fa-solid fa-ban"></i> Reject
+          </button>
+          <button class="btn-secondary-action" onclick="updateFarmerStatus('${f.email}', 'CHANGES_REQUIRED')">
+            <i class="fa-solid fa-triangle-exclamation"></i> Request Changes
+          </button>
+          <button class="btn-primary-action" onclick="updateFarmerStatus('${f.email}', 'APPROVED')">
+            <i class="fa-solid fa-circle-check"></i> Approve &amp; Verify Farmer
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterVerifications() {
+  const q = document.getElementById('verifSearch').value;
+  renderVerificationsQueue(q);
+}
+
+async function updateFarmerStatus(email, status) {
+  const token = localStorage.getItem('agrein_token');
+  const confirmMsg = `Are you sure you want to mark ${email} as ${status}?`;
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await fetch('/api/admin/users/update-verification', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ email, status })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Status update failed.');
+
+    alert(`✓ Farmer status updated to ${status}!`);
+    await refreshData();
+  } catch(err) {
+    alert(err.message);
+  }
+}
+
+function renderUsersTable(users) {
+  const tbody = document.getElementById('userDirectoryBody');
+  if (!tbody) return;
+
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">No users found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = users.map(u => {
+    const roleClass = (u.role || 'BUYER').toLowerCase();
+    const isSuspended = Boolean(u.is_suspended);
+    return `
+      <tr>
+        <td><strong>${u.full_name || '--'}</strong><br><span style="font-size:0.75rem;color:var(--text-muted)">${u.email}</span></td>
+        <td><span class="role-tag ${roleClass}">${u.role}</span></td>
+        <td>${u.phone_number || '--'}</td>
+        <td>${(u.state || '') + (u.lga ? (' • ' + u.lga) : '') || '--'}</td>
+        <td><span class="status-pill ${(u.verification_status || 'approved').toLowerCase()}">${u.verification_status || 'APPROVED'}</span></td>
+        <td>
+          <span class="status-pill ${isSuspended ? 'rejected' : 'approved'}">
+            ${isSuspended ? 'Blocked' : 'Active'}
+          </span>
+        </td>
+        <td>
+          <button class="${isSuspended ? 'btn-primary-action' : 'btn-danger-action'}" style="padding:0.3rem 0.65rem;font-size:0.72rem" onclick="toggleUserBlock('${u.id || u.email}')">
+            ${isSuspended ? 'Unblock' : 'Block'}
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filterUsersList() {
+  const roleFilter = document.getElementById('userRoleFilter').value;
+  const q = document.getElementById('userDirectorySearch').value.toLowerCase();
+
+  let list = allUsers;
+  if (roleFilter !== 'ALL') {
+    list = list.filter(u => u.role === roleFilter);
+  }
+  if (q) {
+    list = list.filter(u =>
+      (u.full_name && u.full_name.toLowerCase().includes(q)) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.phone_number && String(u.phone_number).includes(q))
+    );
+  }
+  renderUsersTable(list);
+}
+
+async function toggleUserBlock(userId) {
+  const token = localStorage.getItem('agrein_token');
+  try {
+    const res = await fetch(`/api/admin/users/${userId}/toggle-block`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Action failed.');
+    alert('User status toggled!');
+    await refreshData();
+  } catch(e) {
+    alert(e.message);
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('agrein_theme', next);
+}
+
+function logout() {
+  localStorage.removeItem('agrein_token');
+  localStorage.removeItem('agrein_user');
+  window.location.href = '/login';
+}
+
+window.addEventListener('DOMContentLoaded', initAdminDashboard);
+</script>
+</body>
+</html>
+

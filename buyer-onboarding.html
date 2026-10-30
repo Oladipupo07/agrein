@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#059669">
+  <title>Buyer Setup - Agrein Marketplace</title>
+  <meta name="description" content="Set your delivery location and phone number to start ordering fresh farm produce directly from verified farmers.">
+  <script>(function(){var s=localStorage.getItem("agrein_theme")||"dark";document.documentElement.setAttribute("data-theme",s);})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/farmer-onboarding.css">
+  <style>
+    .buyer-card-wrap {
+      max-width: 680px;
+      margin: 2rem auto;
+      width: 100%;
+    }
+    .badge-buyer {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--emerald-400);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .buyer-type-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.65rem;
+      margin-top: 0.4rem;
+    }
+    .buyer-type-card {
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      padding: 0.75rem 0.5rem;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+    .buyer-type-card:hover {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: rgba(16, 185, 129, 0.06);
+    }
+    .buyer-type-card.selected {
+      border-color: var(--emerald-500);
+      background: rgba(16, 185, 129, 0.18);
+      color: var(--emerald-400);
+    }
+    .buyer-type-card i {
+      display: block;
+      font-size: 1.15rem;
+      margin-bottom: 0.35rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-scene"></div>
+<div class="bg-grid"></div>
+<div class="floating-orb orb-1"></div>
+<div class="floating-orb orb-2"></div>
+
+<div id="app">
+  <nav class="navbar">
+    <a href="/" class="brand" style="text-decoration:none">
+      <div class="brand-icon"><i class="fa-solid fa-wheat-awn"></i></div>
+      <div>
+        <div class="brand-name">Agrein</div>
+        <div class="brand-tagline">Buyer Setup</div>
+      </div>
+    </a>
+    <div style="display:flex;align-items:center;gap:1rem">
+      <button class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle theme">
+        <i class="fa-solid fa-sun light-icon"></i>
+        <i class="fa-solid fa-moon dark-icon"></i>
+      </button>
+      <div id="navSession" class="nav-session"></div>
+      <button onclick="logout()" class="btn-back" style="padding:0.4rem 0.8rem;font-size:0.75rem"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out</button>
+    </div>
+  </nav>
+
+  <div class="page-banner">
+    <div class="banner-inner" style="max-width:680px">
+      <div class="banner-icon" style="background:linear-gradient(135deg, #059669, #10b981)"><i class="fa-solid fa-location-dot"></i></div>
+      <div>
+        <div class="banner-title">Delivery Location &amp; Contact</div>
+        <div class="banner-sub">Complete this one-time step to unlock wholesale farmgate purchasing &amp; escrow tracking</div>
+      </div>
+    </div>
+  </div>
+
+  <main style="flex:1;padding:1.5rem 1rem">
+    <div class="buyer-card-wrap">
+      <div class="form-card" style="padding:2rem">
+        <div class="badge-buyer"><i class="fa-solid fa-cart-shopping"></i> Buyer Profile Setup</div>
+        <h2 style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1.4rem;color:var(--text-main);margin-bottom:0.35rem">Where Should Farmers Deliver?</h2>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1.5rem">Provide your direct delivery location and phone number so logistics partners can dispatch orders directly to your doorstep.</p>
+
+        <div class="alert alert-error hidden" id="buyerAlert" style="margin-bottom:1.25rem"><i class="fa-solid fa-triangle-exclamation"></i><span id="buyerAlertMsg"></span></div>
+        <div class="alert alert-success hidden" id="buyerSuccess" style="margin-bottom:1.25rem"><i class="fa-solid fa-circle-check"></i><span id="buyerSuccessMsg"></span></div>
+
+        <form id="buyerOnboardingForm" onsubmit="submitBuyerOnboarding(event)">
+          <div class="form-group">
+            <label class="form-label">Full Name <span class="req">*</span></label>
+            <div class="input-wrap">
+              <i class="input-icon fa-solid fa-user"></i>
+              <input class="form-input" id="buyerFullName" type="text" placeholder="e.g. Fatima Aliyu" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Phone Number <span class="req">*</span></label>
+            <div class="input-wrap">
+              <i class="input-icon fa-solid fa-phone"></i>
+              <input class="form-input" id="buyerPhone" type="tel" placeholder="+234 800 000 0000" autocomplete="tel" required>
+            </div>
+            <div class="field-hint"><i class="fa-solid fa-circle-info"></i> Used for order dispatch SMS alerts and delivery driver coordination</div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Delivery State <span class="req">*</span></label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-map"></i>
+                <select class="form-input form-select" id="buyerState" required onchange="populateBuyerLga(this.value)">
+                  <option value="">-- Select State --</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Delivery LGA <span class="req">*</span></label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-map-pin"></i>
+                <select class="form-input form-select" id="buyerLga" required>
+                  <option value="">-- Select LGA --</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">City / Town <span class="req">*</span></label>
+            <div class="input-wrap">
+              <i class="input-icon fa-solid fa-city"></i>
+              <input class="form-input" id="buyerCity" type="text" placeholder="e.g. Ikeja, Wuse, Ibadan, Port Harcourt" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Full Street / Delivery Address <span class="req">*</span></label>
+            <div class="input-wrap">
+              <i class="input-icon fa-solid fa-house-chimney"></i>
+              <input class="form-input" id="buyerAddress" type="text" placeholder="e.g. Plot 14, Commercial Avenue, Industrial Layout" required>
+            </div>
+            <div class="field-hint"><i class="fa-solid fa-truck"></i> Full delivery address where bulk shipments and courier packages will be received</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">I am buying as a:</label>
+            <div class="buyer-type-grid">
+              <div class="buyer-type-card selected" id="btHousehold" onclick="selectBuyerType('Household / Individual Consumer')">
+                <i class="fa-solid fa-basket-shopping"></i>
+                <span>Household</span>
+              </div>
+              <div class="buyer-type-card" id="btWholesale" onclick="selectBuyerType('Wholesale Off-taker / Aggregator')">
+                <i class="fa-solid fa-boxes-stacked"></i>
+                <span>Wholesale</span>
+              </div>
+              <div class="buyer-type-card" id="btRestaurant" onclick="selectBuyerType('Restaurant / Food Service')">
+                <i class="fa-solid fa-utensils"></i>
+                <span>Restaurant</span>
+              </div>
+              <div class="buyer-type-card" id="btProcessor" onclick="selectBuyerType('Food Processor / Factory')">
+                <i class="fa-solid fa-industry"></i>
+                <span>Processor</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:2rem">
+            <button type="submit" id="saveBuyerBtn" class="btn-submit" style="width:100%">
+              <i class="fa-solid fa-circle-check"></i>
+              <span>Save &amp; Enter Buyer Dashboard</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/nigeriaGeo.js"></script>
+<script src="/buyer-onboarding.js"></script>
+</body>
+</html>
+

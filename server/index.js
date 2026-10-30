@@ -1,9 +1,13 @@
 // Agrein Server Main Entry Point
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+
+// Ensure .env is loaded regardless of process working directory
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config();
 
-const path = require('path');
 const apiRoutes = require('./routes/api');
 const { profilesHasPasswordColumns } = require('./utils/supabaseClient');
 
@@ -64,6 +68,21 @@ async function bootApp() {
     res.sendFile(path.join(__dirname, '..', 'farmer-onboarding.html'));
   });
 
+  app.get('/buyer-onboarding', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'buyer-onboarding.html'));
+  });
+
+  app.get('/buyer-dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'buyer-dashboard.html'));
+  });
+
+  app.get('/farmer-dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'farmer-dashboard.html'));
+  });
+
+  app.get('/admin-dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'admin-dashboard.html'));
+  });
 
   // SPA fallback for HTML5 history API navigation
   app.get('*', (req, res) => {

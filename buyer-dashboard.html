@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#059669">
+  <title>Buyer Dashboard - Agrein Marketplace</title>
+  <meta name="description" content="Manage farmgate produce orders, track escrow payments, and buy directly from verified Nigerian farmers.">
+  <script>(function(){var s=localStorage.getItem("agrein_theme")||"dark";document.documentElement.setAttribute("data-theme",s);})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/farmer-onboarding.css">
+  <link rel="stylesheet" href="/dashboard.css">
+</head>
+<body>
+
+<div class="dash-bg-scene"></div>
+<div class="dash-grid"></div>
+
+<div id="dashApp">
+  <!-- Navbar -->
+  <nav class="dash-nav">
+    <a href="/" class="dash-brand">
+      <div class="dash-brand-icon"><i class="fa-solid fa-wheat-awn"></i></div>
+      <div>
+        <div class="dash-brand-title">Agrein</div>
+        <div class="dash-brand-subtitle">Buyer Portal</div>
+      </div>
+    </a>
+
+    <div class="dash-nav-right">
+      <button class="nav-icon-btn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+        <i class="fa-solid fa-sun light-icon"></i>
+        <i class="fa-solid fa-moon dark-icon"></i>
+      </button>
+
+      <div class="user-badge-pill">
+        <i class="fa-solid fa-cart-shopping" style="color:var(--sky-400)"></i>
+        <span id="navUserName">Loading...</span>
+        <span class="role-tag buyer">Buyer</span>
+      </div>
+
+      <button onclick="logout()" class="btn-signout">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        <span>Sign Out</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="dash-container">
+    <!-- Welcome Strip -->
+    <div class="dash-hero">
+      <div>
+        <h1 class="dash-welcome-title" id="welcomeHeading">Welcome, Buyer</h1>
+        <div class="dash-welcome-sub">
+          <span>Direct Farm-to-Buyer Portal</span>
+          <span>•</span>
+          <span class="location-chip" id="locationChip"><i class="fa-solid fa-location-dot"></i> <span id="userLocationText">Location not set</span></span>
+          <span class="location-chip" id="phoneChip"><i class="fa-solid fa-phone"></i> <span id="userPhoneText">Phone not set</span></span>
+        </div>
+      </div>
+      <div>
+        <button onclick="openLocationModal()" class="btn-secondary-action">
+          <i class="fa-solid fa-pen-to-square"></i>
+          <span>Update Delivery Address</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Escrow Protection Guarantee Banner -->
+    <div class="dash-notice emerald">
+      <div class="dash-notice-left">
+        <div class="dash-notice-icon"><i class="fa-solid fa-shield-halved"></i></div>
+        <div>
+          <div class="dash-notice-title">100% Escrow Protection Guaranteed</div>
+          <div class="dash-notice-sub">Funds for all purchases are held securely in escrow and only released after you inspect and accept your delivery.</div>
+        </div>
+      </div>
+      <a href="#marketplace" onclick="switchTab('tabMarketplace')" class="btn-primary-action" style="font-size:0.75rem;padding:0.45rem 0.9rem">
+        <i class="fa-solid fa-basket-shopping"></i> Browse Produce
+      </a>
+    </div>
+
+    <!-- Metrics Grid -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div>
+          <div class="metric-val" id="metricEscrow">₦145,000</div>
+          <div class="metric-title">Escrow Held Balance</div>
+        </div>
+        <div class="metric-icon-wrap emerald"><i class="fa-solid fa-lock"></i></div>
+      </div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-val" id="metricActiveOrders">2</div>
+          <div class="metric-title">In-Transit Shipments</div>
+        </div>
+        <div class="metric-icon-wrap sky"><i class="fa-solid fa-truck-fast"></i></div>
+      </div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-val" id="metricCompleted">12</div>
+          <div class="metric-title">Completed Orders</div>
+        </div>
+        <div class="metric-icon-wrap amber"><i class="fa-solid fa-circle-check"></i></div>
+      </div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-val">36 States</div>
+          <div class="metric-title">Verified Farmers Network</div>
+        </div>
+        <div class="metric-icon-wrap purple"><i class="fa-solid fa-tractor"></i></div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="dash-tabs-bar">
+      <button class="dash-tab-btn active" id="btnTabMarketplace" onclick="switchTab('tabMarketplace')">
+        <i class="fa-solid fa-store"></i>
+        <span>Farmgate Marketplace</span>
+      </button>
+      <button class="dash-tab-btn" id="btnTabOrders" onclick="switchTab('tabOrders')">
+        <i class="fa-solid fa-receipt"></i>
+        <span>My Orders &amp; Escrow</span>
+        <span class="dash-tab-badge" id="orderCountBadge">2</span>
+      </button>
+      <button class="dash-tab-btn" id="btnTabLocation" onclick="switchTab('tabLocation')">
+        <i class="fa-solid fa-location-dot"></i>
+        <span>Delivery Address &amp; Contact</span>
+      </button>
+      <button class="dash-tab-btn" id="btnTabFeed" onclick="switchTab('tabFeed')">
+        <i class="fa-solid fa-bullhorn"></i>
+        <span>Seller Feed &amp; Reviews</span>
+        <span class="dash-tab-badge" id="feedCountBadge">0</span>
+      </button>
+    </div>
+
+    <!-- TAB 1: Marketplace Catalog -->
+    <section id="tabMarketplace" class="tab-section">
+      <div class="content-card">
+        <div class="content-card-header">
+          <div>
+            <div class="content-card-title"><i class="fa-solid fa-seedling" style="color:var(--emerald-400)"></i> Direct Farmgate Produce</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">Order direct from accredited Nigerian farmers at farmgate prices with zero middleman markups.</p>
+          </div>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+            <div class="input-wrap" style="width:260px">
+              <i class="input-icon fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="produceSearch" class="form-input" style="padding:0.45rem 0.75rem 0.45rem 2.2rem;font-size:0.82rem" placeholder="Search crops, farms, states..." oninput="filterProduce()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Categories -->
+        <div style="display:flex;gap:0.5rem;overflow-x:auto;padding-bottom:0.75rem;margin-bottom:1.25rem">
+          <button class="btn-secondary-action filter-btn active" onclick="filterCategory('ALL', this)">All Produce</button>
+          <button class="btn-secondary-action filter-btn" onclick="filterCategory('GRAINS', this)">Grains &amp; Cereals</button>
+          <button class="btn-secondary-action filter-btn" onclick="filterCategory('TUBERS', this)">Roots &amp; Tubers</button>
+          <button class="btn-secondary-action filter-btn" onclick="filterCategory('VEGETABLES', this)">Vegetables &amp; Fruits</button>
+          <button class="btn-secondary-action filter-btn" onclick="filterCategory('OILS', this)">Oils &amp; Cash Crops</button>
+          <button class="btn-secondary-action filter-btn" onclick="filterCategory('LIVESTOCK', this)">Poultry &amp; Livestock</button>
+        </div>
+
+        <!-- Produce Grid -->
+        <div class="produce-grid" id="produceGridContainer">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Orders & Escrow -->
+    <section id="tabOrders" class="tab-section" style="display:none">
+      <div class="content-card">
+        <div class="content-card-header">
+          <div>
+            <div class="content-card-title"><i class="fa-solid fa-shield-check" style="color:var(--emerald-400)"></i> Active Escrow Orders</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">Funds remain safely locked until produce is delivered and inspected by you.</p>
+          </div>
+        </div>
+
+        <div class="dash-table-wrap">
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Produce &amp; Quantity</th>
+                <th>Farmer</th>
+                <th>Escrow Amount</th>
+                <th>Delivery Destination</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTableBody">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Delivery Location & Contact Profile -->
+    <section id="tabLocation" class="tab-section" style="display:none">
+      <div class="content-card" style="max-width:700px">
+        <div class="content-card-title" style="margin-bottom:0.5rem"><i class="fa-solid fa-address-card" style="color:var(--emerald-400)"></i> My Delivery Location &amp; Contact</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1.5rem">Update your phone number and delivery location so verified farmers and logistics fleets deliver seamlessly.</p>
+
+        <div class="alert alert-success hidden" id="profileSaveAlert"><i class="fa-solid fa-circle-check"></i> <span id="profileSaveAlertMsg"></span></div>
+
+        <form onsubmit="saveProfileTab(event)">
+          <div class="form-group">
+            <label class="form-label">Full Name <span class="req">*</span></label>
+            <div class="input-wrap">
+              <i class="input-icon fa-solid fa-user"></i>
+              <input class="form-input" id="tabFullName" type="text" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Contact Phone Number <span class="req">*</span></label>
+            <div class="input-wrap">
+              <i class="input-icon fa-solid fa-phone"></i>
+              <input class="form-input" id="tabPhone" type="tel" required placeholder="+234 800 000 0000">
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Delivery State <span class="req">*</span></label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-map"></i>
+                <select class="form-input form-select" id="tabState" required onchange="populateTabLga(this.value)">
+                  <option value="">-- Select State --</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Delivery LGA <span class="req">*</span></label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-map-pin"></i>
+                <select class="form-input form-select" id="tabLga" required>
+                  <option value="">-- Select LGA --</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">City / Town <span class="req">*</span></label>
+            <div class="input-wrap">
+              <i class="input-icon fa-solid fa-city"></i>
+              <input class="form-input" id="tabCity" type="text" required placeholder="e.g. Ikeja, Ibadan, Lekki">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Street / Delivery Address <span class="req">*</span></label>
+            <div class="input-wrap">
+              <i class="input-icon fa-solid fa-house-chimney"></i>
+              <input class="form-input" id="tabAddress" type="text" required placeholder="Full street address">
+            </div>
+          </div>
+
+          <button type="submit" id="tabSaveBtn" class="btn-primary-action" style="margin-top:1rem">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Save Location &amp; Contact</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 4: Seller Community Feed, Comments & Star Reviews -->
+    <section id="tabFeed" class="tab-section" style="display:none">
+      <div class="content-card">
+        <div class="content-card-header">
+          <div>
+            <div class="content-card-title"><i class="fa-solid fa-bullhorn" style="color:var(--emerald-400)"></i> Direct Seller Feed &amp; Buyer Community</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">Live harvest updates, wholesale offers, and seasonal discounts posted directly by verified Nigerian farmers. Comment on posts or leave star reviews.</p>
+          </div>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+            <div class="input-wrap" style="width:260px">
+              <i class="input-icon fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="feedSearchInput" class="form-input" style="padding:0.45rem 0.75rem 0.45rem 2.2rem;font-size:0.82rem" placeholder="Search crops, farms, sellers..." oninput="filterFeed()">
+            </div>
+            <button onclick="loadBuyerFeed()" class="btn-secondary-action" style="font-size:0.8rem">
+              <i class="fa-solid fa-arrows-rotate"></i> Refresh Feed
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Categories -->
+        <div class="feed-filters-row" style="margin-bottom:1.5rem">
+          <button class="btn-secondary-action filter-btn active" onclick="filterFeedCategory('ALL', this)">All Updates</button>
+          <button class="btn-secondary-action filter-btn" onclick="filterFeedCategory('Harvest Update', this)">🌾 Harvest Updates</button>
+          <button class="btn-secondary-action filter-btn" onclick="filterFeedCategory('Bulk Offer', this)">📦 Bulk Offers</button>
+          <button class="btn-secondary-action filter-btn" onclick="filterFeedCategory('Market Price', this)">🏷️ Market Prices</button>
+          <button class="btn-secondary-action filter-btn" onclick="filterFeedCategory('Cooperative Bid', this)">🤝 Cooperative Bids</button>
+          <button class="btn-secondary-action filter-btn" onclick="filterFeedCategory('Farm Tip', this)">💡 Farm Tips</button>
+        </div>
+
+        <!-- Posts List -->
+        <div id="feedListContainer" class="posts-feed-list">
+          <div style="text-align:center;padding:3rem;color:var(--text-muted)">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size:1.8rem;color:var(--emerald-400)"></i>
+            <p style="margin-top:0.75rem">Fetching latest farmer harvest posts...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ORDER WITH ESCROW MODAL -->
+<div class="modal-overlay" id="orderModal" style="display:none">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title" id="orderModalTitle">Lock Order in Escrow</div>
+      <button class="modal-close-btn" onclick="closeOrderModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div style="background:rgba(5,150,105,0.1);border:1px solid rgba(5,150,105,0.25);border-radius:12px;padding:1rem;margin-bottom:1.25rem">
+      <div style="font-weight:800;font-size:1.1rem;color:var(--emerald-400)" id="orderProduceName">Produce</div>
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.2rem" id="orderFarmerName">Farmer</div>
+      <div style="font-size:0.85rem;color:var(--text-main);font-weight:700;margin-top:0.4rem" id="orderUnitPrice">Price: ₦0</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Quantity to Purchase</label>
+      <div class="input-wrap">
+        <i class="input-icon fa-solid fa-boxes-stacked"></i>
+        <input class="form-input" type="number" id="orderQty" min="1" value="1" oninput="calculateOrderTotal()">
+      </div>
+      <div class="field-hint" id="orderMoqHint">MOQ: 1 unit</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Delivery Destination (From Profile)</label>
+      <div class="input-wrap">
+        <i class="input-icon fa-solid fa-location-dot"></i>
+        <input class="form-input" id="orderDest" readonly style="opacity:0.85">
+      </div>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border-light);border-radius:12px;padding:1rem;margin:1.25rem 0">
+      <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.4rem">
+        <span style="color:var(--text-muted)">Subtotal:</span>
+        <span style="font-weight:700" id="orderSubtotal">₦0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.4rem">
+        <span style="color:var(--text-muted)">Agrein Escrow Fee:</span>
+        <span style="font-weight:700;color:var(--emerald-400)">₦0 (Free Promo)</span>
+      </div>
+      <hr style="border:0;border-top:1px solid var(--border-light);margin:0.5rem 0">
+      <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800">
+        <span>Total Protected:</span>
+        <span style="color:var(--emerald-400)" id="orderTotal">₦0</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end">
+      <button class="btn-secondary-action" onclick="closeOrderModal()">Cancel</button>
+      <button class="btn-primary-action" id="confirmOrderBtn" onclick="confirmEscrowOrder()">
+        <i class="fa-solid fa-lock"></i>
+        <span>Lock in Escrow &amp; Place Order</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="/nigeriaGeo.js"></script>
+<script>
+// Mock Produce Catalog
+const PRODUCE_CATALOG = [
+  { id: 'p1', name: 'Premium Yellow Maize', category: 'GRAINS', farmer: 'Bello Agro Farms', state: 'Oyo', lga: 'Saki West', price: 42000, unit: '100kg Bag', moq: 5, emoji: '🌽' },
+  { id: 'p2', name: 'Fresh White Yam Tubers', category: 'TUBERS', farmer: 'Benue Green Valley', state: 'Benue', lga: 'Gboko', price: 18000, unit: 'Set of 10 Tubers', moq: 2, emoji: '🍠' },
+  { id: 'p3', name: 'Abeokuta Ofada Rice (Unpolished)', category: 'GRAINS', farmer: 'Ogun Rice Cooperative', state: 'Ogun', lga: 'Obafemi Owode', price: 68000, unit: '50kg Bag', moq: 1, emoji: '🌾' },
+  { id: 'p4', name: 'Roma Plum Tomatoes (Fresh Harvest)', category: 'VEGETABLES', farmer: 'Zaria Horticulture Ltd', state: 'Kaduna', lga: 'Zaria', price: 24000, unit: 'Large Raffia Basket', moq: 2, emoji: '🍅' },
+  { id: 'p5', name: 'Pure Grade-A Red Palm Oil', category: 'OILS', farmer: 'Edo Palm Plantation', state: 'Edo', lga: 'Ovia North-East', price: 35000, unit: '25L Jerrycan', moq: 1, emoji: '🛢️' },
+  { id: 'p6', name: 'White Cassava Flakes (Ijebu Garri)', category: 'TUBERS', farmer: 'Delta AgriHub', state: 'Delta', lga: 'Ughelli North', price: 28000, unit: '50kg Bag', moq: 1, emoji: '🥣' },
+  { id: 'p7', name: 'Live Farm Broiler Birds (2.5kg)', category: 'LIVESTOCK', farmer: 'Akinyele Poultry Co.', state: 'Oyo', lga: 'Akinyele', price: 7500, unit: 'Per Bird', moq: 10, emoji: '🐔' },
+  { id: 'p8', name: 'Clean Dried Soya Beans', category: 'GRAINS', farmer: 'Plateau Harvest Hub', state: 'Plateau', lga: 'Jos South', price: 48000, unit: '100kg Bag', moq: 3, emoji: '🌱' }
+];
+
+let myOrders = [
+  { id: 'ORD-8921', produce: 'Premium Yellow Maize', qty: '10 Bags (100kg)', farmer: 'Bello Agro Farms', amount: 420000, status: 'IN_TRANSIT', destination: 'Lagos • Ikeja' },
+  { id: 'ORD-7634', produce: 'Fresh White Yam Tubers', qty: '5 Sets', farmer: 'Benue Green Valley', amount: 90000, status: 'ESCROW_LOCKED', destination: 'Lagos • Ikeja' }
+];
+
+let currentOrderingProduce = null;
+let currentUser = null;
+
+// Role Guard & Init
+async function initBuyerDashboard() {
+  const token = localStorage.getItem('agrein_token');
+  if (!token) {
+    window.location.href = '/login';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.user) {
+      currentUser = data.user;
+      localStorage.setItem('agrein_user', JSON.stringify(currentUser));
+      
+      // Role Guard
+      const role = (currentUser.role || '').toUpperCase();
+      if (role === 'FARMER' || role === 'SELLER') {
+        window.location.href = '/farmer-dashboard';
+        return;
+      }
+      if (role === 'ADMIN') {
+        // Admin can stay or inspect
+      }
+
+      // Check if location & phone set
+      if (!currentUser.phone_number || !currentUser.state || !currentUser.address) {
+        window.location.href = '/buyer-onboarding';
+        return;
+      }
+
+      renderUserHeader();
+    } else {
+      localStorage.removeItem('agrein_token');
+      localStorage.removeItem('agrein_user');
+      window.location.href = '/login';
+    }
+  } catch(e) {
+    // If offline, read stored user
+    const raw = localStorage.getItem('agrein_user');
+    if (raw) {
+      currentUser = JSON.parse(raw);
+      renderUserHeader();
+    }
+  }
+
+  renderProduceGrid(PRODUCE_CATALOG);
+  renderOrdersTable();
+  populateTabStates();
+  loadBuyerFeed();
+}
+
+function renderUserHeader() {
+  if (!currentUser) return;
+  const name = currentUser.full_name || currentUser.name || currentUser.email;
+  document.getElementById('navUserName').textContent = name;
+  document.getElementById('welcomeHeading').textContent = 'Welcome back, ' + name.split(' ')[0] + '!';
+  
+  const loc = (currentUser.state && currentUser.lga) ? (currentUser.state + ' • ' + currentUser.lga) : (currentUser.state || 'Location set');
+  document.getElementById('userLocationText').textContent = loc;
+  document.getElementById('userPhoneText').textContent = currentUser.phone_number || 'No phone';
+
+  // Populate Tab form
+  const tf = document.getElementById('tabFullName');
+  const tp = document.getElementById('tabPhone');
+  const tc = document.getElementById('tabCity');
+  const ta = document.getElementById('tabAddress');
+  if (tf) tf.value = currentUser.full_name || '';
+  if (tp) tp.value = currentUser.phone_number || '';
+  if (tc) tc.value = currentUser.city || '';
+  if (ta) ta.value = currentUser.address || '';
+}
+
+let allFeedPosts = [];
+let currentFeedCategory = 'ALL';
+const pendingStarRatings = {};
+
+function switchTab(tabId) {
+  ['tabMarketplace', 'tabOrders', 'tabLocation', 'tabFeed'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === tabId ? 'block' : 'none';
+  });
+  document.querySelectorAll('.dash-tab-btn').forEach(b => b.classList.remove('active'));
+  if (tabId === 'tabMarketplace') document.getElementById('btnTabMarketplace').classList.add('active');
+  if (tabId === 'tabOrders') document.getElementById('btnTabOrders').classList.add('active');
+  if (tabId === 'tabLocation') document.getElementById('btnTabLocation').classList.add('active');
+  if (tabId === 'tabFeed') {
+    document.getElementById('btnTabFeed').classList.add('active');
+    loadBuyerFeed();
+  }
+}
+
+async function loadBuyerFeed() {
+  const container = document.getElementById('feedListContainer');
+  const token = localStorage.getItem('agrein_token');
+  try {
+    const res = await fetch('/api/posts', {
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Failed to load community feed');
+    
+    allFeedPosts = data.posts || [];
+    const badge = document.getElementById('feedCountBadge');
+    if (badge) badge.textContent = allFeedPosts.length;
+    
+    filterFeed();
+  } catch (err) {
+    if (container) {
+      container.innerHTML = `<div style="color:var(--rose-400);padding:2rem;text-align:center">Error loading community feed: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+}
+
+function filterFeedCategory(cat, btn) {
+  currentFeedCategory = cat;
+  document.querySelectorAll('#tabFeed .filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  filterFeed();
+}
+
+function filterFeed() {
+  const searchInput = document.getElementById('feedSearchInput');
+  const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+  let filtered = allFeedPosts;
+  if (currentFeedCategory !== 'ALL') {
+    filtered = filtered.filter(p => p.category === currentFeedCategory);
+  }
+  if (q) {
+    filtered = filtered.filter(p => 
+      (p.title && p.title.toLowerCase().includes(q)) ||
+      (p.content && p.content.toLowerCase().includes(q)) ||
+      (p.seller_name && p.seller_name.toLowerCase().includes(q)) ||
+      (p.farm_name && p.farm_name.toLowerCase().includes(q)) ||
+      (p.crop_tag && p.crop_tag.toLowerCase().includes(q)) ||
+      (p.seller_location && p.seller_location.toLowerCase().includes(q))
+    );
+  }
+  renderFeed(filtered);
+}
+
+function renderStars(rating) {
+  const num = Math.round(Number(rating) || 5);
+  let html = '';
+  for (let i = 1; i <= 5; i++) {
+    if (i <= num) {
+      html += '<i class="fa-solid fa-star" style="color:var(--amber-400)"></i>';
+    } else {
+      html += '<i class="fa-regular fa-star" style="color:var(--slate-600)"></i>';
+    }
+  }
+  return html;
+}
+
+function renderFeed(posts) {
+  const container = document.getElementById('feedListContainer');
+  if (!container) return;
+
+  if (!posts || posts.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:3rem 1.5rem;background:rgba(255,255,255,0.02);border:1px dashed var(--border-light);border-radius:12px">
+        <i class="fa-solid fa-bullhorn" style="font-size:2.5rem;color:var(--emerald-400);margin-bottom:0.75rem"></i>
+        <div style="font-weight:700;font-size:1rem;color:var(--text-main)">No farmer posts found</div>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.35rem">Try resetting filters or checking back soon as verified farmers publish fresh harvest lots daily.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const userEmail = (currentUser?.email || '').toLowerCase();
+
+  container.innerHTML = posts.map(p => {
+    const isLiked = Array.isArray(p.liked_by) && p.liked_by.includes(userEmail);
+    const avg = Number(p.avg_rating || 5).toFixed(1);
+    const reviewCount = (p.reviews || []).length;
+    const commentCount = (p.comments || []).length;
+
+    return `
+      <div class="post-feed-card" id="post-card-${p.id}">
+        <div class="post-top-meta">
+          <div class="post-author-box">
+            <div class="post-avatar-circle">${p.emoji || '🌾'}</div>
+            <div>
+              <div class="post-seller-name">
+                <span>${escapeHtml(p.seller_name || 'Verified Farmer')}</span>
+                ${p.seller_verified ? `<span class="verified-seller-badge"><i class="fa-solid fa-circle-check"></i> Verified Seller</span>` : ''}
+              </div>
+              <div class="post-farm-meta">
+                <span><i class="fa-solid fa-store"></i> ${escapeHtml(p.farm_name || 'Agrein Farm Enterprise')}</span>
+                <span>•</span>
+                <span><i class="fa-solid fa-location-dot"></i> ${escapeHtml(p.seller_location || 'Nigeria')}</span>
+                <span>•</span>
+                <span><i class="fa-solid fa-clock"></i> ${new Date(p.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <span class="post-category-tag">${escapeHtml(p.category || 'Harvest Update')}</span>
+            ${p.crop_tag ? `<span class="post-category-tag" style="background:rgba(52,211,153,0.12);border-color:rgba(52,211,153,0.3);color:var(--emerald-400)">${escapeHtml(p.crop_tag)}</span>` : ''}
+          </div>
+        </div>
+
+        <div class="post-title-text">${escapeHtml(p.title)}</div>
+        <div class="post-content-body">${escapeHtml(p.content)}</div>
+
+        ${(p.price_info || p.moq) ? `
+          <div class="post-commercial-chips">
+            ${p.price_info ? `<div class="comm-chip price-highlight"><i class="fa-solid fa-tag"></i> Farmgate: <strong>${escapeHtml(p.price_info)}</strong></div>` : ''}
+            ${p.moq ? `<div class="comm-chip"><i class="fa-solid fa-boxes-stacked"></i> Min. Order: <strong>${escapeHtml(p.moq)}</strong></div>` : ''}
+            <div class="comm-chip"><i class="fa-solid fa-shield-halved" style="color:var(--emerald-400)"></i> Escrow Protected</div>
+            <div class="comm-chip" style="margin-left:auto">
+              <span class="post-rating-badge">${renderStars(p.avg_rating)} <span>${avg} / 5.0</span></span>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Post Action Bar -->
+        <div class="post-card-footer">
+          <div class="post-footer-actions-left">
+            <button class="post-action-btn ${isLiked ? 'liked' : ''}" onclick="toggleLikePost('${p.id}')" id="like-btn-${p.id}">
+              <i class="fa-solid fa-heart"></i>
+              <span id="like-count-${p.id}">${p.likes_count || 0}</span>
+            </button>
+            <button class="post-action-btn" onclick="toggleFeedPanel('${p.id}', 'comments')" id="btn-toggle-cmts-${p.id}">
+              <i class="fa-solid fa-comment-dots"></i>
+              <span>Comments (<span id="cmt-count-${p.id}">${commentCount}</span>)</span>
+            </button>
+            <button class="post-action-btn" onclick="toggleFeedPanel('${p.id}', 'reviews')" id="btn-toggle-revs-${p.id}">
+              <i class="fa-solid fa-star"></i>
+              <span>Reviews (<span id="rev-count-${p.id}">${reviewCount}</span>)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- COMMENTS PANEL -->
+        <div class="post-expandable-panel" id="comments-panel-${p.id}" style="display:none">
+          <div style="font-weight:700;font-size:0.9rem;margin-bottom:0.75rem;color:var(--text-main);display:flex;align-items:center;gap:0.4rem">
+            <i class="fa-solid fa-comments" style="color:var(--emerald-400)"></i> Buyer Comments &amp; Seller Replies
+          </div>
+
+          <div class="comment-list-wrap" id="comment-list-${p.id}">
+            ${(!p.comments || p.comments.length === 0) ? `
+              <div style="font-size:0.82rem;color:var(--text-muted);padding:0.5rem 0">No comments yet. Be the first to ask about this harvest!</div>
+            ` : p.comments.map(c => `
+              <div class="comment-bubble">
+                <div class="comment-bubble-header">
+                  <div class="comment-author-name">
+                    <span>${escapeHtml(c.author_name)}</span>
+                    <span class="comment-role-pill ${(c.author_role || 'buyer').toLowerCase()}">${escapeHtml(c.author_role || 'BUYER')}</span>
+                    ${c.author_location ? `<span style="font-size:0.7rem;color:var(--text-dim)">• ${escapeHtml(c.author_location)}</span>` : ''}
+                  </div>
+                  <span style="font-size:0.7rem;color:var(--text-dim)">${new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                </div>
+                <div class="comment-body-text">${escapeHtml(c.text)}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Add Comment Form -->
+          <div style="display:flex;gap:0.6rem;margin-top:0.75rem">
+            <input type="text" class="form-input" id="comment-input-${p.id}" placeholder="Write a comment or ask about bulk delivery..." style="padding:0.5rem 0.85rem;font-size:0.84rem" onkeydown="if(event.key==='Enter')submitComment('${p.id}')">
+            <button class="btn-primary-action" style="padding:0.5rem 1rem;font-size:0.82rem;white-space:nowrap" onclick="submitComment('${p.id}')" id="btn-cmt-${p.id}">
+              <i class="fa-solid fa-paper-plane"></i> Comment
+            </button>
+          </div>
+        </div>
+
+        <!-- REVIEWS PANEL -->
+        <div class="post-expandable-panel" id="reviews-panel-${p.id}" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.85rem">
+            <div style="font-weight:700;font-size:0.9rem;color:var(--text-main);display:flex;align-items:center;gap:0.4rem">
+              <i class="fa-solid fa-star" style="color:var(--amber-400)"></i>
+              <span>Verified Buyer Ratings &amp; Reviews</span>
+            </div>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--amber-400);display:flex;align-items:center;gap:0.35rem">
+              ${renderStars(p.avg_rating)}
+              <span>${avg} / 5.0 (${reviewCount} reviews)</span>
+            </div>
+          </div>
+
+          <div class="reviews-list-wrap" id="review-list-${p.id}">
+            ${(!p.reviews || p.reviews.length === 0) ? `
+              <div style="font-size:0.82rem;color:var(--text-muted);padding:0.5rem 0">No reviews yet for this harvest. Purchased from this seller? Leave your review below!</div>
+            ` : p.reviews.map(r => `
+              <div class="review-item-card">
+                <div class="review-item-header">
+                  <div style="display:flex;align-items:center;gap:0.5rem">
+                    <span style="font-weight:700;font-size:0.85rem;color:var(--text-main)">${escapeHtml(r.buyer_name)}</span>
+                    ${r.verified_purchase ? `<span class="verified-seller-badge" style="font-size:0.62rem"><i class="fa-solid fa-check"></i> Verified Purchase</span>` : ''}
+                  </div>
+                  <div class="review-stars-row">${renderStars(r.rating)}</div>
+                </div>
+                ${r.title ? `<div class="review-item-title">${escapeHtml(r.title)}</div>` : ''}
+                <div class="review-item-comment">${escapeHtml(r.comment)}</div>
+                <div style="font-size:0.7rem;color:var(--text-dim);margin-top:0.4rem">Reviewed on ${new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Leave Review Form -->
+          <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border-light);border-radius:12px;padding:1rem;margin-top:1rem">
+            <div style="font-size:0.86rem;font-weight:700;color:var(--emerald-400);margin-bottom:0.75rem">
+              <i class="fa-solid fa-pen-fancy"></i> Leave a Review for this Seller
+            </div>
+
+            <div style="margin-bottom:0.75rem;display:flex;align-items:center;gap:0.75rem">
+              <label style="font-size:0.8rem;color:var(--text-muted)">Your Star Rating:</label>
+              <div class="star-picker" id="star-picker-${p.id}">
+                <i class="fa-solid fa-star active" data-val="1" onclick="setStarRating('${p.id}', 1)"></i>
+                <i class="fa-solid fa-star active" data-val="2" onclick="setStarRating('${p.id}', 2)"></i>
+                <i class="fa-solid fa-star active" data-val="3" onclick="setStarRating('${p.id}', 3)"></i>
+                <i class="fa-solid fa-star active" data-val="4" onclick="setStarRating('${p.id}', 4)"></i>
+                <i class="fa-solid fa-star active" data-val="5" onclick="setStarRating('${p.id}', 5)"></i>
+              </div>
+              <span id="star-label-${p.id}" style="font-size:0.8rem;font-weight:700;color:var(--amber-400)">5.0 - Excellent</span>
+            </div>
+
+            <div style="margin-bottom:0.6rem">
+              <input type="text" class="form-input" id="review-title-${p.id}" placeholder="Review headline (e.g. Clean moisture-tested grains, swift dispatch)" style="padding:0.45rem 0.75rem;font-size:0.82rem">
+            </div>
+
+            <div style="margin-bottom:0.75rem">
+              <textarea class="form-input" id="review-comment-${p.id}" rows="2" placeholder="Tell other buyers about grain grade, packaging, weights and delivery experience..." style="padding:0.5rem 0.75rem;font-size:0.82rem;resize:vertical"></textarea>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end">
+              <button class="btn-primary-action" style="padding:0.45rem 1rem;font-size:0.82rem" onclick="submitReview('${p.id}')" id="btn-rev-${p.id}">
+                <i class="fa-solid fa-check"></i> Submit Review
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleFeedPanel(postId, type) {
+  const cPanel = document.getElementById('comments-panel-' + postId);
+  const rPanel = document.getElementById('reviews-panel-' + postId);
+  const cBtn = document.getElementById('btn-toggle-cmts-' + postId);
+  const rBtn = document.getElementById('btn-toggle-revs-' + postId);
+
+  if (type === 'comments') {
+    const isShown = cPanel.style.display !== 'none';
+    cPanel.style.display = isShown ? 'none' : 'block';
+    if (!isShown && rPanel) rPanel.style.display = 'none';
+    if (cBtn) cBtn.classList.toggle('active-tab-btn', !isShown);
+    if (rBtn) rBtn.classList.remove('active-tab-btn');
+  } else if (type === 'reviews') {
+    const isShown = rPanel.style.display !== 'none';
+    rPanel.style.display = isShown ? 'none' : 'block';
+    if (!isShown && cPanel) cPanel.style.display = 'none';
+    if (rBtn) rBtn.classList.toggle('active-tab-btn', !isShown);
+    if (cBtn) cBtn.classList.remove('active-tab-btn');
+  }
+}
+
+async function toggleLikePost(postId) {
+  const token = localStorage.getItem('agrein_token');
+  if (!token) {
+    alert('Please log in to like this post.');
+    return;
+  }
+  try {
+    const res = await fetch(`/api/posts/${postId}/like`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to like');
+
+    // Update in local cache
+    const p = allFeedPosts.find(x => x.id === postId);
+    if (p) {
+      p.likes_count = data.likes_count;
+      p.liked = data.liked;
+      const userEmail = (currentUser?.email || '').toLowerCase();
+      if (!Array.isArray(p.liked_by)) p.liked_by = [];
+      if (data.liked && !p.liked_by.includes(userEmail)) p.liked_by.push(userEmail);
+      if (!data.liked && p.liked_by.includes(userEmail)) p.liked_by = p.liked_by.filter(e => e !== userEmail);
+    }
+
+    const likeBtn = document.getElementById('like-btn-' + postId);
+    const likeCount = document.getElementById('like-count-' + postId);
+    if (likeBtn) likeBtn.classList.toggle('liked', data.liked);
+    if (likeCount) likeCount.textContent = data.likes_count;
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function submitComment(postId) {
+  const token = localStorage.getItem('agrein_token');
+  if (!token) {
+    alert('Please log in to comment.');
+    return;
+  }
+  const input = document.getElementById('comment-input-' + postId);
+  const text = input ? input.value.trim() : '';
+  if (!text) {
+    alert('Please enter a comment.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-cmt-' + postId);
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(`/api/posts/${postId}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Error posting comment');
+
+    input.value = '';
+    
+    // Update local post model
+    const p = allFeedPosts.find(x => x.id === postId);
+    if (p) {
+      if (!p.comments) p.comments = [];
+      p.comments.push(data.comment);
+      const cmtCount = document.getElementById('cmt-count-' + postId);
+      if (cmtCount) cmtCount.textContent = p.comments.length;
+    }
+
+    // Append to DOM
+    const list = document.getElementById('comment-list-' + postId);
+    if (list) {
+      const bubble = document.createElement('div');
+      bubble.className = 'comment-bubble';
+      bubble.innerHTML = `
+        <div class="comment-bubble-header">
+          <div class="comment-author-name">
+            <span>${escapeHtml(data.comment.author_name)}</span>
+            <span class="comment-role-pill ${(data.comment.author_role || 'buyer').toLowerCase()}">${escapeHtml(data.comment.author_role || 'BUYER')}</span>
+            ${data.comment.author_location ? `<span style="font-size:0.7rem;color:var(--text-dim)">• ${escapeHtml(data.comment.author_location)}</span>` : ''}
+          </div>
+          <span style="font-size:0.7rem;color:var(--text-dim)">Just now</span>
+        </div>
+        <div class="comment-body-text">${escapeHtml(data.comment.text)}</div>
+      `;
+      list.appendChild(bubble);
+    }
+  } catch (err) {
+    alert('Failed to post comment: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function setStarRating(postId, star) {
+  pendingStarRatings[postId] = star;
+  const picker = document.getElementById('star-picker-' + postId);
+  if (!picker) return;
+  const stars = picker.querySelectorAll('i');
+  stars.forEach((s, idx) => {
+    s.classList.toggle('active', idx < star);
+  });
+  const label = document.getElementById('star-label-' + postId);
+  if (label) {
+    const labels = { 1: '1.0 - Poor', 2: '2.0 - Fair', 3: '3.0 - Good', 4: '4.0 - Very Good', 5: '5.0 - Excellent' };
+    label.textContent = labels[star] || (star + '.0');
+  }
+}
+
+async function submitReview(postId) {
+  const token = localStorage.getItem('agrein_token');
+  if (!token) {
+    alert('Please log in to review.');
+    return;
+  }
+
+  const rating = pendingStarRatings[postId] || 5;
+  const title = (document.getElementById('review-title-' + postId)?.value || '').trim();
+  const comment = (document.getElementById('review-comment-' + postId)?.value || '').trim();
+
+  if (!comment) {
+    alert('Please enter review details to help other buyers.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-rev-' + postId);
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(`/api/posts/${postId}/reviews`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ rating, title, comment })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Error submitting review');
+
+    alert('🎉 Thank you! Your review has been published and will guide other buyers.');
+    await loadBuyerFeed();
+  } catch (err) {
+    alert('Review error: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function switchTab(tabId) {
+  ['tabMarketplace', 'tabOrders', 'tabLocation', 'tabFeed'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === tabId ? 'block' : 'none';
+  });
+  document.querySelectorAll('.dash-tab-btn').forEach(b => b.classList.remove('active'));
+  if (tabId === 'tabMarketplace') document.getElementById('btnTabMarketplace').classList.add('active');
+  if (tabId === 'tabOrders') document.getElementById('btnTabOrders').classList.add('active');
+  if (tabId === 'tabLocation') document.getElementById('btnTabLocation').classList.add('active');
+  if (tabId === 'tabFeed') {
+    document.getElementById('btnTabFeed').classList.add('active');
+    loadBuyerFeed();
+  }
+}
+
+function filterCategory(cat, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (cat === 'ALL') {
+    renderProduceGrid(PRODUCE_CATALOG);
+  } else {
+    renderProduceGrid(PRODUCE_CATALOG.filter(p => p.category === cat));
+  }
+}
+
+function filterProduce() {
+  const q = document.getElementById('produceSearch').value.toLowerCase();
+  const filtered = PRODUCE_CATALOG.filter(p => 
+    p.name.toLowerCase().includes(q) ||
+    p.farmer.toLowerCase().includes(q) ||
+    p.state.toLowerCase().includes(q) ||
+    p.lga.toLowerCase().includes(q)
+  );
+  renderProduceGrid(filtered);
+}
+
+function renderProduceGrid(items) {
+  const container = document.getElementById('produceGridContainer');
+  if (!container) return;
+  if (!items.length) {
+    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-muted)">No produce found matching your search.</div>';
+    return;
+  }
+  container.innerHTML = items.map(p => `
+    <div class="produce-card">
+      <div class="produce-card-header">
+        <span>${p.emoji}</span>
+      </div>
+      <div class="produce-card-body">
+        <div class="produce-name">${p.name}</div>
+        <div class="produce-farm"><i class="fa-solid fa-circle-check"></i> ${p.farmer}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem">
+          <i class="fa-solid fa-location-dot"></i> ${p.state} • ${p.lga}
+        </div>
+        <div class="produce-meta-row">
+          <div>
+            <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase">Farmgate Price</div>
+            <div class="produce-price">₦${p.price.toLocaleString()}</div>
+            <div style="font-size:0.68rem;color:var(--text-muted)">per ${p.unit}</div>
+          </div>
+          <div style="text-align:right">
+            <span class="status-pill approved" style="font-size:0.65rem">MOQ: ${p.moq}</span>
+          </div>
+        </div>
+        <button class="btn-primary-action" style="margin-top:auto;width:100%" onclick="openOrderModal('${p.id}')">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>Order with Escrow</span>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderOrdersTable() {
+  const tbody = document.getElementById('ordersTableBody');
+  if (!tbody) return;
+  document.getElementById('orderCountBadge').textContent = myOrders.length;
+  tbody.innerHTML = myOrders.map(o => `
+    <tr>
+      <td style="font-family:monospace;font-weight:700;color:var(--emerald-400)">${o.id}</td>
+      <td><strong>${o.produce}</strong><br><span style="font-size:0.75rem;color:var(--text-muted)">Qty: ${o.qty}</span></td>
+      <td>${o.farmer}</td>
+      <td style="font-weight:800;color:var(--emerald-400)">₦${o.amount.toLocaleString()}</td>
+      <td><i class="fa-solid fa-location-dot" style="font-size:0.75rem;color:var(--sky-400)"></i> ${o.destination}</td>
+      <td>
+        <span class="status-pill ${o.status.toLowerCase()}">
+          <i class="fa-solid ${o.status === 'IN_TRANSIT' ? 'fa-truck' : 'fa-lock'}"></i>
+          ${o.status.replace('_', ' ')}
+        </span>
+      </td>
+      <td>
+        <button class="btn-primary-action" style="padding:0.35rem 0.65rem;font-size:0.72rem" onclick="confirmDelivery('${o.id}')">
+          <i class="fa-solid fa-check-double"></i> Confirm &amp; Release
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function confirmDelivery(orderId) {
+  if (confirm('Have you received and inspected the produce for order ' + orderId + '? Releasing escrow will pay the farmer directly.')) {
+    const o = myOrders.find(x => x.id === orderId);
+    if (o) o.status = 'COMPLETED';
+    renderOrdersTable();
+    alert('✓ Delivery confirmed! Escrow funds have been successfully released to the farmer.');
+  }
+}
+
+function openOrderModal(produceId) {
+  currentOrderingProduce = PRODUCE_CATALOG.find(p => p.id === produceId);
+  if (!currentOrderingProduce) return;
+  document.getElementById('orderModalTitle').textContent = 'Order ' + currentOrderingProduce.name;
+  document.getElementById('orderProduceName').textContent = currentOrderingProduce.name;
+  document.getElementById('orderFarmerName').textContent = 'Sold by: ' + currentOrderingProduce.farmer + ' (' + currentOrderingProduce.state + ')';
+  document.getElementById('orderUnitPrice').textContent = 'Unit Price: ₦' + currentOrderingProduce.price.toLocaleString() + ' per ' + currentOrderingProduce.unit;
+  document.getElementById('orderQty').value = currentOrderingProduce.moq;
+  document.getElementById('orderQty').min = currentOrderingProduce.moq;
+  document.getElementById('orderMoqHint').textContent = 'Minimum Order Quantity (MOQ): ' + currentOrderingProduce.moq + ' ' + currentOrderingProduce.unit;
+
+  const dest = (currentUser && currentUser.address) ? (currentUser.address + ', ' + currentUser.lga + ', ' + currentUser.state) : 'Delivery destination';
+  document.getElementById('orderDest').value = dest;
+
+  calculateOrderTotal();
+  document.getElementById('orderModal').style.display = 'flex';
+}
+
+function closeOrderModal() {
+  document.getElementById('orderModal').style.display = 'none';
+}
+
+function calculateOrderTotal() {
+  if (!currentOrderingProduce) return;
+  const qty = parseInt(document.getElementById('orderQty').value) || 1;
+  const subtotal = qty * currentOrderingProduce.price;
+  document.getElementById('orderSubtotal').textContent = '₦' + subtotal.toLocaleString();
+  document.getElementById('orderTotal').textContent = '₦' + subtotal.toLocaleString();
+}
+
+function confirmEscrowOrder() {
+  if (!currentOrderingProduce) return;
+  const qty = parseInt(document.getElementById('orderQty').value) || 1;
+  const total = qty * currentOrderingProduce.price;
+  const newOrder = {
+    id: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
+    produce: currentOrderingProduce.name,
+    qty: qty + ' ' + currentOrderingProduce.unit,
+    farmer: currentOrderingProduce.farmer,
+    amount: total,
+    status: 'ESCROW_LOCKED',
+    destination: (currentUser?.state || 'Lagos') + ' • ' + (currentUser?.lga || 'Ikeja')
+  };
+  myOrders.unshift(newOrder);
+  renderOrdersTable();
+  closeOrderModal();
+  switchTab('tabOrders');
+  alert('🎉 Order placed successfully! ₦' + total.toLocaleString() + ' has been secured in Agrein Escrow. The farmer has been notified to pack your harvest.');
+}
+
+function openLocationModal() {
+  switchTab('tabLocation');
+}
+
+function populateTabStates() {
+  if (window.populateStatesDropdown) {
+    window.populateStatesDropdown('tabState', currentUser?.state);
+    if (currentUser?.state) {
+      window.populateLgasDropdown(currentUser.state, 'tabLga', currentUser.lga);
+    }
+  }
+}
+
+function populateTabLga(st) {
+  if (window.populateLgasDropdown) {
+    window.populateLgasDropdown(st, 'tabLga');
+  }
+}
+
+async function saveProfileTab(e) {
+  e.preventDefault();
+  const token = localStorage.getItem('agrein_token');
+  const fullName = document.getElementById('tabFullName').value.trim();
+  const phone = document.getElementById('tabPhone').value.trim();
+  const state = document.getElementById('tabState').value;
+  const lga = document.getElementById('tabLga').value;
+  const city = document.getElementById('tabCity').value.trim();
+  const address = document.getElementById('tabAddress').value.trim();
+
+  const btn = document.getElementById('tabSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch" style="animation:spin .8s linear infinite"></i> Saving...';
+
+  try {
+    const res = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ fullName, phone, state, lga, city, address })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update location.');
+
+    currentUser = { ...currentUser, full_name: fullName, phone_number: phone, state, lga, city, address };
+    localStorage.setItem('agrein_user', JSON.stringify(currentUser));
+    renderUserHeader();
+
+    const alertEl = document.getElementById('profileSaveAlert');
+    const msgEl = document.getElementById('profileSaveAlertMsg');
+    alertEl.classList.remove('hidden');
+    msgEl.textContent = 'Delivery contact and location updated successfully!';
+    setTimeout(() => alertEl.classList.add('hidden'), 4000);
+  } catch(err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>Save Location &amp; Contact</span>';
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('agrein_theme', next);
+}
+
+function logout() {
+  localStorage.removeItem('agrein_token');
+  localStorage.removeItem('agrein_user');
+  window.location.href = '/login';
+}
+
+window.addEventListener('DOMContentLoaded', initBuyerDashboard);
+</script>
+</body>
+</html>
+

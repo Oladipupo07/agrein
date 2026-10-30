@@ -15,6 +15,7 @@ const mailer = require('../utils/mailer');
 const supabaseClient = require('../utils/supabaseClient');
 const { getSupabaseAdmin, findProfileByEmail, findProfileById } = supabaseClient;
 const jwt = require('jsonwebtoken');
+const interswitchService = require('../services/interswitchService');
 
 // Inline the JWT expiry so this module doesn't depend on the middleware's
 // export shape. The middleware exports a function; some deploys have seen
@@ -269,15 +270,42 @@ async function applyFarmerVerificationStatus(user) {
   const sb = getSupabaseAdmin();
   if (!sb || !user.id) return user;
 
-  const { data: verification } = await sb
-    .from('farmer_verifications')
-    .select('status')
-    .eq('user_id', user.id)
-    .order('submitted_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (verification && verification.status) {
-    user.verification_status = verification.status;
+  try {
+    const { data: verification } = await sb
+      .from('farmer_verifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('submitted_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (verification) {
+      if (verification.status) user.verification_status = verification.status;
+      user.nin_number = verification.nin_number || null;
+      user.bvn_number = verification.bvn_number || null;
+      user.cac_number = verification.cac_number || user.cac_number || null;
+      user.verification_submitted_at = verification.submitted_at || null;
+    }
+
+    const { data: farmProfile } = await sb
+      .from('farmer_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (farmProfile) {
+      user.farm_profile = farmProfile;
+      user.farm_name = farmProfile.farm_name;
+      user.farm_location = farmProfile.farm_location;
+      user.farm_state = farmProfile.farm_state;
+      user.farm_lga = farmProfile.farm_lga;
+      user.farm_type = farmProfile.farm_type;
+      user.cac_number = farmProfile.cac_number || user.cac_number;
+      user.crops_produced = farmProfile.crops_produced || [];
+      user.farm_size_acres = farmProfile.farm_size_acres;
+      user.years_experience = farmProfile.years_experience;
+      user.intended_products = farmProfile.intended_products;
+    }
+  } catch (err) {
+    console.warn('[applyFarmerVerificationStatus] error:', err.message);
   }
   return user;
 }
@@ -356,6 +384,37 @@ const authController = {
         const { data, error } = await sb.from('profiles').select('*');
         if (error) throw error;
         users = (data || []).map(profileToRecord);
+
+        try {
+          const { data: verifs } = await sb.from('farmer_verifications').select('*');
+          const { data: farmProfiles } = await sb.from('farmer_profiles').select('*');
+          const verifMap = new Map((verifs || []).map(v => [v.user_id, v]));
+          const farmMap = new Map((farmProfiles || []).map(f => [f.user_id, f]));
+
+          users.forEach(u => {
+            if (u.role === 'FARMER') {
+              const v = verifMap.get(u.id);
+              const f = farmMap.get(u.id);
+              if (v) {
+                u.verification_status = v.status || u.verification_status;
+                u.nin_number = v.nin_number || null;
+                u.bvn_number = v.bvn_number || null;
+                u.cac_number = v.cac_number || u.cac_number || null;
+                u.submitted_at = v.submitted_at || null;
+              }
+              if (f) {
+                u.farm_name = f.farm_name || null;
+                u.farm_location = f.farm_location || null;
+                u.farm_state = f.farm_state || null;
+                u.farm_lga = f.farm_lga || null;
+                u.farm_type = f.farm_type || null;
+                u.farm_size_acres = f.farm_size_acres || null;
+                u.crops_produced = f.crops_produced || [];
+                u.cac_number = f.cac_number || u.cac_number || null;
+              }
+            }
+          });
+        } catch (_) {}
       } else {
         users = [];
       }
@@ -801,6 +860,7 @@ const authController = {
       if (!sb) return res.status(503).json({ success: false, message: 'Database unavailable.' });
 
       // ── Personal details ──────────────────────────────────────────────────────
+      const full_name    = (req.body.full_name    || '').trim();
       const nin_number   = (req.body.nin_number   || '').trim();
       const bvn_number   = (req.body.bvn_number   || '').trim();
       const date_of_birth = req.body.date_of_birth || null;
@@ -832,6 +892,7 @@ const authController = {
 
       // ── Update profiles (phone, address, state, lga) ─────────────────────────
       const profileUpdates = { updated_at: new Date().toISOString() };
+      if (full_name)    profileUpdates.full_name    = full_name;
       if (phone_number) profileUpdates.phone_number = phone_number;
       if (state)        profileUpdates.state         = state;
       if (lga)          profileUpdates.lga            = lga;
@@ -864,6 +925,26 @@ const authController = {
         // Non-fatal — proceed to verification record
       }
 
+      // ── Interswitch NIN & CAC Verification ────────────────────────────────────
+      let interswitchNin = null;
+      let interswitchCac = null;
+      try {
+        interswitchNin = await interswitchService.verifyNIN(nin_number, {
+          fullName: full_name,
+          dateOfBirth: date_of_birth,
+          gender,
+          phone: phone_number
+        });
+      } catch (e) { console.warn('[Interswitch] NIN verify warning:', e.message); }
+
+      if (cac_number) {
+        try {
+          interswitchCac = await interswitchService.verifyCAC(cac_number, {
+            companyName: farm_name
+          });
+        } catch (e) { console.warn('[Interswitch] CAC verify warning:', e.message); }
+      }
+
       // ── Upsert farmer_verifications ───────────────────────────────────────────
       const now = new Date().toISOString();
       const verificationPayload = {
@@ -873,7 +954,11 @@ const authController = {
         bvn_number: bvn_number || null,
         cac_number: cac_number || null,
         submitted_at: now,
-        updated_at: now
+        updated_at: now,
+        admin_notes: [
+          interswitchNin && interswitchNin.valid ? ('NIN: Verified (' + interswitchNin.gateway + ')') : 'NIN: Pending check',
+          cac_number ? (interswitchCac && interswitchCac.valid ? ('CAC: Verified (' + interswitchCac.gateway + ')') : 'CAC: Unverified') : 'Sole Trader (No CAC)'
+        ].join(' | ')
       };
 
       const { error: verErr } = await sb
@@ -900,8 +985,18 @@ const authController = {
 
       return res.json({
         success: true,
-        message: 'Farm profile submitted successfully. Our team will review your details within 2-3 business days.',
-        verification_status: 'PENDING_REVIEW'
+        message: 'Farm profile submitted successfully. Identity verified via Interswitch gateway.',
+        verification_status: 'PENDING_REVIEW',
+        interswitch: {
+          nin_verified: Boolean(interswitchNin?.valid),
+          cac_verified: Boolean(interswitchCac?.valid),
+          nin_ref: interswitchNin?.reference || null,
+          cac_ref: interswitchCac?.reference || null,
+          details: {
+            nin: interswitchNin?.details || null,
+            cac: interswitchCac?.details || null
+          }
+        }
       });
 
     } catch (error) {

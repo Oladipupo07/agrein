@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#059669">
+  <title>Farmer Dashboard - Agrein Marketplace</title>
+  <meta name="description" content="Manage your farm produce listings, review buyer orders, monitor escrow payouts and track verification status.">
+  <script>(function(){var s=localStorage.getItem("agrein_theme")||"dark";document.documentElement.setAttribute("data-theme",s);})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/farmer-onboarding.css">
+  <link rel="stylesheet" href="/dashboard.css">
+</head>
+<body>
+
+<div class="dash-bg-scene"></div>
+<div class="dash-grid"></div>
+
+<div id="dashApp">
+  <!-- Navbar -->
+  <nav class="dash-nav">
+    <a href="/" class="dash-brand">
+      <div class="dash-brand-icon" style="background:linear-gradient(135deg,var(--emerald-700),var(--amber-500))"><i class="fa-solid fa-wheat-awn"></i></div>
+      <div>
+        <div class="dash-brand-title">Agrein</div>
+        <div class="dash-brand-subtitle">Farmer &amp; Seller Console</div>
+      </div>
+    </a>
+
+    <div class="dash-nav-right">
+      <button class="nav-icon-btn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+        <i class="fa-solid fa-sun light-icon"></i>
+        <i class="fa-solid fa-moon dark-icon"></i>
+      </button>
+
+      <div class="user-badge-pill">
+        <i class="fa-solid fa-tractor" style="color:var(--emerald-400)"></i>
+        <span id="navFarmerName">Loading...</span>
+        <span class="role-tag farmer" id="navRoleTag">Seller</span>
+      </div>
+
+      <button onclick="logout()" class="btn-signout">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        <span>Sign Out</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="dash-container">
+    <!-- Welcome Strip -->
+    <div class="dash-hero">
+      <div>
+        <h1 class="dash-welcome-title" id="farmerWelcomeTitle">Welcome, Producer</h1>
+        <div class="dash-welcome-sub">
+          <span id="businessNameHeader"><i class="fa-solid fa-store"></i> Farm Business</span>
+          <span>•</span>
+          <span class="location-chip" id="businessLocationChip"><i class="fa-solid fa-location-dot"></i> <span id="farmLocationText">Business Location</span></span>
+          <span class="location-chip" id="cacStatusChip"><i class="fa-solid fa-building-columns"></i> <span id="cacText">CAC: Pending</span></span>
+        </div>
+      </div>
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+        <a href="/farmer-onboarding" class="btn-secondary-action" id="editKycBtn">
+          <i class="fa-solid fa-id-card"></i>
+          <span>Update KYC / Business Details</span>
+        </a>
+        <button onclick="openAddListingModal()" class="btn-primary-action">
+          <i class="fa-solid fa-plus"></i>
+          <span>+ List New Harvest</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Dynamic Verification Status Banner -->
+    <div class="dash-notice amber" id="verificationBanner">
+      <div class="dash-notice-left">
+        <div class="dash-notice-icon" id="verifIcon"><i class="fa-solid fa-hourglass-half"></i></div>
+        <div>
+          <div class="dash-notice-title" id="verifTitle">Seller Verification In Review</div>
+          <div class="dash-notice-sub" id="verifSub">Your NIN, CAC registration and farm business details have been submitted. Our compliance team verifies sellers within 2-3 business days.</div>
+        </div>
+      </div>
+      <div id="verifActionWrap">
+        <span class="status-pill pending_review" id="verifBadge">PENDING REVIEW</span>
+      </div>
+    </div>
+
+    <!-- Metrics Grid -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div>
+          <div class="metric-val" id="metricListingsCount">4 Lots</div>
+          <div class="metric-title">Active Harvest Lots</div>
+        </div>
+        <div class="metric-icon-wrap emerald"><i class="fa-solid fa-seedling"></i></div>
+      </div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-val" id="metricPendingEscrow">₦540,000</div>
+          <div class="metric-title">Escrow Awaiting Dispatch</div>
+        </div>
+        <div class="metric-icon-wrap amber"><i class="fa-solid fa-clock-rotate-left"></i></div>
+      </div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-val" id="metricTotalSales">₦3,850,000</div>
+          <div class="metric-title">Total Lifetime Sales</div>
+        </div>
+        <div class="metric-icon-wrap sky"><i class="fa-solid fa-sack-dollar"></i></div>
+      </div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-val" id="metricTrustScore">96 / 100</div>
+          <div class="metric-title">Accreditation Trust Score</div>
+        </div>
+        <div class="metric-icon-wrap purple"><i class="fa-solid fa-award"></i></div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="dash-tabs-bar">
+      <button class="dash-tab-btn active" id="btnTabListings" onclick="switchFarmerTab('tabListings')">
+        <i class="fa-solid fa-boxes-stacked"></i>
+        <span>My Harvest Listings</span>
+        <span class="dash-tab-badge" id="listingsBadge">4</span>
+      </button>
+      <button class="dash-tab-btn" id="btnTabOrders" onclick="switchFarmerTab('tabOrders')">
+        <i class="fa-solid fa-cart-flatbed"></i>
+        <span>Buyer Orders &amp; Dispatch</span>
+        <span class="dash-tab-badge" id="farmerOrdersBadge">2</span>
+      </button>
+      <button class="dash-tab-btn" id="btnTabDossier" onclick="switchFarmerTab('tabDossier')">
+        <i class="fa-solid fa-address-book"></i>
+        <span>Business &amp; KYC Dossier</span>
+      </button>
+      <button class="dash-tab-btn" id="btnTabPublish" onclick="switchFarmerTab('tabPublish')">
+        <i class="fa-solid fa-bullhorn"></i>
+        <span>Publish Farm Update</span>
+        <span class="dash-tab-badge" id="myPostsCountBadge">0</span>
+      </button>
+    </div>
+
+    <!-- TAB 1: Harvest Listings -->
+    <section id="tabListings" class="farmer-tab-section">
+      <div class="content-card">
+        <div class="content-card-header">
+          <div>
+            <div class="content-card-title"><i class="fa-solid fa-wheat-awn" style="color:var(--emerald-400)"></i> Listed Agricultural Produce</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">Active farm lots visible to bulk off-takers and consumers nationwide.</p>
+          </div>
+          <button onclick="openAddListingModal()" class="btn-primary-action">
+            <i class="fa-solid fa-plus"></i> List New Produce
+          </button>
+        </div>
+
+        <div class="dash-table-wrap">
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th>Crop &amp; Produce</th>
+                <th>Category</th>
+                <th>Unit Price</th>
+                <th>Available Stock</th>
+                <th>Min. Order (MOQ)</th>
+                <th>Harvest Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="farmerListingsBody">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Buyer Orders -->
+    <section id="tabOrders" class="farmer-tab-section" style="display:none">
+      <div class="content-card">
+        <div class="content-card-header">
+          <div>
+            <div class="content-card-title"><i class="fa-solid fa-cart-shopping" style="color:var(--emerald-400)"></i> Orders Placed with Escrow</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">Orders where buyers have already locked payment in Agrein Escrow.</p>
+          </div>
+        </div>
+
+        <div class="dash-table-wrap">
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Produce &amp; Qty</th>
+                <th>Buyer Name</th>
+                <th>Delivery Destination</th>
+                <th>Escrow Amount</th>
+                <th>Escrow Status</th>
+                <th>Fulfillment Action</th>
+              </tr>
+            </thead>
+            <tbody id="farmerOrdersBody">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Business & KYC Dossier -->
+    <section id="tabDossier" class="farmer-tab-section" style="display:none">
+      <div class="content-card">
+        <div class="content-card-header">
+          <div>
+            <div class="content-card-title"><i class="fa-solid fa-shield-halved" style="color:var(--emerald-400)"></i> Verified Seller Dossier</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">Official accreditation details submitted during onboarding.</p>
+          </div>
+          <a href="/farmer-onboarding" class="btn-secondary-action">
+            <i class="fa-solid fa-pen-to-square"></i> Re-submit / Edit Information
+          </a>
+        </div>
+
+        <div class="dossier-grid">
+          <div class="dossier-item">
+            <div class="dossier-label">Detail Legal Name</div>
+            <div class="dossier-val" id="dossierFullName">--</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Phone Number</div>
+            <div class="dossier-val" id="dossierPhone">--</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Personal State &amp; LGA</div>
+            <div class="dossier-val" id="dossierStateLga">--</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Residential Address</div>
+            <div class="dossier-val" id="dossierAddress">--</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">National Identity Number (NIN)</div>
+            <div class="dossier-val mono" id="dossierNin">--</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Business / Farm Name</div>
+            <div class="dossier-val" id="dossierFarmName">--</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">CAC Registration Number</div>
+            <div class="dossier-val mono" id="dossierCac">--</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Location of Business (State &amp; LGA)</div>
+            <div class="dossier-val" id="dossierFarmLocation">--</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Physical Farm Address</div>
+            <div class="dossier-val" id="dossierFarmAddress">--</div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-label">Farm Type &amp; Size</div>
+            <div class="dossier-val" id="dossierFarmType">--</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Publish Farm Update & Seller Posts -->
+    <section id="tabPublish" class="farmer-tab-section" style="display:none">
+      <div class="content-card">
+        <div class="content-card-header">
+          <div>
+            <div class="content-card-title"><i class="fa-solid fa-bullhorn" style="color:var(--emerald-400)"></i> Publish Harvest Post &amp; Community Update</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">Post direct farm updates, harvest alerts, bulk discounts, and cooperative offers to buyers across Nigeria.</p>
+          </div>
+        </div>
+
+        <form onsubmit="submitFarmerPost(event)" class="create-post-card" style="margin-bottom:2rem">
+          <div class="form-group" style="margin-bottom:1rem">
+            <label class="form-label">Post Title / Harvest Headline <span class="req">*</span></label>
+            <div class="input-wrap">
+              <i class="input-icon fa-solid fa-heading"></i>
+              <input type="text" class="form-input" id="postTitle" placeholder="e.g. 🌾 Fresh Harvest Alert: 500 Bags of Grade-A Yellow Maize Ready for Dispatch!" required>
+            </div>
+          </div>
+
+          <div class="form-grid-2col" style="margin-bottom:1rem">
+            <div class="form-group">
+              <label class="form-label">Category <span class="req">*</span></label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-tag"></i>
+                <select class="form-input form-select" id="postCategory" required>
+                  <option value="Harvest Update">🌾 Harvest Update</option>
+                  <option value="Bulk Offer">📦 Bulk Offer</option>
+                  <option value="Market Price">🏷️ Market Price / Discount</option>
+                  <option value="Cooperative Bid">🤝 Cooperative Bid</option>
+                  <option value="Farm Tip">💡 Farm Tip &amp; Practice</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Crop Tag / Produce</label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-seedling"></i>
+                <input type="text" class="form-input" id="postCropTag" placeholder="e.g. Yellow Maize, Yam, Palm Oil">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid-2col" style="margin-bottom:1rem">
+            <div class="form-group">
+              <label class="form-label">Price Info (Optional)</label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-naira-sign"></i>
+                <input type="text" class="form-input" id="postPriceInfo" placeholder="e.g. ₦42,000 / 100kg Bag">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Minimum Order Quantity (MOQ)</label>
+              <div class="input-wrap">
+                <i class="input-icon fa-solid fa-boxes-packing"></i>
+                <input type="text" class="form-input" id="postMoq" placeholder="e.g. 5 Bags or 100 Tubers">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1rem">
+            <label class="form-label">Post Icon / Emoji</label>
+            <div class="input-wrap">
+              <i class="input-icon fa-solid fa-icons"></i>
+              <select class="form-input form-select" id="postEmoji">
+                <option value="🌾">🌾 Grain / Harvest</option>
+                <option value="🌽">🌽 Maize / Corn</option>
+                <option value="🥔">🥔 Tubers / Yam / Cassava</option>
+                <option value="🌴">🌴 Palm Oil / Cash Crop</option>
+                <option value="🍅">🍅 Vegetables / Fruits</option>
+                <option value="🐔">🐔 Livestock / Poultry</option>
+                <option value="🚚">🚚 Logistics / Bulk Dispatch</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.5rem">
+            <label class="form-label">Post Details &amp; Specifications <span class="req">*</span></label>
+            <textarea class="form-input" id="postContent" rows="4" style="padding:0.75rem;resize:vertical" placeholder="Describe your farm update, moisture level, grade quality, packaging, logistics readiness, or escrow terms..." required></textarea>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;gap:1rem">
+            <button type="button" class="btn-secondary-action" onclick="resetPostForm()">
+              <i class="fa-solid fa-rotate-left"></i> Reset Form
+            </button>
+            <button type="submit" class="btn-primary-action" id="btnPublishPost">
+              <i class="fa-solid fa-paper-plane"></i> Publish Post to Marketplace Feed
+            </button>
+          </div>
+        </form>
+
+        <div class="content-card-header" style="margin-top:2rem;border-top:1px solid var(--border-light);padding-top:1.5rem">
+          <div>
+            <div class="content-card-title"><i class="fa-solid fa-list-check" style="color:var(--emerald-400)"></i> My Published Updates &amp; Buyer Feedback</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">Manage your posts and view comments and star ratings left by buyers.</p>
+          </div>
+          <button onclick="loadMyFarmerPosts()" class="btn-secondary-action" style="font-size:0.8rem">
+            <i class="fa-solid fa-arrows-rotate"></i> Refresh
+          </button>
+        </div>
+
+        <div id="myPostsContainer" class="posts-feed-list" style="margin-top:1rem">
+          <!-- Rendered by JS -->
+          <div style="text-align:center;padding:2rem;color:var(--text-muted)">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size:1.5rem;color:var(--emerald-400)"></i>
+            <p style="margin-top:0.5rem">Loading your posts...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ADD LISTING MODAL -->
+<div class="modal-overlay" id="addListingModal" style="display:none">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title">List New Farm Harvest</div>
+      <button class="modal-close-btn" onclick="closeAddListingModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <form onsubmit="submitNewListing(event)">
+      <div class="form-group">
+        <label class="form-label">Produce / Crop Name <span class="req">*</span></label>
+        <div class="input-wrap">
+          <i class="input-icon fa-solid fa-wheat-awn"></i>
+          <input class="form-input" id="newCropName" type="text" placeholder="e.g. Yellow Maize Grain" required>
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Category <span class="req">*</span></label>
+          <div class="input-wrap">
+            <i class="input-icon fa-solid fa-layer-group"></i>
+            <select class="form-input form-select" id="newCropCat" required>
+              <option value="Grains &amp; Cereals">Grains &amp; Cereals</option>
+              <option value="Roots &amp; Tubers">Roots &amp; Tubers</option>
+              <option value="Vegetables &amp; Fruits">Vegetables &amp; Fruits</option>
+              <option value="Oils &amp; Cash Crops">Oils &amp; Cash Crops</option>
+              <option value="Poultry &amp; Livestock">Poultry &amp; Livestock</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Price (₦) <span class="req">*</span></label>
+          <div class="input-wrap">
+            <i class="input-icon fa-solid fa-naira-sign"></i>
+            <input class="form-input" id="newCropPrice" type="number" placeholder="42000" min="100" required>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Unit of Measure <span class="req">*</span></label>
+          <div class="input-wrap">
+            <i class="input-icon fa-solid fa-ruler"></i>
+            <input class="form-input" id="newCropUnit" type="text" placeholder="e.g. 100kg Bag, Tonne, Basket" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Available Stock <span class="req">*</span></label>
+          <div class="input-wrap">
+            <i class="input-icon fa-solid fa-boxes-stacked"></i>
+            <input class="form-input" id="newCropStock" type="number" placeholder="50" min="1" required>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Minimum Order Quantity (MOQ) <span class="req">*</span></label>
+          <div class="input-wrap">
+            <i class="input-icon fa-solid fa-box"></i>
+            <input class="form-input" id="newCropMoq" type="number" placeholder="5" min="1" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Harvest Date <span class="req">*</span></label>
+          <div class="input-wrap">
+            <i class="input-icon fa-solid fa-calendar"></i>
+            <input class="form-input" id="newCropHarvestDate" type="date" required>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.5rem">
+        <button type="button" class="btn-secondary-action" onclick="closeAddListingModal()">Cancel</button>
+        <button type="submit" class="btn-primary-action">
+          <i class="fa-solid fa-upload"></i>
+          <span>Publish Produce Listing</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let currentFarmer = null;
+
+let farmerListings = [
+  { id: 'lst-1', crop: 'Premium Yellow Maize', cat: 'Grains & Cereals', price: 42000, unit: '100kg Bag', stock: 120, moq: 5, harvest: '2026-10-15', status: 'ACTIVE' },
+  { id: 'lst-2', crop: 'Clean Dried Soya Beans', cat: 'Grains & Cereals', price: 48000, unit: '100kg Bag', stock: 85, moq: 3, harvest: '2026-10-20', status: 'ACTIVE' },
+  { id: 'lst-3', crop: 'White Cassava Flakes (Garri)', cat: 'Roots & Tubers', price: 28000, unit: '50kg Bag', stock: 60, moq: 2, harvest: '2026-10-18', status: 'ACTIVE' },
+  { id: 'lst-4', crop: 'Roma Plum Fresh Tomatoes', cat: 'Vegetables & Fruits', price: 24000, unit: 'Large Basket', stock: 40, moq: 2, harvest: '2026-10-28', status: 'ACTIVE' }
+];
+
+let farmerOrders = [
+  { id: 'ORD-8921', produce: 'Premium Yellow Maize', qty: '10 Bags (100kg)', buyer: 'Fatima Aliyu', dest: 'Lagos • Ikeja', amount: 420000, status: 'PAID_INTO_ESCROW' },
+  { id: 'ORD-8940', produce: 'Clean Dried Soya Beans', qty: '3 Bags (100kg)', buyer: 'Emeka Okafor', dest: 'Abuja • Gwagwalada', amount: 144000, status: 'DISPATCHED' }
+];
+
+async function initFarmerDashboard() {
+  const token = localStorage.getItem('agrein_token');
+  if (!token) {
+    window.location.href = '/login';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.user) {
+      currentFarmer = data.user;
+      localStorage.setItem('agrein_user', JSON.stringify(currentFarmer));
+
+      // Role guard
+      const role = (currentFarmer.role || '').toUpperCase();
+      if (role === 'BUYER') {
+        window.location.href = '/buyer-dashboard';
+        return;
+      }
+
+      // If user hasn't submitted phone/state or onboarding:
+      if (!currentFarmer.phone_number || !currentFarmer.state) {
+        window.location.href = '/farmer-onboarding';
+        return;
+      }
+
+      renderFarmerView();
+    } else {
+      localStorage.removeItem('agrein_token');
+      localStorage.removeItem('agrein_user');
+      window.location.href = '/login';
+    }
+  } catch(e) {
+    const raw = localStorage.getItem('agrein_user');
+    if (raw) {
+      currentFarmer = JSON.parse(raw);
+      renderFarmerView();
+    }
+  }
+
+  renderFarmerListingsTable();
+  renderFarmerOrdersTable();
+  loadMyFarmerPosts();
+}
+
+function renderFarmerView() {
+  if (!currentFarmer) return;
+  const name = currentFarmer.full_name || currentFarmer.name || currentFarmer.email;
+  const farmName = currentFarmer.farm_name || 'Agrein Farm Enterprise';
+  
+  document.getElementById('navFarmerName').textContent = name;
+  document.getElementById('farmerWelcomeTitle').textContent = 'Welcome, ' + name.split(' ')[0] + '!';
+  document.getElementById('businessNameHeader').innerHTML = '<i class="fa-solid fa-store"></i> ' + farmName;
+  
+  const bState = currentFarmer.farm_state || currentFarmer.state || 'State';
+  const bLga = currentFarmer.farm_lga || currentFarmer.lga || 'LGA';
+  document.getElementById('farmLocationText').textContent = bState + ' • ' + bLga;
+  
+  const cac = currentFarmer.cac_number;
+  document.getElementById('cacText').textContent = cac ? ('CAC: ' + cac) : 'CAC: Sole Trader';
+
+  // Verification Banner Status
+  const vStatus = (currentFarmer.verification_status || 'PENDING_REVIEW').toUpperCase();
+  const vBanner = document.getElementById('verificationBanner');
+  const vTitle = document.getElementById('verifTitle');
+  const vSub = document.getElementById('verifSub');
+  const vBadge = document.getElementById('verifBadge');
+  const vIcon = document.getElementById('verifIcon');
+
+  vBadge.className = 'status-pill ' + vStatus.toLowerCase();
+  vBadge.textContent = vStatus.replace('_', ' ');
+
+  if (vStatus === 'APPROVED') {
+    vBanner.className = 'dash-notice emerald';
+    vIcon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+    vTitle.textContent = 'Accredited Agricultural Seller (Verified)';
+    vSub.textContent = 'Your farm identity, CAC registration and physical farmland have been accredited. Full escrow clearance and direct buyer matching active.';
+  } else if (vStatus === 'CHANGES_REQUIRED') {
+    vBanner.className = 'dash-notice sky';
+    vIcon.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
+    vTitle.textContent = 'Verification Updates Required';
+    vSub.textContent = 'Admin has requested corrections on your submission. Click "Update KYC / Business Details" to resolve.';
+  } else {
+    vBanner.className = 'dash-notice amber';
+    vIcon.innerHTML = '<i class="fa-solid fa-hourglass-half"></i>';
+    vTitle.textContent = 'Seller Verification In Review';
+    vSub.textContent = 'Your detail legal name, NIN, business name, CAC and farm location are being reviewed by Agrein administrators. Escrow payouts are reserved safely for approved sellers.';
+  }
+
+  // Populate Dossier
+  document.getElementById('dossierFullName').textContent = name;
+  document.getElementById('dossierPhone').textContent = currentFarmer.phone_number || '--';
+  document.getElementById('dossierStateLga').textContent = (currentFarmer.state || '--') + ' • ' + (currentFarmer.lga || '--');
+  document.getElementById('dossierAddress').textContent = currentFarmer.address || '--';
+  const maskedNin = currentFarmer.nin_number ? (currentFarmer.nin_number.slice(0,3) + '****' + currentFarmer.nin_number.slice(-4)) : 'Submitted';
+  document.getElementById('dossierNin').innerHTML = maskedNin + ' <span class="status-pill approved" style="font-size:0.65rem;padding:0.12rem 0.45rem;display:inline-flex;align-items:center;gap:0.25rem"><i class="fa-solid fa-circle-check"></i> Interswitch NIMC</span>';
+  document.getElementById('dossierFarmName').textContent = farmName;
+  const cacVal = currentFarmer.cac_number;
+  document.getElementById('dossierCac').innerHTML = cacVal
+    ? (cacVal + ' <span class="status-pill approved" style="font-size:0.65rem;padding:0.12rem 0.45rem;display:inline-flex;align-items:center;gap:0.25rem"><i class="fa-solid fa-building-circle-check"></i> Interswitch CAC Active</span>')
+    : '<span style="color:var(--text-dim)">Sole Trader (No CAC)</span>';
+  document.getElementById('dossierFarmLocation').textContent = bState + ' • ' + bLga;
+  document.getElementById('dossierFarmAddress').textContent = currentFarmer.farm_location || currentFarmer.address || '--';
+  document.getElementById('dossierFarmType').textContent = (currentFarmer.farm_type || 'Crop Farming') + ' (' + (currentFarmer.farm_size_acres || '3') + ' Acres)';
+}
+
+function switchFarmerTab(tabId) {
+  ['tabListings', 'tabOrders', 'tabDossier', 'tabPublish'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === tabId ? 'block' : 'none';
+  });
+  document.querySelectorAll('.dash-tab-btn').forEach(b => b.classList.remove('active'));
+  if (tabId === 'tabListings') document.getElementById('btnTabListings').classList.add('active');
+  if (tabId === 'tabOrders') document.getElementById('btnTabOrders').classList.add('active');
+  if (tabId === 'tabDossier') document.getElementById('btnTabDossier').classList.add('active');
+  if (tabId === 'tabPublish') {
+    document.getElementById('btnTabPublish').classList.add('active');
+    loadMyFarmerPosts();
+  }
+}
+
+async function loadMyFarmerPosts() {
+  const container = document.getElementById('myPostsContainer');
+  const token = localStorage.getItem('agrein_token');
+  try {
+    const res = await fetch('/api/posts', {
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Failed to load posts');
+    
+    // Filter posts for this farmer or show all if matching
+    const myId = currentFarmer?.id;
+    const myName = currentFarmer?.full_name || currentFarmer?.name;
+    const myPosts = data.posts.filter(p => {
+      if (myId && p.seller_id === myId) return true;
+      if (myName && p.seller_name && p.seller_name.toLowerCase() === myName.toLowerCase()) return true;
+      return false;
+    });
+
+    const badge = document.getElementById('myPostsCountBadge');
+    if (badge) badge.textContent = myPosts.length;
+
+    if (!container) return;
+
+    if (myPosts.length === 0) {
+      container.innerHTML = `
+        <div style="text-align:center;padding:3rem 1.5rem;background:rgba(255,255,255,0.02);border:1px dashed var(--border-light);border-radius:12px">
+          <i class="fa-solid fa-seedling" style="font-size:2.5rem;color:var(--emerald-400);margin-bottom:0.75rem"></i>
+          <div style="font-weight:700;font-size:1rem;color:var(--text-main)">You haven't published any harvest updates yet</div>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.35rem">Fill in the form above to announce fresh crops, bulk discounts, and cooperative offers to buyers across Nigeria!</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = myPosts.map(p => `
+      <div class="post-feed-card" id="my-post-${p.id}">
+        <div class="post-top-meta">
+          <div class="post-author-box">
+            <div class="post-avatar-circle">${p.emoji || '🌾'}</div>
+            <div>
+              <div class="post-seller-name">
+                ${escapeHtml(p.title)}
+              </div>
+              <div class="post-farm-meta">
+                <span><i class="fa-solid fa-calendar-day"></i> ${new Date(p.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                <span>•</span>
+                <span class="post-category-tag">${escapeHtml(p.category)}</span>
+                ${p.crop_tag ? `<span>•</span> <span style="color:var(--emerald-400);font-weight:600">${escapeHtml(p.crop_tag)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <button class="btn-danger-action" onclick="deleteFarmerPost('${p.id}')" title="Delete post">
+            <i class="fa-solid fa-trash"></i> Delete
+          </button>
+        </div>
+
+        <div class="post-content-body">${escapeHtml(p.content)}</div>
+
+        ${(p.price_info || p.moq) ? `
+          <div class="post-commercial-chips">
+            ${p.price_info ? `<div class="comm-chip price-highlight"><i class="fa-solid fa-tag"></i> Price: <strong>${escapeHtml(p.price_info)}</strong></div>` : ''}
+            ${p.moq ? `<div class="comm-chip"><i class="fa-solid fa-box-open"></i> Min. Order: <strong>${escapeHtml(p.moq)}</strong></div>` : ''}
+            <div class="comm-chip"><i class="fa-solid fa-heart" style="color:var(--rose-400)"></i> <strong>${p.likes_count || 0}</strong> Likes</div>
+            <div class="comm-chip"><i class="fa-solid fa-star" style="color:var(--amber-400)"></i> Rating: <strong>${p.avg_rating ? p.avg_rating.toFixed(1) : '5.0'} / 5.0</strong> (${(p.reviews || []).length} reviews)</div>
+          </div>
+        ` : ''}
+
+        <!-- Comments & Reviews Summary -->
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;border-top:1px solid var(--border-light);padding-top:0.85rem">
+          <div style="font-size:0.82rem;color:var(--text-muted)">
+            <i class="fa-solid fa-comments" style="color:var(--sky-400)"></i> <strong>${(p.comments || []).length}</strong> Buyer Comments
+          </div>
+          <div style="font-size:0.82rem;color:var(--text-muted)">
+            <i class="fa-solid fa-star-half-stroke" style="color:var(--amber-400)"></i> <strong>${(p.reviews || []).length}</strong> Buyer Reviews
+          </div>
+        </div>
+
+        <!-- Render comments if any -->
+        ${(p.comments && p.comments.length > 0) ? `
+          <div style="margin-top:1rem;background:rgba(255,255,255,0.02);padding:0.75rem;border-radius:10px">
+            <div style="font-size:0.78rem;font-weight:700;color:var(--emerald-400);margin-bottom:0.5rem">Recent Comments:</div>
+            ${p.comments.slice(-2).map(c => `
+              <div style="font-size:0.8rem;margin-bottom:0.4rem;padding-bottom:0.4rem;border-bottom:1px solid rgba(255,255,255,0.05)">
+                <strong>${escapeHtml(c.author_name)}</strong> <span style="font-size:0.7rem;color:var(--text-dim)">(${escapeHtml(c.author_role)})</span>:
+                <span style="color:var(--text-muted)">${escapeHtml(c.text)}</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `).join('');
+  } catch (err) {
+    if (container) {
+      container.innerHTML = `<div style="color:var(--rose-400);padding:1rem;text-align:center">Failed to load posts: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+}
+
+async function submitFarmerPost(e) {
+  e.preventDefault();
+  const token = localStorage.getItem('agrein_token');
+  if (!token) {
+    alert('Please log in again to publish.');
+    window.location.href = '/login';
+    return;
+  }
+
+  const title = document.getElementById('postTitle').value.trim();
+  const category = document.getElementById('postCategory').value;
+  const crop_tag = document.getElementById('postCropTag').value.trim();
+  const price_info = document.getElementById('postPriceInfo').value.trim();
+  const moq = document.getElementById('postMoq').value.trim();
+  const emoji = document.getElementById('postEmoji').value;
+  const content = document.getElementById('postContent').value.trim();
+
+  const btn = document.getElementById('btnPublishPost');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Publishing...';
+
+  try {
+    const res = await fetch('/api/posts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        title,
+        category,
+        crop_tag,
+        price_info,
+        moq,
+        emoji,
+        content
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Error publishing post');
+    }
+
+    alert('🎉 Harvest post published successfully! It is now live in the Buyer Community Feed.');
+    resetPostForm();
+    await loadMyFarmerPosts();
+  } catch (err) {
+    alert('Publishing failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Publish Post to Marketplace Feed';
+  }
+}
+
+async function deleteFarmerPost(postId) {
+  if (!confirm('Are you sure you want to delete this post?')) return;
+  const token = localStorage.getItem('agrein_token');
+  try {
+    const res = await fetch('/api/posts/' + postId, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to delete');
+    alert('✓ Post removed.');
+    loadMyFarmerPosts();
+  } catch (err) {
+    alert('Delete error: ' + err.message);
+  }
+}
+
+function resetPostForm() {
+  document.getElementById('postTitle').value = '';
+  document.getElementById('postCropTag').value = '';
+  document.getElementById('postPriceInfo').value = '';
+  document.getElementById('postMoq').value = '';
+  document.getElementById('postContent').value = '';
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderFarmerListingsTable() {
+  const tbody = document.getElementById('farmerListingsBody');
+  if (!tbody) return;
+  document.getElementById('listingsBadge').textContent = farmerListings.length;
+  document.getElementById('metricListingsCount').textContent = farmerListings.length + ' Lots';
+
+  tbody.innerHTML = farmerListings.map(l => `
+    <tr>
+      <td><strong>${l.crop}</strong></td>
+      <td><span style="font-size:0.75rem;color:var(--text-muted)">${l.cat}</span></td>
+      <td style="font-weight:800;color:var(--emerald-400)">₦${l.price.toLocaleString()} / ${l.unit}</td>
+      <td><strong>${l.stock}</strong> ${l.unit.split(' ')[0]}s</td>
+      <td>${l.moq} ${l.unit.split(' ')[0]}s</td>
+      <td>${l.harvest}</td>
+      <td><span class="status-pill approved">${l.status}</span></td>
+      <td>
+        <button class="btn-danger-action" onclick="removeListing('${l.id}')"><i class="fa-solid fa-trash"></i></button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function removeListing(id) {
+  if (confirm('Are you sure you want to delete this listing?')) {
+    farmerListings = farmerListings.filter(x => x.id !== id);
+    renderFarmerListingsTable();
+  }
+}
+
+function renderFarmerOrdersTable() {
+  const tbody = document.getElementById('farmerOrdersBody');
+  if (!tbody) return;
+  document.getElementById('farmerOrdersBadge').textContent = farmerOrders.length;
+  tbody.innerHTML = farmerOrders.map(o => `
+    <tr>
+      <td style="font-family:monospace;font-weight:700;color:var(--emerald-400)">${o.id}</td>
+      <td><strong>${o.produce}</strong><br><span style="font-size:0.75rem;color:var(--text-muted)">${o.qty}</span></td>
+      <td>${o.buyer}</td>
+      <td>${o.dest}</td>
+      <td style="font-weight:800;color:var(--emerald-400)">₦${o.amount.toLocaleString()}</td>
+      <td>
+        <span class="status-pill ${o.status.toLowerCase()}">
+          <i class="fa-solid ${o.status === 'DISPATCHED' ? 'fa-truck' : 'fa-lock'}"></i>
+          ${o.status.replace(/_/g, ' ')}
+        </span>
+      </td>
+      <td>
+        ${o.status === 'PAID_INTO_ESCROW' ? `
+          <button class="btn-primary-action" style="padding:0.35rem 0.65rem;font-size:0.72rem" onclick="dispatchOrder('${o.id}')">
+            <i class="fa-solid fa-truck-ramp-box"></i> Mark Dispatched
+          </button>
+        ` : `
+          <span style="font-size:0.72rem;color:var(--sky-400)"><i class="fa-solid fa-road"></i> In Transit</span>
+        `}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function dispatchOrder(id) {
+  const o = farmerOrders.find(x => x.id === id);
+  if (o) {
+    o.status = 'DISPATCHED';
+    renderFarmerOrdersTable();
+    alert('🚚 Order ' + id + ' marked as dispatched! The buyer and logistics driver have received waybill confirmation.');
+  }
+}
+
+function openAddListingModal() {
+  document.getElementById('newCropHarvestDate').valueAsDate = new Date();
+  document.getElementById('addListingModal').style.display = 'flex';
+}
+
+function closeAddListingModal() {
+  document.getElementById('addListingModal').style.display = 'none';
+}
+
+function submitNewListing(e) {
+  e.preventDefault();
+  const crop = document.getElementById('newCropName').value.trim();
+  const cat = document.getElementById('newCropCat').value;
+  const price = parseInt(document.getElementById('newCropPrice').value) || 0;
+  const unit = document.getElementById('newCropUnit').value.trim();
+  const stock = parseInt(document.getElementById('newCropStock').value) || 1;
+  const moq = parseInt(document.getElementById('newCropMoq').value) || 1;
+  const harvest = document.getElementById('newCropHarvestDate').value;
+
+  const newLot = {
+    id: 'lst-' + Math.floor(100 + Math.random() * 900),
+    crop,
+    cat,
+    price,
+    unit,
+    stock,
+    moq,
+    harvest,
+    status: 'ACTIVE'
+  };
+
+  farmerListings.unshift(newLot);
+  renderFarmerListingsTable();
+  closeAddListingModal();
+  alert('🌾 Harvest published successfully! Now visible on the Agrein Marketplace.');
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('agrein_theme', next);
+}
+
+function logout() {
+  localStorage.removeItem('agrein_token');
+  localStorage.removeItem('agrein_user');
+  window.location.href = '/login';
+}
+
+window.addEventListener('DOMContentLoaded', initFarmerDashboard);
+</script>
+</body>
+</html>
+

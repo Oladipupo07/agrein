@@ -205,6 +205,18 @@ function rotpKey(e, idx) {
 function getRotp() { return [0,1,2,3,4,5].map(function(i) { const el = document.getElementById('rotp'+i); return el ? el.value : ''; }).join(''); }
 
 // Profile View Handlers
+function goToDashboard() {
+  const u = state.currentUser || JSON.parse(localStorage.getItem('agrein_user') || '{}');
+  const role = (u.role || '').toUpperCase();
+  if (role === 'ADMIN') {
+    window.location.href = '/admin-dashboard';
+  } else if (role === 'FARMER' || role === 'SELLER') {
+    window.location.href = (u.phone_number && u.state) ? '/farmer-dashboard' : '/farmer-onboarding';
+  } else {
+    window.location.href = (u.phone_number && u.state && u.address) ? '/buyer-dashboard' : '/buyer-onboarding';
+  }
+}
+
 function displayProfile(user) {
   state.currentUser = user;
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.name || user.email;
@@ -296,8 +308,21 @@ async function submitLogin() {
       startOtpTimer();
       showView('otp');
     } else {
-      displayProfile(data.user || { email });
-      showView('profile');
+      const u = data.user || { email };
+      state.currentUser = u;
+      const role = (u.role || '').toUpperCase();
+      displayProfile(u);
+      
+      // Auto-route to the linked dashboard based on role
+      setTimeout(function() {
+        if (role === 'ADMIN') {
+          window.location.href = '/admin-dashboard';
+        } else if (role === 'FARMER' || role === 'SELLER') {
+          window.location.href = (u.phone_number && u.state) ? '/farmer-dashboard' : '/farmer-onboarding';
+        } else {
+          window.location.href = (u.phone_number && u.state && u.address) ? '/buyer-dashboard' : '/buyer-onboarding';
+        }
+      }, 600);
     }
   } catch(e) { showErr('loginError', 'loginErrorMsg', e.message); }
   finally { setLoading('loginBtn', false, '<i class="fa-solid fa-right-to-bracket"></i><span>Sign In</span>'); }
@@ -388,15 +413,18 @@ async function submitOtp() {
     const role = (data.user && data.user.role) || state.registrationRole || '';
 
     setTimeout(function() {
-      // FARMER = verified seller in server schema; SELLER = UI alias.
-      // Both roles must complete KYC before accessing the seller dashboard.
-      if (role === 'FARMER' || role === 'SELLER') {
+      const u = data.user || {};
+      const r = (u.role || role || '').toUpperCase();
+      if (r === 'FARMER' || r === 'SELLER') {
+        // Seller after signing up: fill legal name, phone, address, state, lga, NIN, business name, CAC, location
         window.location.href = '/farmer-onboarding';
+      } else if (r === 'ADMIN') {
+        window.location.href = '/admin-dashboard';
       } else {
-        displayProfile(data.user || { email: state.otpEmail });
-        showView('profile');
+        // Buyer after signing up: fill location and phone numbers
+        window.location.href = '/buyer-onboarding';
       }
-    }, 1800);
+    }, 1500);
   } catch(e) { showErr('otpError', 'otpErrorMsg', e.message); }
   finally { setLoading('otpBtn', false, '<i class="fa-solid fa-shield-check"></i><span>Verify Email</span>'); }
 }

@@ -44,13 +44,13 @@
           <li><a href="/privacy-policy.html" class="nav-link">Trust &amp; Privacy</a></li>
         </ul>
 
-        <div class="nav-actions">
+        <div class="nav-actions" id="navActionsContainer">
           <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
             <i class="fa-solid fa-sun light-icon"></i>
             <i class="fa-solid fa-moon dark-icon"></i>
           </button>
-          <a href="/login" class="btn-nav-login">Sign In</a>
-          <a href="/register" class="btn-nav-register">
+          <a href="/login" class="btn-nav-login" id="navLoginBtn">Sign In</a>
+          <a href="/register" class="btn-nav-register" id="navRegisterBtn">
             <span>Create Account</span>
             <i class="fa-solid fa-arrow-right"></i>
           </a>
@@ -313,6 +313,64 @@
       document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem('agrein_theme', next);
     }
+
+    function checkHomeSession() {
+      const token = localStorage.getItem('agrein_token');
+      const userRaw = localStorage.getItem('agrein_user');
+      if (!token || !userRaw) return;
+
+      try {
+        const user = JSON.parse(userRaw);
+        const role = (user.role || 'BUYER').toUpperCase();
+        let dashUrl = '/buyer-dashboard';
+        let roleBadge = 'Buyer';
+
+        if (role === 'ADMIN') {
+          dashUrl = '/admin-dashboard';
+          roleBadge = 'Admin';
+        } else if (role === 'FARMER' || role === 'SELLER') {
+          dashUrl = (user.phone_number && user.state) ? '/farmer-dashboard' : '/farmer-onboarding';
+          roleBadge = 'Farmer';
+        } else {
+          dashUrl = (user.phone_number && user.state && user.address) ? '/buyer-dashboard' : '/buyer-onboarding';
+        }
+
+        const navActions = document.getElementById('navActionsContainer');
+        if (navActions) {
+          navActions.innerHTML = `
+            <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle theme">
+              <i class="fa-solid fa-sun light-icon"></i>
+              <i class="fa-solid fa-moon dark-icon"></i>
+            </button>
+            <a href="${dashUrl}" class="btn-nav-register" style="background:linear-gradient(135deg,var(--emerald-600),var(--emerald-500))">
+              <i class="fa-solid fa-gauge"></i>
+              <span>My Dashboard</span>
+            </a>
+            <button onclick="logoutHome()" class="btn-nav-login" style="cursor:pointer;border:none;background:rgba(244,63,94,0.1);color:#fb7185" title="Sign Out">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            </button>
+          `;
+        }
+
+        const heroStart = document.getElementById('heroStartBtn');
+        const heroLogin = document.getElementById('heroLoginBtn');
+        if (heroStart) {
+          heroStart.href = dashUrl;
+          heroStart.innerHTML = `<span>Go to My Dashboard (${roleBadge})</span> <i class="fa-solid fa-arrow-right"></i>`;
+        }
+        if (heroLogin) {
+          heroLogin.style.display = 'none';
+        }
+      } catch (_) {}
+    }
+
+    function logoutHome() {
+      localStorage.removeItem('agrein_token');
+      localStorage.removeItem('agrein_user');
+      window.location.reload();
+    }
+
+    window.addEventListener('DOMContentLoaded', checkHomeSession);
   </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
@@ -148,6 +148,11 @@
           <div><div class="step-header-title">Personal Details</div><div class="step-header-sub">Tell us about yourself</div></div>
         </div>
         <div class="alert alert-error hidden" id="err1"><i class="fa-solid fa-triangle-exclamation"></i><span id="errMsg1"></span></div>
+        <div class="form-group">
+          <label class="form-label">Full Legal Name (Detail Name) <span class="req">*</span></label>
+          <div class="input-wrap"><i class="input-icon fa-solid fa-user"></i><input class="form-input" id="fullName" type="text" placeholder="Ibrahim Bello Musa" autocomplete="name"></div>
+          <div class="field-hint"><i class="fa-solid fa-circle-info"></i> Your official full legal name matching your National Identity Number (NIN)</div>
+        </div>
         <div class="form-grid-2">
           <div class="form-group">
             <label class="form-label">Phone Number <span class="req">*</span></label>
@@ -196,8 +201,14 @@
         </div>
         <div class="form-group">
           <label class="form-label">National Identification Number (NIN) <span class="req">*</span></label>
-          <div class="input-wrap"><i class="input-icon fa-solid fa-fingerprint"></i><input class="form-input" id="ninNumber" type="text" placeholder="12345678901" maxlength="11" oninput="formatNin(this)" autocomplete="off"></div>
-          <div class="field-hint"><i class="fa-solid fa-circle-info"></i> Your 11-digit NIN from your NIMC card or slip</div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+            <div class="input-wrap" style="flex:1;min-width:220px"><i class="input-icon fa-solid fa-fingerprint"></i><input class="form-input" id="ninNumber" type="text" placeholder="12345678901" maxlength="11" oninput="formatNin(this)" autocomplete="off"></div>
+            <button type="button" class="btn-secondary" id="btnVerifyNin" onclick="verifyNinWithInterswitch()" style="white-space:nowrap;padding:0.6rem 1rem;font-size:0.82rem;font-weight:700">
+              <i class="fa-solid fa-shield-halved" style="color:var(--emerald-400)"></i> Verify with Interswitch
+            </button>
+          </div>
+          <div class="field-hint"><i class="fa-solid fa-circle-info"></i> Real-time 11-digit identity verification via Interswitch NIMC Gateway</div>
+          <div id="ninIswFeedback" style="margin-top:0.65rem;display:none"></div>
         </div>
         <div class="form-group">
           <label class="form-label">Bank Verification Number (BVN) <span class="opt">Optional</span></label>
@@ -230,6 +241,11 @@
             <label class="form-label">Farm LGA <span class="req">*</span></label>
             <div class="input-wrap"><i class="input-icon fa-solid fa-map-pin"></i><select class="form-input form-select" id="farmLgaSelect"><option value="">-- Select LGA --</option></select></div>
           </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Farm / Business Physical Address <span class="req">*</span></label>
+          <div class="input-wrap"><i class="input-icon fa-solid fa-location-crosshairs"></i><input class="form-input" id="farmLocation" type="text" placeholder="KM 14 Iseyin Road, Near Agro Hub"></div>
+          <div class="field-hint"><i class="fa-solid fa-circle-info"></i> Physical address or landmark where your farm/business is located</div>
         </div>
         <div class="form-grid-2">
           <div class="form-group">
@@ -279,8 +295,14 @@
         </div>
         <div class="form-group">
           <label class="form-label">CAC Registration Number <span class="opt">Optional</span></label>
-          <div class="input-wrap"><i class="input-icon fa-solid fa-hashtag"></i><input class="form-input" id="cacNumber" type="text" placeholder="RC1234567 or BN1234567"></div>
-          <div class="field-hint"><i class="fa-solid fa-circle-info"></i> Found on your CAC Certificate of Incorporation or Business Name Certificate</div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+            <div class="input-wrap" style="flex:1;min-width:220px"><i class="input-icon fa-solid fa-hashtag"></i><input class="form-input" id="cacNumber" type="text" placeholder="RC1234567 or BN1234567"></div>
+            <button type="button" class="btn-secondary" id="btnVerifyCac" onclick="verifyCacWithInterswitch()" style="white-space:nowrap;padding:0.6rem 1rem;font-size:0.82rem;font-weight:700">
+              <i class="fa-solid fa-building-shield" style="color:var(--emerald-400)"></i> Verify CAC with Interswitch
+            </button>
+          </div>
+          <div class="field-hint"><i class="fa-solid fa-circle-info"></i> Query Nigerian Corporate Affairs Commission registry in real-time via Interswitch Gateway</div>
+          <div id="cacIswFeedback" style="margin-top:0.65rem;display:none"></div>
         </div>
         <div class="cac-not-registered">
           <div class="toggle-row">
@@ -334,7 +356,10 @@
             <div class="success-step"><div class="ss-icon email-icon"><i class="fa-solid fa-envelope"></i></div><div><div class="ss-label">Confirmation Email Sent</div><div class="ss-sub">Check your inbox for details</div></div></div>
             <div class="success-step"><div class="ss-icon unlock"><i class="fa-solid fa-unlock"></i></div><div><div class="ss-label">Dashboard Unlocked on Approval</div><div class="ss-sub">You will get an email when approved</div></div></div>
           </div>
-          <a href="/" class="btn-home"><i class="fa-solid fa-house"></i> Go to Homepage</a>
+          <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:1.5rem">
+            <a href="/farmer-dashboard" class="btn-home" style="background:linear-gradient(135deg,var(--emerald-600),var(--emerald-500));color:white;border:none"><i class="fa-solid fa-gauge"></i> Enter Farmer Dashboard</a>
+            <a href="/" class="btn-home"><i class="fa-solid fa-house"></i> Go to Homepage</a>
+          </div>
         </div>
       </div>
 

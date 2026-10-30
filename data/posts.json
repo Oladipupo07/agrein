@@ -1,0 +1,168 @@
+[
+  {
+    "id": "post_1793345674379",
+    "seller_id": "usr-farmer-test",
+    "seller_name": "farmer_test@agrein.com",
+    "farm_name": "Agrein Farm Producer",
+    "seller_location": "Nigeria",
+    "seller_verified": true,
+    "title": "🌾 100 Tons Fresh Cassava Harvest Ready in Ogun",
+    "content": "High-starch white cassava freshly uprooted. Direct delivery available across Southwest.",
+    "category": "Harvest Update",
+    "crop_tag": "White Cassava",
+    "price_info": "₦32,000 / Ton",
+    "moq": "2 Tons",
+    "emoji": "🥔",
+    "likes_count": 0,
+    "liked_by": [],
+    "comments": [
+      {
+        "id": "cmt_1793345674672",
+        "author_id": "usr-buyer-test",
+        "author_name": "buyer_test",
+        "author_role": "BUYER",
+        "author_location": "Nigeria",
+        "text": "Can you deliver 5 tons to Abeokuta?",
+        "created_at": "2026-10-30T07:34:34.672Z"
+      }
+    ],
+    "reviews": [],
+    "created_at": "2026-10-30T07:34:34.379Z"
+  },
+  {
+    "id": "post_1001",
+    "seller_id": "usr-admin-bello",
+    "seller_name": "Ibrahim Bello Musa",
+    "farm_name": "Bello Agro Farms Nigeria Ltd.",
+    "seller_location": "Oyo • Saki West",
+    "seller_verified": true,
+    "title": "🌾 Fresh Harvest Alert: 500 Bags of Grade-A Yellow Maize Ready for Dispatch!",
+    "content": "We just concluded mechanical shelling of our late-season yellow maize in Saki West. Tested moisture level is 12.5% (optimal for long storage and poultry feed milling). Zero stone, winnowed and pre-bagged in clean 100kg Agrein-branded sacks. All bulk orders dispatched with traceable escrow protection.",
+    "category": "Harvest Update",
+    "crop_tag": "Yellow Maize",
+    "price_info": "₦42,000 / 100kg Bag",
+    "moq": "5 Bags",
+    "emoji": "🌽",
+    "likes_count": 18,
+    "liked_by": [
+      "buyer1@example.com"
+    ],
+    "created_at": "2026-10-29T23:20:22.745Z",
+    "comments": [
+      {
+        "id": "cmt_1",
+        "author_id": "usr-buyer-fatima",
+        "author_name": "Fatima Aliyu",
+        "author_role": "BUYER",
+        "author_location": "Lagos • Ikeja",
+        "text": "Hello Alhaji Bello, can you deliver 25 bags directly to our feed store in Ikeja, Lagos?",
+        "created_at": "2026-10-30T01:20:22.764Z"
+      },
+      {
+        "id": "cmt_2",
+        "author_id": "usr-admin-bello",
+        "author_name": "Ibrahim Bello Musa",
+        "author_role": "FARMER",
+        "author_location": "Oyo • Saki West",
+        "text": "Yes Madam Fatima! Delivery to Lagos takes 24 to 36 hours via our verified logistics partner. You can lock order in escrow right now.",
+        "created_at": "2026-10-30T03:20:22.764Z"
+      }
+    ],
+    "reviews": [
+      {
+        "id": "rev_1",
+        "buyer_id": "usr-buyer-emeka",
+        "buyer_name": "Emeka Okafor",
+        "buyer_location": "Abuja • Gwagwalada",
+        "rating": 5,
+        "review_title": "Exceptional dry grain quality and prompt delivery",
+        "comment": "Received 10 bags in Abuja. Grain was bone dry, no weevils or dust. The escrow release mechanism gave our business 100% security.",
+        "verified_purchase": true,
+        "created_at": "2026-10-29T19:20:22.764Z"
+      }
+    ]
+  },
+  {
+    "id": "post_1002",
+    "seller_id": "usr-farmer-benue",
+    "seller_name": "Terungwa Akume",
+    "farm_name": "Benue Green Valley Farms",
+    "seller_location": "Benue • Gboko",
+    "seller_verified": true,
+    "title": "🍠 Premium White Yam Tubers (Pona Variety) Harvested This Week!",
+    "content": "Huge tubers fresh from the fertile Benue riverbank soils. Ideal for wholesale food caterers, hotels, and retail markets. Pona variety with sweet fluffy texture. Hand-sorted to ensure zero rotten tubers.",
+    "category": "Harvest Update",
+    "crop_tag": "White Yam",
+    "price_info": "₦18,000 / Set of 10 Tubers",
+    "moq": "2 Sets",
+    "emoji": "🍠",
+    "likes_count": 24,
+    "liked_by": [],
+    "created_at": "2026-10-29T13:20:22.764Z",
+    "comments": [
+      {
+        "id": "cmt_3",
+        "author_id": "usr-buyer-chidi",
+        "author_name": "Chef Chidi Martins",
+        "author_role": "BUYER",
+        "author_location": "Rivers • Port Harcourt",
+        "text": "Are these tubers suitable for pounded yam in our commercial restaurant kitchen?",
+        "created_at": "2026-10-29T21:20:22.764Z"
+      },
+      {
+        "id": "cmt_4",
+        "author_id": "usr-farmer-benue",
+        "author_name": "Terungwa Akume",
+        "author_role": "FARMER",
+        "author_location": "Benue • Gboko",
+        "text": "Absolutely! Pona yams are renowned for their high starch and smooth pounding texture.",
+        "created_at": "2026-10-29T23:20:22.764Z"
+      }
+    ],
+    "reviews": [
+      {
+        "id": "rev_2",
+        "buyer_id": "usr-buyer-zainab",
+        "buyer_name": "Zainab Balogun",
+        "buyer_location": "Lagos • Surulere",
+        "rating": 5,
+        "review_title": "Very big sweet tubers!",
+        "comment": "Ordered 5 sets for household and extended family. Clean tubers, delicious taste. Will order again next month.",
+        "verified_purchase": true,
+        "created_at": "2026-10-29T17:20:22.764Z"
+      }
+    ]
+  },
+  {
+    "id": "post_1003",
+    "seller_id": "usr-farmer-edo",
+    "seller_name": "Osasere Obaseki",
+    "farm_name": "Edo Palm Plantation Cooperative",
+    "seller_location": "Edo • Ovia North-East",
+    "seller_verified": true,
+    "title": "🛢️ 100% Unadulterated Pure Grade-A Red Palm Oil - Fresh Press",
+    "content": "Cold-settled, zero water or artificial color additives. Passed NAFDAC farmgate inspection. Rich red beta-carotene clarity with traditional aromatic scent. Packaged in brand-new sealed food-grade 25L jerrycans.",
+    "category": "Bulk Offer",
+    "crop_tag": "Red Palm Oil",
+    "price_info": "₦35,000 / 25L Jerrycan",
+    "moq": "1 Jerrycan",
+    "emoji": "🛢️",
+    "likes_count": 31,
+    "liked_by": [],
+    "created_at": "2026-10-29T03:20:22.764Z",
+    "comments": [],
+    "reviews": [
+      {
+        "id": "rev_3",
+        "buyer_id": "usr-buyer-bisi",
+        "buyer_name": "Bisi Adeleke",
+        "buyer_location": "Oyo • Ibadan",
+        "rating": 5,
+        "review_title": "Authentic palm oil from Edo",
+        "comment": "Hard to find authentic unadulterated palm oil nowadays. This is pure quality. Fried plantain and soups taste wonderful.",
+        "verified_purchase": true,
+        "created_at": "2026-10-29T11:20:22.764Z"
+      }
+    ]
+  }
+]
