@@ -239,7 +239,7 @@ function buildReview() {
       'LGA': document.getElementById('lgaSelect').value
     },
     identity: {
-      'NIN': maskNin(document.getElementById('ninNumber').value) + (iswNinVerified ? ' ✓ [Interswitch Verified]' : ' [Pending Check]'),
+      'NIN': maskNin(document.getElementById('ninNumber').value) + (iswNinVerified ? ' ✓ [Verified]' : ' [Pending Check]'),
       'BVN': document.getElementById('bvnNumber').value ? maskNin(document.getElementById('bvnNumber').value) : 'Not provided'
     },
     farm: {
@@ -254,7 +254,7 @@ function buildReview() {
       'Plans to Sell': document.getElementById('intendedProducts').value || 'Not specified'
     },
     business: {
-      'CAC Number': (document.getElementById('cacNumber').value ? (document.getElementById('cacNumber').value + (iswCacVerified ? ' ✓ [Interswitch Verified]' : '')) : 'Not registered')
+      'CAC Number': (document.getElementById('cacNumber').value ? (document.getElementById('cacNumber').value + (iswCacVerified ? ' ✓ [Verified]' : '')) : 'Not registered')
     }
   };
 
@@ -453,7 +453,7 @@ async function verifyNinWithInterswitch() {
 
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Checking Interswitch...';
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verifying...';
   }
 
   try {
@@ -464,7 +464,7 @@ async function verifyNinWithInterswitch() {
     });
     const result = await res.json();
     if (!res.ok || !result.verified) {
-      throw new Error(result.message || 'Interswitch NIN verification failed.');
+      throw new Error(result.message || 'NIN verification failed.');
     }
 
     iswNinVerified = true;
@@ -476,11 +476,11 @@ async function verifyNinWithInterswitch() {
         <div style="background:rgba(16,185,129,0.12);border:1px solid rgba(52,211,153,0.4);border-radius:8px;padding:0.75rem 1rem;font-size:0.82rem;color:var(--text-main)">
           <div style="display:flex;align-items:center;gap:0.4rem;font-weight:700;color:var(--emerald-400)">
             <i class="fa-solid fa-circle-check"></i>
-            <span>Verified via Interswitch NIMC Identity Gateway</span>
+            <span>NIN Verified Successfully</span>
           </div>
           <div style="margin-top:0.35rem;font-size:0.78rem;color:var(--text-muted);line-height:1.4">
             <strong>Matched Record:</strong> ${escapeHtml(iswNinData.details?.fullName || fullName || 'Identity Confirmed')}<br>
-            <strong>Gateway Ref:</strong> <span style="font-family:monospace;color:var(--sky-400)">${escapeHtml(iswNinData.reference)}</span> • Status: <strong>ACTIVE</strong>
+            <strong>Reference:</strong> <span style="font-family:monospace;color:var(--emerald-600)">${escapeHtml(iswNinData.reference)}</span> • Status: <strong>ACTIVE</strong>
           </div>
         </div>
       `;
@@ -493,7 +493,7 @@ async function verifyNinWithInterswitch() {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-shield-halved" style="color:var(--emerald-400)"></i> Verify with Interswitch';
+      btn.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Verify';
     }
   }
 }
@@ -514,7 +514,7 @@ async function verifyCacWithInterswitch() {
 
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Checking CAC Registry...';
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verifying...';
   }
 
   try {
@@ -525,7 +525,7 @@ async function verifyCacWithInterswitch() {
     });
     const result = await res.json();
     if (!res.ok || !result.verified) {
-      throw new Error(result.message || 'Interswitch CAC verification failed.');
+      throw new Error(result.message || 'CAC verification failed.');
     }
 
     iswCacVerified = true;
@@ -537,12 +537,12 @@ async function verifyCacWithInterswitch() {
         <div style="background:rgba(16,185,129,0.12);border:1px solid rgba(52,211,153,0.4);border-radius:8px;padding:0.75rem 1rem;font-size:0.82rem;color:var(--text-main)">
           <div style="display:flex;align-items:center;gap:0.4rem;font-weight:700;color:var(--emerald-400)">
             <i class="fa-solid fa-circle-check"></i>
-            <span>Verified via Interswitch Corporate Affairs Commission Gateway</span>
+            <span>CAC Registration Verified</span>
           </div>
           <div style="margin-top:0.35rem;font-size:0.78rem;color:var(--text-muted);line-height:1.4">
             <strong>Registered Business:</strong> ${escapeHtml(iswCacData.companyName || farmName)}<br>
             <strong>Registration Number:</strong> ${escapeHtml(iswCacData.cacNumber)} • Status: <strong>ACTIVE</strong><br>
-            <strong>Gateway Ref:</strong> <span style="font-family:monospace;color:var(--sky-400)">${escapeHtml(iswCacData.reference)}</span>
+            <strong>Reference:</strong> <span style="font-family:monospace;color:var(--emerald-600)">${escapeHtml(iswCacData.reference)}</span>
           </div>
         </div>
       `;
@@ -555,7 +555,7 @@ async function verifyCacWithInterswitch() {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-building-shield" style="color:var(--emerald-400)"></i> Verify CAC with Interswitch';
+      btn.innerHTML = '<i class="fa-solid fa-building-shield"></i> Verify';
     }
   }
 }

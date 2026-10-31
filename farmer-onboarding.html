@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +7,7 @@
   <title>Farmer Onboarding - Agrein</title>
   <meta name="description" content="Complete your Agrein farmer profile: personal details, NIN verification, farm information and CAC registration.">
   <meta name="robots" content="noindex">
-  <script>(function(){var s=localStorage.getItem("agrein_theme")||"dark";document.documentElement.setAttribute("data-theme",s);})();</script>
+  <script>(function(){var s=localStorage.getItem("agrein_theme")||"light";document.documentElement.setAttribute("data-theme",s);})();</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -204,10 +204,10 @@
           <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
             <div class="input-wrap" style="flex:1;min-width:220px"><i class="input-icon fa-solid fa-fingerprint"></i><input class="form-input" id="ninNumber" type="text" placeholder="12345678901" maxlength="11" oninput="formatNin(this)" autocomplete="off"></div>
             <button type="button" class="btn-secondary" id="btnVerifyNin" onclick="verifyNinWithInterswitch()" style="white-space:nowrap;padding:0.6rem 1rem;font-size:0.82rem;font-weight:700">
-              <i class="fa-solid fa-shield-halved" style="color:var(--emerald-400)"></i> Verify with Interswitch
+              <i class="fa-solid fa-shield-halved"></i> Verify
             </button>
           </div>
-          <div class="field-hint"><i class="fa-solid fa-circle-info"></i> Real-time 11-digit identity verification via Interswitch NIMC Gateway</div>
+          <div class="field-hint"><i class="fa-solid fa-circle-info"></i> Real-time 11-digit National Identity Number verification</div>
           <div id="ninIswFeedback" style="margin-top:0.65rem;display:none"></div>
         </div>
         <div class="form-group">
@@ -298,10 +298,10 @@
           <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
             <div class="input-wrap" style="flex:1;min-width:220px"><i class="input-icon fa-solid fa-hashtag"></i><input class="form-input" id="cacNumber" type="text" placeholder="RC1234567 or BN1234567"></div>
             <button type="button" class="btn-secondary" id="btnVerifyCac" onclick="verifyCacWithInterswitch()" style="white-space:nowrap;padding:0.6rem 1rem;font-size:0.82rem;font-weight:700">
-              <i class="fa-solid fa-building-shield" style="color:var(--emerald-400)"></i> Verify CAC with Interswitch
+              <i class="fa-solid fa-building-shield"></i> Verify
             </button>
           </div>
-          <div class="field-hint"><i class="fa-solid fa-circle-info"></i> Query Nigerian Corporate Affairs Commission registry in real-time via Interswitch Gateway</div>
+          <div class="field-hint"><i class="fa-solid fa-circle-info"></i> Verify your CAC registration with the Corporate Affairs Commission registry</div>
           <div id="cacIswFeedback" style="margin-top:0.65rem;display:none"></div>
         </div>
         <div class="cac-not-registered">
